@@ -81,6 +81,13 @@ public sealed class SidecarConversationTests
 
             await Assert.ThrowsAsync<RpcException>(() =>
                 client.InvokeAsync<ConversationCancelResult>("conversation.cancel", null));
+            await Assert.ThrowsAsync<RpcException>(() =>
+                client.InvokeAsync<ToolResultResult>("tool.result", new
+                {
+                    toolCallId = "invalid-output",
+                    success = true,
+                    output = Array.Empty<object>(),
+                }));
             _ = await client.InvokeAsync<PingResult>("ping", null);
 
             await RunAndAssertAsync(client, events, terminalEvents, "replay-conversation", "replay", "hello replay", "Replay runtime received: hello replay");
@@ -108,8 +115,9 @@ public sealed class SidecarConversationTests
             var cancellationTerminal = terminalEvents.GetOrAdd(cancelConversationId, _ => NewCompletion());
             var started = await client.InvokeAsync<ConversationStartResult>(
                 "conversation.start",
-                new ConversationStartParams(cancelConversationId, new string('x', 2_000), "replay"));
+                new ConversationStartParams(cancelConversationId, "cancel-run", new string('x', 2_000), "replay"));
             Assert.True(started.Accepted);
+            Assert.Equal("cancel-run", started.RunId);
             var cancelled = await client.InvokeAsync<ConversationCancelResult>(
                 "conversation.cancel",
                 new ConversationCancelParams(cancelConversationId));
@@ -135,8 +143,9 @@ public sealed class SidecarConversationTests
         var terminal = terminals.GetOrAdd(conversationId, _ => NewCompletion());
         var started = await client.InvokeAsync<ConversationStartResult>(
             "conversation.start",
-            new ConversationStartParams(conversationId, input, runtime));
+            new ConversationStartParams(conversationId, $"{conversationId}-run", input, runtime));
         Assert.True(started.Accepted);
+        Assert.Equal($"{conversationId}-run", started.RunId);
         Assert.Equal("run_completed", (await terminal.Task.WaitAsync(TimeSpan.FromSeconds(5))).Type);
 
         var runEvents = events.Where(agentEvent => agentEvent.ConversationId == conversationId).ToArray();

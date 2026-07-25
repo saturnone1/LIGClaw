@@ -1,8 +1,6 @@
 import type { AgentEvent, ConversationStartParams } from "../generated/contracts.js";
 
-export interface RuntimeRunRequest extends ConversationStartParams {
-  readonly runId: string;
-}
+export type RuntimeRunRequest = ConversationStartParams;
 
 export type RuntimeEventPayload = Pick<AgentEvent, "type" | "text" | "message">;
 

@@ -6,8 +6,8 @@
   "additionalProperties": false,
   "required": ["conversationId", "runId", "sequence", "type", "timestampUtc"],
   "properties": {
-    "conversationId": { "type": "string" },
-    "runId": { "type": "string" },
+    "conversationId": { "type": "string", "minLength": 1 },
+    "runId": { "type": "string", "minLength": 1 },
     "sequence": { "type": "integer", "minimum": 0 },
     "type": {
       "type": "string",

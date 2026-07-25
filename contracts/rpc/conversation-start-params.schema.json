@@ -4,9 +4,10 @@
   "title": "ConversationStartParams",
   "type": "object",
   "additionalProperties": false,
-  "required": ["conversationId", "input", "runtime"],
+  "required": ["conversationId", "runId", "input", "runtime"],
   "properties": {
     "conversationId": { "type": "string", "minLength": 1 },
+    "runId": { "type": "string", "minLength": 1 },
     "input": { "type": "string", "minLength": 1 },
     "runtime": { "type": "string", "enum": ["replay", "cline"] }
   }

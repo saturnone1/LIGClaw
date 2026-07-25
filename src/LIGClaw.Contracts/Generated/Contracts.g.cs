@@ -7,8 +7,8 @@ namespace LIGClaw.Contracts.Generated;
 
 public static class ContractMetadata
 {
-    public const string ProtocolVersion = "1.3";
-    public const string Hash = "3dc529e92ff22d597056c3fed8ccef52938d9207cdbe6e06891cc87a43a0d279";
+    public const string ProtocolVersion = "1.4";
+    public const string Hash = "3c8db0167f60bc29e2f0a75b6b78ad0bdae50ac898923e27d4278e132775c9c6";
 }
 
 public sealed record AgentEvent(
@@ -28,6 +28,7 @@ public sealed record ConversationCancelResult(
 
 public sealed record ConversationStartParams(
     [property: JsonPropertyName("conversationId")] string ConversationId,
+    [property: JsonPropertyName("runId")] string RunId,
     [property: JsonPropertyName("input")] string Input,
     [property: JsonPropertyName("runtime")] string Runtime);
 

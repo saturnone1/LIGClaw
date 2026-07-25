@@ -48,12 +48,13 @@ public sealed class SidecarSupervisor : IAsyncDisposable
 
     public Task<ConversationStartResult> StartConversationAsync(
         string conversationId,
+        string runId,
         string input,
         string runtime,
         CancellationToken cancellationToken = default) =>
         GetConnectedClient().InvokeAsync<ConversationStartResult>(
             "conversation.start",
-            new ConversationStartParams(conversationId, input, runtime),
+            new ConversationStartParams(conversationId, runId, input, runtime),
             cancellationToken);
 
     public Task<ConversationCancelResult> CancelConversationAsync(
@@ -219,6 +220,11 @@ public sealed class SidecarSupervisor : IAsyncDisposable
             if (!StringComparer.Ordinal.Equals(notification.Method, "agent.event")) return;
             var agentEvent = notification.Params.Value.Deserialize<AgentEvent>(ContentLengthMessageStream.SerializerOptions)
                 ?? throw new InvalidDataException("Agent event was empty.");
+            if (string.IsNullOrWhiteSpace(agentEvent.ConversationId) ||
+                string.IsNullOrWhiteSpace(agentEvent.RunId) ||
+                agentEvent.Sequence < 0 ||
+                agentEvent.Type is not ("run_started" or "text_delta" or "run_completed" or "run_cancelled" or "run_failed"))
+                throw new InvalidDataException("Agent event fields were invalid.");
             var expected = _eventSequences.TryGetValue(agentEvent.RunId, out var last) ? last + 1 : 0;
             if (agentEvent.Sequence != expected)
             {

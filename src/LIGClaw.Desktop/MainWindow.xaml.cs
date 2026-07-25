@@ -1,8 +1,10 @@
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using LIGClaw.Application.Tools;
 using LIGClaw.Contracts.Generated;
 using LIGClaw.Desktop.Infrastructure.Persistence;
 using LIGClaw.Desktop.Infrastructure.Platform;
@@ -19,12 +21,14 @@ public partial class MainWindow : Window
     private readonly QuickAccessShortcutStore _quickAccessShortcutStore = new();
     private readonly ModelConnectionSettingsStore _modelSettingsStore = new();
     private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
+    private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
     private QuickAccessShortcut _configuredQuickAccessShortcut = QuickAccessShortcutCatalog.Default;
     private WindowsPlatformProfile? _platformProfile;
     private WindowsToolHost? _windowsToolHost;
     private Task _persistenceInitialization = Task.CompletedTask;
     private bool _persistenceAvailable;
     private string? _activeConversationId;
+    private string? _activeRunId;
     private bool _isConnected;
     private bool _isModelConfigured;
     private bool _isRunning;
@@ -216,7 +220,10 @@ public partial class MainWindow : Window
         }
 
         _activeConversationId = Guid.NewGuid().ToString("N");
+        _activeRunId = Guid.NewGuid().ToString("N");
         var conversationId = _activeConversationId;
+        var runId = _activeRunId;
+        _toolInvocationPolicy.BeginRun(conversationId, runId);
         _isRunning = true;
         RecentConversationsList.SelectedItem = null;
         RecentConversationsList.IsEnabled = false;
@@ -227,7 +234,9 @@ public partial class MainWindow : Window
         try
         {
             await PersistConversationStartAsync(conversationId, input);
-            _ = await _sidecar.StartConversationAsync(_activeConversationId, input, "cline");
+            var started = await _sidecar.StartConversationAsync(conversationId, runId, input, "cline");
+            if (!started.Accepted || !StringComparer.Ordinal.Equals(started.RunId, runId))
+                throw new InvalidDataException("Sidecar가 요청 실행 ID를 확인하지 못했습니다.");
             if (_isRunning && StringComparer.Ordinal.Equals(_activeConversationId, conversationId))
             {
                 RunStatus.Text = "답변을 준비하고 있어요…";
@@ -264,9 +273,9 @@ public partial class MainWindow : Window
 
     private async Task HandleAgentEventAsync(AgentEvent agentEvent)
     {
-        if (!StringComparer.Ordinal.Equals(agentEvent.ConversationId, _activeConversationId))
+        if (!_toolInvocationPolicy.IsActiveRun(agentEvent.ConversationId, agentEvent.RunId))
         {
-            await PersistAgentEventAsync(agentEvent);
+            AddDiagnostic("현재 요청과 일치하지 않는 Agent 이벤트를 무시했습니다.");
             return;
         }
         switch (agentEvent.Type)
@@ -297,14 +306,17 @@ public partial class MainWindow : Window
     private async void Sidecar_ToolInvocationReceived(object? sender, ToolInvokeParams invocation)
     {
         WindowsToolExecutionResult execution;
-        var belongsToActiveRun = await Dispatcher.InvokeAsync(() =>
-            _isRunning && StringComparer.Ordinal.Equals(_activeConversationId, invocation.ConversationId));
-        if (!belongsToActiveRun)
+        var authorization = _toolInvocationPolicy.Authorize(
+            invocation.ConversationId,
+            invocation.RunId,
+            invocation.ToolCallId,
+            invocation.Risk);
+        if (!authorization.Allowed)
         {
             execution = new WindowsToolExecutionResult(
                 false,
                 new Dictionary<string, object?>(),
-                "현재 요청에 속하지 않은 Tool 호출을 거부했어요.");
+                authorization.Error);
         }
         else if (_windowsToolHost is null)
         {
@@ -338,8 +350,11 @@ public partial class MainWindow : Window
 
     private void CompleteRun(string status)
     {
+        if (_activeConversationId is not null && _activeRunId is not null)
+            _toolInvocationPolicy.EndRun(_activeConversationId, _activeRunId);
         RunStatus.Text = status;
         _activeConversationId = null;
+        _activeRunId = null;
         _isRunning = false;
         RecentConversationsList.IsEnabled = true;
         UpdateCommandState();

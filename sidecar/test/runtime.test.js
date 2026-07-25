@@ -71,7 +71,7 @@ test("coordinator emits ordered normalized events", async () => {
   const events = [];
   const completed = new Promise((resolve) => {
     coordinator.start(
-      { conversationId: "conversation-1", input: "hello", runtime: "replay" },
+      { conversationId: "conversation-1", runId: "run-coordinator", input: "hello", runtime: "replay" },
       (event) => {
         events.push(event);
         if (event.type === "run_completed") resolve();
@@ -84,6 +84,7 @@ test("coordinator emits ordered normalized events", async () => {
     events.map(({ sequence, type, text }) => ({ sequence, type, ...(text === undefined ? {} : { text }) })),
     fixture.events,
   );
+  assert.ok(events.every((event) => event.runId === "run-coordinator"));
 });
 
 test("coordinator cancels an active run", async () => {
@@ -98,7 +99,7 @@ test("coordinator cancels an active run", async () => {
   const coordinator = new RuntimeCoordinator([adapter]);
   const terminal = new Promise((resolve) => {
     coordinator.start(
-      { conversationId: "conversation-1", input: "hello", runtime: "replay" },
+      { conversationId: "conversation-1", runId: "run-cancel", input: "hello", runtime: "replay" },
       (event) => {
         if (event.type === "run_cancelled") resolve(event);
       },
@@ -123,10 +124,32 @@ test("coordinator suppresses events after the first terminal event", async () =>
   const coordinator = new RuntimeCoordinator([adapter]);
   const events = [];
   coordinator.start(
-    { conversationId: "conversation-1", input: "hello", runtime: "replay" },
+    { conversationId: "conversation-1", runId: "run-terminal", input: "hello", runtime: "replay" },
     (event) => events.push(event),
   );
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.deepEqual(events.map((event) => event.type), ["run_started", "run_completed"]);
+});
+
+test("coordinator rejects a duplicate active Desktop run id", () => {
+  const adapter = {
+    kind: "replay",
+    run(_request, _emit, signal) {
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+    },
+  };
+  const coordinator = new RuntimeCoordinator([adapter]);
+  coordinator.start(
+    { conversationId: "conversation-1", runId: "desktop-run", input: "one", runtime: "replay" },
+    () => {},
+  );
+
+  assert.throws(() => coordinator.start(
+    { conversationId: "conversation-2", runId: "desktop-run", input: "two", runtime: "replay" },
+    () => {},
+  ), /already active/);
+  coordinator.abortAll();
 });

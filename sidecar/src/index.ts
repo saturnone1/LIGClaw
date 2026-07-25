@@ -79,7 +79,8 @@ async function handleRequest(
   if (request.method === "tool.result") {
     const parameters = request.params as ToolResultParams;
     if (!parameters?.toolCallId?.trim() || typeof parameters.success !== "boolean" ||
-        typeof parameters.output !== "object" || parameters.output === null) {
+        typeof parameters.output !== "object" || parameters.output === null || Array.isArray(parameters.output) ||
+        (!parameters.success && !parameters.error?.trim())) {
       return failure(request.id, -32602, "A valid Desktop tool result is required.");
     }
     return success(request.id, { accepted: toolBridge.complete(parameters) });

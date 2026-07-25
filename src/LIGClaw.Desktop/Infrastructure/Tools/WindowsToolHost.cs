@@ -45,8 +45,6 @@ internal sealed class WindowsToolHost
             return Failure("이 Windows 버전에서 사용할 수 없는 기능이에요.");
         if (!StringComparer.Ordinal.Equals(adapter.Risk, invocation.Risk))
             return Failure("Tool 위험 등급이 Desktop 정책과 일치하지 않습니다.");
-        if (!StringComparer.Ordinal.Equals(adapter.Risk, "R0"))
-            return Failure("사용자 승인이 필요한 기능은 아직 실행할 수 없습니다.");
 
         try
         {

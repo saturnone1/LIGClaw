@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["toolCallId", "success", "output"],
   "properties": {
-    "toolCallId": { "type": "string" },
+    "toolCallId": { "type": "string", "minLength": 1 },
     "success": { "type": "boolean" },
     "output": { "type": "object" },
     "error": { "type": "string" }

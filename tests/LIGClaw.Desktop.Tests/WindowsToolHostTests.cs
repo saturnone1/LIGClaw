@@ -46,16 +46,28 @@ public sealed class WindowsToolHostTests
         Assert.Equal("windows11", result.Output["adapter"]);
     }
 
+    [Fact]
+    public async Task ExecutesAnAuthorizedHigherRiskToolWithoutOwningApprovalPolicy()
+    {
+        var profile = WindowsPlatformProfile.Classify(10, 0, 22631, isWorkstation: true);
+        var host = new WindowsToolHost(profile, [new FakeTool(WindowsCapability.Win32DesktopShell, 1, "approved", "R1")]);
+
+        var result = await host.ExecuteAsync(Invocation("fake.v1", "R1"));
+
+        Assert.True(result.Success);
+    }
+
     private static ToolInvokeParams Invocation(string name, string risk) =>
         new("call-1", "conversation-1", "run-1", name, risk, new Dictionary<string, object?>());
 
     private sealed class FakeTool(
         WindowsCapability requiredCapabilities,
         int priority,
-        string result) : IWindowsToolAdapter
+        string result,
+        string risk = "R0") : IWindowsToolAdapter
     {
         public string Name => "fake.v1";
-        public string Risk => "R0";
+        public string Risk => risk;
         public WindowsCapability RequiredCapabilities => requiredCapabilities;
         public int Priority => priority;
 
