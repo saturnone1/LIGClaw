@@ -6,7 +6,7 @@ Phase 0 walking skeleton을 완료했으며 Phase 1 진입 전 제품 디자인 
 
 ## 현재 구현 범위
 
-현재 Sidecar는 `health.ping`, `conversation.start`, `conversation.cancel`, `agent.events` capability를 제공합니다. 일반 화면은 요청 입력, 진행 상태, 답변에만 집중하며 내부 Replay fixture와 Cline 버전 같은 개발 정보는 노출하지 않습니다. 외부 LLM provider, Windows Tool, 메모리, 예약 작업, MCP는 기능을 막아 둔 것이 아니라 아직 구현되지 않았습니다. 라이선스·계정·모델별 feature flag나 호출 quota는 없습니다.
+현재 Sidecar는 `health.ping`, `conversation.start`, `conversation.cancel`, `agent.events` capability를 제공합니다. 일반 화면은 요청 입력, 진행 상태, 답변에만 집중하며 내부 Replay fixture와 Cline 버전 같은 개발 정보는 노출하지 않습니다. Desktop은 사용자 세션당 하나만 실행되며 두 번째 실행이나 `Ctrl + Alt + Space`는 기존 요청 창을 복원합니다. 외부 LLM provider, Windows Tool, 메모리, 예약 작업, MCP는 기능을 막아 둔 것이 아니라 아직 구현되지 않았습니다. 라이선스·계정·모델별 feature flag나 호출 quota는 없습니다.
 
 다음 항목은 기능 제한이 아니라 프로세스 안정성과 보안을 위한 경계입니다.
 
@@ -39,6 +39,8 @@ Phase 0 walking skeleton을 완료했으며 Phase 1 진입 전 제품 디자인 
 ```
 
 Sidecar를 먼저 빌드한 다음 Desktop을 실행합니다. 평소 말하듯 요청을 입력하고 진행 상태와 답변을 확인할 수 있습니다. 창을 닫으면 처음 한 번 안내한 뒤 트레이에 상주하고, 트레이 아이콘을 더블 클릭하면 다시 열립니다. 실제 종료는 트레이 메뉴에서 수행합니다. 문제 해결 정보는 기본적으로 접혀 있으며 필요할 때만 펼칠 수 있습니다. 현재 응답 모델은 연결 검증용이므로 외부 API를 호출하지 않습니다.
+
+설정에서 `Windows 시작 시 자동 실행`을 선택하면 현재 사용자 계정의 시작프로그램에 등록되고, 다음 로그인부터 창을 띄우지 않은 채 트레이에서 준비합니다. 관리자 권한이나 시스템 전체 설정은 사용하지 않습니다.
 
 실제 프로세스 handshake, heartbeat, 강제 종료 후 자동 재시작과 고아 프로세스 정리는 다음으로 확인합니다.
 

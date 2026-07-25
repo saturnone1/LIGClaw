@@ -1,8 +1,10 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using LIGClaw.Contracts.Generated;
+using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Sidecar;
 
 namespace LIGClaw.Desktop;
@@ -10,6 +12,7 @@ namespace LIGClaw.Desktop;
 public partial class MainWindow : Window
 {
     private readonly SidecarSupervisor _sidecar = new();
+    private readonly QuickAccessHotkey _quickAccessHotkey = new();
     private string? _activeConversationId;
     private bool _isConnected;
     private bool _isRunning;
@@ -20,13 +23,40 @@ public partial class MainWindow : Window
         _sidecar.StatusChanged += Sidecar_StatusChanged;
         _sidecar.DiagnosticMessage += Sidecar_DiagnosticMessage;
         _sidecar.AgentEventReceived += Sidecar_AgentEventReceived;
+        _quickAccessHotkey.Pressed += QuickAccessHotkey_Pressed;
         Loaded += (_, _) =>
         {
-            ConversationInput.Focus();
-            _sidecar.Start();
+            FocusRequestInput();
         };
         Closing += MainWindow_Closing;
         Closed += MainWindow_Closed;
+    }
+
+    internal bool IsQuickAccessAvailable => _quickAccessHotkey.IsRegistered;
+
+    internal void InitializeBackgroundServices()
+    {
+        var handle = new WindowInteropHelper(this).EnsureHandle();
+        if (!_quickAccessHotkey.Register(handle))
+        {
+            AddDiagnostic("빠른 호출 단축키 Ctrl+Alt+Space를 등록하지 못했습니다.");
+        }
+        _sidecar.Start();
+    }
+
+    internal void FocusRequestInput()
+    {
+        ConversationInput.Focus();
+        Keyboard.Focus(ConversationInput);
+    }
+
+    private void QuickAccessHotkey_Pressed(object? sender, EventArgs e) =>
+        (System.Windows.Application.Current as App)?.ShowQuickInput();
+
+    private void Settings_Click(object sender, RoutedEventArgs e)
+    {
+        var settings = new SettingsWindow(IsQuickAccessAvailable) { Owner = this };
+        settings.ShowDialog();
     }
 
     private void RestartSidecar_Click(object sender, RoutedEventArgs e)
@@ -239,6 +269,8 @@ public partial class MainWindow : Window
         _sidecar.StatusChanged -= Sidecar_StatusChanged;
         _sidecar.DiagnosticMessage -= Sidecar_DiagnosticMessage;
         _sidecar.AgentEventReceived -= Sidecar_AgentEventReceived;
+        _quickAccessHotkey.Pressed -= QuickAccessHotkey_Pressed;
+        _quickAccessHotkey.Dispose();
         await _sidecar.DisposeAsync();
         System.Windows.Application.Current.Shutdown();
     }

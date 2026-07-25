@@ -1,4 +1,5 @@
 using System.Windows;
+using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Tray;
 
 namespace LIGClaw.Desktop;
@@ -6,6 +7,7 @@ namespace LIGClaw.Desktop;
 public partial class App : System.Windows.Application
 {
     private TrayIconService? _trayIcon;
+    private SingleInstanceCoordinator? _singleInstance;
 
     internal bool IsExitRequested { get; private set; }
 
@@ -13,11 +15,27 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        _singleInstance = new SingleInstanceCoordinator();
+        if (!_singleInstance.IsPrimary)
+        {
+            _singleInstance.SignalPrimary();
+            Shutdown();
+            return;
+        }
+        _singleInstance.ActivationRequested += SingleInstance_ActivationRequested;
+
         var window = new MainWindow();
         MainWindow = window;
-        _trayIcon = new TrayIconService(ShowMainWindow, ExitApplication);
-        window.Show();
+        _trayIcon = new TrayIconService(ShowQuickInput, ExitApplication);
+        window.InitializeBackgroundServices();
+        if (!e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase))
+        {
+            window.Show();
+        }
     }
+
+    private void SingleInstance_ActivationRequested(object? sender, EventArgs e) =>
+        Dispatcher.InvokeAsync(ShowQuickInput);
 
     internal void ShowMainWindow()
     {
@@ -36,6 +54,12 @@ public partial class App : System.Windows.Application
     }
 
     internal void NotifyWindowHidden() => _trayIcon?.ShowWindowHiddenMessage();
+
+    internal void ShowQuickInput()
+    {
+        ShowMainWindow();
+        (MainWindow as MainWindow)?.FocusRequestInput();
+    }
 
     internal void ExitApplication()
     {
@@ -59,6 +83,12 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        if (_singleInstance is not null)
+        {
+            _singleInstance.ActivationRequested -= SingleInstance_ActivationRequested;
+            _singleInstance.Dispose();
+            _singleInstance = null;
+        }
         _trayIcon?.Dispose();
         _trayIcon = null;
         base.OnExit(e);

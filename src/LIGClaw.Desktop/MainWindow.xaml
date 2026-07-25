@@ -37,12 +37,16 @@
                     </StackPanel>
                 </StackPanel>
 
-                <Border Grid.Row="1" Margin="0,42,0,0" Padding="13,11" CornerRadius="8" Background="#22FFFFFF">
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="7" Height="7" Margin="0,0,11,0" Fill="White" />
-                        <TextBlock Foreground="White" FontWeight="SemiBold" Text="홈" />
-                    </StackPanel>
-                </Border>
+                <StackPanel Grid.Row="1" Margin="0,42,0,0">
+                    <Border Padding="13,11" CornerRadius="8" Background="#22FFFFFF">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Margin="0,0,11,0" Fill="White" />
+                            <TextBlock Foreground="White" FontWeight="SemiBold" Text="홈" />
+                        </StackPanel>
+                    </Border>
+                    <Button Margin="0,9,0,0" Style="{StaticResource SidebarButtonStyle}"
+                            Click="Settings_Click" Content="설정" />
+                </StackPanel>
 
                 <StackPanel Grid.Row="3">
                     <Border Padding="13" CornerRadius="10" Background="#17FFFFFF">
