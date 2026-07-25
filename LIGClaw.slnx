@@ -7,5 +7,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/LIGClaw.Contracts.Tests/LIGClaw.Contracts.Tests.csproj" />
+    <Project Path="tests/LIGClaw.Sidecar.IntegrationTests/LIGClaw.Sidecar.IntegrationTests.csproj" />
   </Folder>
 </Solution>

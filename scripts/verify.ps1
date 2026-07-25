@@ -22,9 +22,11 @@ function Invoke-Checked {
 Push-Location (Join-Path $repositoryRoot 'sidecar')
 try {
     Invoke-Checked npm ci
+    Invoke-Checked npm run check:contracts
     Invoke-Checked npm run check
     Invoke-Checked npm run build
     Invoke-Checked npm test
+    Invoke-Checked npm audit --audit-level=moderate
 }
 finally {
     Pop-Location

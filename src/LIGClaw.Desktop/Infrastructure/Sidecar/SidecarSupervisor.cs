@@ -1,8 +1,11 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text.Json;
+using LIGClaw.Contracts.Generated;
 using LIGClaw.Contracts.Protocol;
 
 namespace LIGClaw.Desktop.Infrastructure.Sidecar;
@@ -15,13 +18,16 @@ public sealed class SidecarSupervisor : IAsyncDisposable
     private static readonly TimeSpan StableRunThreshold = TimeSpan.FromSeconds(30);
     private const int MaximumDiagnosticLength = 2_048;
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly ConcurrentDictionary<string, long> _eventSequences = new();
     private readonly object _sync = new();
     private Task? _supervisionTask;
     private Process? _process;
+    private RpcClient? _client;
     private int _restartRequested;
 
     public event EventHandler<SidecarStatus>? StatusChanged;
     public event EventHandler<string>? DiagnosticMessage;
+    public event EventHandler<AgentEvent>? AgentEventReceived;
 
     public void Start()
     {
@@ -38,6 +44,24 @@ public sealed class SidecarSupervisor : IAsyncDisposable
         lock (_sync) process = _process;
         TryTerminate(process);
     }
+
+    public Task<ConversationStartResult> StartConversationAsync(
+        string conversationId,
+        string input,
+        string runtime,
+        CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<ConversationStartResult>(
+            "conversation.start",
+            new ConversationStartParams(conversationId, input, runtime),
+            cancellationToken);
+
+    public Task<ConversationCancelResult> CancelConversationAsync(
+        string conversationId,
+        CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<ConversationCancelResult>(
+            "conversation.cancel",
+            new ConversationCancelParams(conversationId),
+            cancellationToken);
 
     private async Task SuperviseAsync(CancellationToken cancellationToken)
     {
@@ -108,17 +132,19 @@ public sealed class SidecarSupervisor : IAsyncDisposable
                 .ConfigureAwait(false);
 
             await using var client = new RpcClient(pipe);
+            client.NotificationReceived += Client_NotificationReceived;
             var hostVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.1.0";
             var initialized = await client.InvokeAsync<InitializeResult>(
                 "initialize",
                 new InitializeParams(
                     ProtocolConstants.ProtocolVersion,
                     hostVersion,
-                    ProtocolConstants.DevelopmentContractHash,
+                    ProtocolConstants.ContractHash,
                     sessionToken),
                 cancellationToken).ConfigureAwait(false);
 
             ValidateHandshake(initialized);
+            lock (_sync) _client = client;
             Publish(SidecarState.Connected, $"Agent sidecar {initialized.SidecarVersion} connected.");
 
             while (!cancellationToken.IsCancellationRequested && !process.HasExited)
@@ -136,13 +162,47 @@ public sealed class SidecarSupervisor : IAsyncDisposable
         }
         finally
         {
+            _eventSequences.Clear();
             lock (_sync)
             {
                 if (ReferenceEquals(_process, process)) _process = null;
+                _client = null;
             }
 
             TryTerminate(process);
             await Task.WhenAll(IgnoreCancellation(stdout), IgnoreCancellation(stderr)).ConfigureAwait(false);
+        }
+    }
+
+    private RpcClient GetConnectedClient()
+    {
+        lock (_sync)
+        {
+            return _client ?? throw new InvalidOperationException("Agent sidecar is not connected.");
+        }
+    }
+
+    private void Client_NotificationReceived(object? sender, RpcNotification notification)
+    {
+        if (!StringComparer.Ordinal.Equals(notification.Method, "agent.event") || notification.Params is null) return;
+        try
+        {
+            var agentEvent = notification.Params.Value.Deserialize<AgentEvent>(ContentLengthMessageStream.SerializerOptions)
+                ?? throw new InvalidDataException("Agent event was empty.");
+            var expected = _eventSequences.TryGetValue(agentEvent.RunId, out var last) ? last + 1 : 0;
+            if (agentEvent.Sequence != expected)
+            {
+                PublishDiagnostic($"Ignored out-of-order agent event for run {agentEvent.RunId}: expected {expected}, received {agentEvent.Sequence}.");
+                return;
+            }
+            _eventSequences[agentEvent.RunId] = agentEvent.Sequence;
+            if (agentEvent.Type is "run_completed" or "run_cancelled" or "run_failed")
+                _eventSequences.TryRemove(agentEvent.RunId, out _);
+            AgentEventReceived?.Invoke(this, agentEvent);
+        }
+        catch (Exception exception)
+        {
+            PublishDiagnostic($"Ignored invalid agent event: {exception.Message}");
         }
     }
 
@@ -185,7 +245,7 @@ public sealed class SidecarSupervisor : IAsyncDisposable
     {
         if (!StringComparer.Ordinal.Equals(result.ProtocolVersion, ProtocolConstants.ProtocolVersion))
             throw new InvalidDataException($"Unsupported sidecar protocol version '{result.ProtocolVersion}'.");
-        if (!StringComparer.Ordinal.Equals(result.ContractHash, ProtocolConstants.DevelopmentContractHash))
+        if (!StringComparer.Ordinal.Equals(result.ContractHash, ProtocolConstants.ContractHash))
             throw new InvalidDataException("Desktop and sidecar contract hashes do not match.");
     }
 

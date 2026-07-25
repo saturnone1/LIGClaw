@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/conversation-cancel-params.schema.json",
+  "title": "ConversationCancelParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["conversationId"],
+  "properties": {
+    "conversationId": { "type": "string", "minLength": 1 }
+  }
+}

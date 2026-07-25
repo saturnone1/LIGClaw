@@ -1,6 +1,15 @@
 export const JSON_RPC_VERSION = "2.0" as const;
-export const PROTOCOL_VERSION = "1.0" as const;
-export const CONTRACT_HASH = "phase0-v1" as const;
+export { CONTRACT_HASH, PROTOCOL_VERSION } from "./generated/contracts.js";
+export type {
+  AgentEvent,
+  ConversationCancelParams,
+  ConversationCancelResult,
+  ConversationStartParams,
+  ConversationStartResult,
+  InitializeParams,
+  InitializeResult,
+  PingResult,
+} from "./generated/contracts.js";
 export const MAXIMUM_HEADER_BYTES = 8 * 1024;
 export const MAXIMUM_PAYLOAD_BYTES = 4 * 1024 * 1024;
 
@@ -16,20 +25,6 @@ export interface RpcResponse {
   readonly id: string;
   readonly result?: unknown;
   readonly error?: { readonly code: number; readonly message: string };
-}
-
-export interface InitializeParams {
-  readonly protocolVersion: string;
-  readonly hostVersion: string;
-  readonly contractHash: string;
-  readonly sessionToken: string;
-}
-
-export interface InitializeResult {
-  readonly protocolVersion: string;
-  readonly sidecarVersion: string;
-  readonly contractHash: string;
-  readonly capabilities: readonly string[];
 }
 
 export function isRpcRequest(value: unknown): value is RpcRequest {

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/ping-result.schema.json",
+  "title": "PingResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["timestampUtc"],
+  "properties": {
+    "timestampUtc": { "type": "string", "format": "date-time" }
+  }
+}

@@ -12,6 +12,7 @@ Run `./scripts/verify.ps1` from the repository root. It installs the locked side
 - Desktop owns Windows effects, approval decisions, scheduling, secrets, and SQLite.
 - Sidecar owns only the replaceable agent runtime and MCP sessions.
 - Cross-process and Tool payloads are schema-first under `contracts/`.
+- After changing `contracts/`, run `npm run generate --prefix sidecar` and commit both generated outputs.
 - Never expose arbitrary shell execution by default.
 - Any destructive or external side effect must pass the Desktop policy pipeline.
 - Add a deterministic contract/replay test for every protocol bug.

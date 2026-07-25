@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using LIGClaw.Contracts.Generated;
 using LIGClaw.Contracts.Protocol;
 
 namespace LIGClaw.Contracts.Tests;
