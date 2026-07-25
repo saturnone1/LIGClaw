@@ -1,8 +1,8 @@
 <Window x:Class="LIGClaw.Desktop.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="LIGClaw" Height="660" Width="1060"
-        MinHeight="620" MinWidth="900"
+        Title="LIGClaw" Height="650" Width="1060"
+        MinHeight="500" MinWidth="760"
         Icon="Assets/ligclaw.ico"
         WindowStartupLocation="CenterScreen">
     <Grid>

@@ -13,7 +13,9 @@ public partial class MainWindow : Window
 {
     private readonly SidecarSupervisor _sidecar = new();
     private readonly QuickAccessHotkey _quickAccessHotkey = new();
+    private readonly QuickAccessShortcutStore _quickAccessShortcutStore = new();
     private readonly ModelConnectionSettingsStore _modelSettingsStore = new();
+    private QuickAccessShortcut _configuredQuickAccessShortcut = QuickAccessShortcutCatalog.Default;
     private string? _activeConversationId;
     private bool _isConnected;
     private bool _isModelConfigured;
@@ -35,13 +37,26 @@ public partial class MainWindow : Window
     }
 
     internal bool IsQuickAccessAvailable => _quickAccessHotkey.IsRegistered;
+    internal QuickAccessShortcut CurrentQuickAccessShortcut =>
+        _quickAccessHotkey.Shortcut ?? _configuredQuickAccessShortcut;
 
     internal void InitializeBackgroundServices()
     {
         var handle = new WindowInteropHelper(this).EnsureHandle();
-        if (!_quickAccessHotkey.Register(handle))
+        QuickAccessShortcut preferredShortcut;
+        try
         {
-            AddDiagnostic("빠른 호출 단축키 Ctrl+Alt+Space를 등록하지 못했습니다.");
+            preferredShortcut = _quickAccessShortcutStore.Load();
+        }
+        catch (Exception exception)
+        {
+            preferredShortcut = QuickAccessShortcutCatalog.Default;
+            AddDiagnostic($"빠른 호출 설정을 불러오지 못해 기본값을 사용합니다: {exception.Message}");
+        }
+        _configuredQuickAccessShortcut = preferredShortcut;
+        if (!_quickAccessHotkey.Register(handle, preferredShortcut))
+        {
+            AddDiagnostic("빠른 호출 단축키를 등록하지 못했습니다.");
         }
         _sidecar.Start();
     }
@@ -52,14 +67,40 @@ public partial class MainWindow : Window
         Keyboard.Focus(ConversationInput);
     }
 
-    internal async Task<ProviderTestResult> TestProviderAsync(ModelConnectionSettings settings) =>
-        await _sidecar.TestProviderAsync(new ProviderConfigureParams(settings.BaseUrl, settings.ApiKey, settings.Model));
+    internal async Task<ProviderTestResult> TestProviderAsync(
+        ModelConnectionSettings settings,
+        CancellationToken cancellationToken = default) =>
+        await _sidecar.TestProviderAsync(
+            new ProviderConfigureParams(settings.BaseUrl, settings.ApiKey, settings.Model),
+            cancellationToken);
 
-    internal async Task ApplyProviderAsync(ModelConnectionSettings settings)
+    internal async Task ApplyProviderAsync(
+        ModelConnectionSettings settings,
+        CancellationToken cancellationToken = default)
     {
-        _ = await _sidecar.ConfigureProviderAsync(new ProviderConfigureParams(settings.BaseUrl, settings.ApiKey, settings.Model));
+        _ = await _sidecar.ConfigureProviderAsync(
+            new ProviderConfigureParams(settings.BaseUrl, settings.ApiKey, settings.Model),
+            cancellationToken);
         _isModelConfigured = true;
         UpdateCommandState();
+    }
+
+    internal bool ApplyQuickAccessShortcut(QuickAccessShortcut shortcut)
+    {
+        var previous = _quickAccessHotkey.Shortcut;
+        if (!_quickAccessHotkey.Change(shortcut)) return false;
+        try
+        {
+            _quickAccessShortcutStore.Save(shortcut);
+            _configuredQuickAccessShortcut = shortcut;
+            return true;
+        }
+        catch
+        {
+            if (previous is not null) _quickAccessHotkey.Change(previous);
+            else _quickAccessHotkey.Unregister();
+            throw;
+        }
     }
 
     private async Task ConfigureStoredProviderAsync()
@@ -87,7 +128,7 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
-        var settings = new SettingsWindow(IsQuickAccessAvailable) { Owner = this };
+        var settings = new SettingsWindow(IsQuickAccessAvailable, CurrentQuickAccessShortcut) { Owner = this };
         settings.ShowDialog();
     }
 
