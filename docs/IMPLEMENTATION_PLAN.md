@@ -315,6 +315,8 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 - conversation/event persistence
 - `system.get_status`, `system.show_notification`, `app.list_windows`, `app.launch`
 
+남은 검증·구현 항목은 `docs/HANDOFF.md`를 단일 인수인계 문서로 사용한다. 현재 R1-R4는 승인 UI가 없어 정책에서 거부하며, Windows 10은 build profile 자동 테스트 외에 22H2 실기 acceptance가 필요하다. Cline의 미사용 Dify provider 하위 의존성에는 low 등급 npm advisory 1건이 남아 있어 호환 가능한 upstream 갱신 시 수동 재검토한다.
+
 완료 조건: 단축키 → 자연어 요청 → Tool 승인/실행 → 결과 스트리밍의 end-to-end 경로가 동작하고 모델 없는 replay E2E 테스트가 통과한다.
 
 ### Phase 2 — 안전한 Windows 작업 (약 2주)
@@ -396,6 +398,7 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 | 리스크 | 대응 |
 |---|---|
 | Cline 0.0.x API 변경 | adapter 격리, 정확한 pin, replay/contract gate, 수동 업그레이드 |
+| Cline의 미사용 provider 하위 의존성 advisory | 실제 노출 경로 확인, 강제 메이저 override 금지, upstream 호환 버전에서 수동 갱신 |
 | LLM의 잘못된 Tool 호출 | schema 검증, allowlist, Desktop 정책, preview/승인 |
 | 프롬프트 인젝션/MCP 오염 | 외부 콘텐츠 비신뢰, Tool 결과 경계, 데이터 전송 승인 |
 | 잘못된 파일/창 조작 | canonical target, identity 재검증, undo, batch 제한 |

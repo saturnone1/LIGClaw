@@ -23,7 +23,7 @@ Desktop은 실행 시 실제 Windows build를 감지합니다. Windows 10과 11�
 
 ## 요구 환경
 
-- Windows 10 1809(build 17763) 이상 또는 Windows 11
+- Windows 10 또는 Windows 11. 기술적 최소 target은 Windows 10 1809(build 17763)이며 Windows 10 배포 지원은 실기 검증 후 확정
 - .NET SDK 10.0.103 이상 패치 버전
 - Node.js 24
 - PowerShell 7 또는 Windows PowerShell 5.1
@@ -42,7 +42,7 @@ Desktop은 실행 시 실제 Windows build를 감지합니다. Windows 10과 11�
 ./scripts/run.ps1
 ```
 
-Sidecar를 먼저 빌드한 다음 Desktop을 실행합니다. 평소 말하듯 요청을 입력하고 진행 상태와 답변을 확인할 수 있습니다. 창을 닫으면 처음 한 번 안내한 뒤 트레이에 상주하고, 트레이 아이콘을 더블 클릭하면 다시 열립니다. 실제 종료는 트레이 메뉴에서 수행합니다. 문제 해결 정보는 기본적으로 접혀 있으며 필요할 때만 펼칠 수 있습니다. 현재 응답 모델은 연결 검증용이므로 외부 API를 호출하지 않습니다.
+Sidecar를 먼저 빌드한 다음 Desktop을 실행합니다. 평소 말하듯 요청을 입력하고 진행 상태와 답변을 확인할 수 있습니다. 창을 닫으면 처음 한 번 안내한 뒤 트레이에 상주하고, 트레이 아이콘을 더블 클릭하면 다시 열립니다. 실제 종료는 트레이 메뉴에서 수행합니다. 문제 해결 정보는 기본적으로 접혀 있으며 필요할 때만 펼칠 수 있습니다. 모델을 연결하면 대화 요청은 설정에 입력한 OpenAI 호환 API endpoint로 전송됩니다.
 
 설정에서 `Windows 시작 시 자동 실행`을 선택하면 현재 사용자 계정의 시작프로그램에 등록되고, 다음 로그인부터 창을 띄우지 않은 채 트레이에서 준비합니다. 관리자 권한이나 시스템 전체 설정은 사용하지 않습니다.
 
@@ -52,7 +52,7 @@ Sidecar를 먼저 빌드한 다음 Desktop을 실행합니다. 평소 말하듯 
 ./scripts/smoke-sidecar.ps1
 ```
 
-구현 범위와 단계는 [구현 계획](docs/IMPLEMENTATION_PLAN.md), 시각 언어와 아이콘 원칙은 [디자인 시스템](docs/DESIGN_SYSTEM.md), 중요한 결정은 [ADR](docs/adr/)을 참고하십시오.
+다른 PC에서 작업을 이어갈 때는 [개발 인수인계](docs/HANDOFF.md)를 먼저 확인하십시오. 구현 범위와 단계는 [구현 계획](docs/IMPLEMENTATION_PLAN.md), 시각 언어와 아이콘 원칙은 [디자인 시스템](docs/DESIGN_SYSTEM.md), 중요한 결정은 [ADR](docs/adr/)을 참고하십시오.
 
 ## 현재 구조
 
