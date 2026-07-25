@@ -293,6 +293,8 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 
 ### Phase 0 — 결정 검증과 기반 (약 1주)
 
+**상태: 완료 (2026-07-25).** Schema-generated 계약, 실제 Cline 0.0.65 loop를 사용하는 deterministic spike, Replay fixture, 이벤트 streaming/cancel, Sidecar 재시작과 프로세스 통합 테스트가 완료됐다. Phase 1에서는 deterministic model을 Desktop 설정·Credential Locker가 공급하는 실제 provider model로 교체한다.
+
 - 솔루션/워크스페이스, formatter, analyzer, 테스트, CI 구성
 - ADR: WPF, 프로세스 경계, DB 단독 소유, IPC, Tool schema, 런타임 선택
 - Cline agents/sdk 비교 spike와 기록된 이벤트 fixture
@@ -302,6 +304,8 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 완료 조건: 한 번의 명령으로 build/test가 되고, 가짜 에이전트 이벤트가 UI에 스트리밍되며 sidecar 강제 종료 후 UI가 멈추지 않고 복구된다.
 
 ### Phase 1 — 상주 셸과 대화 (약 1~2주)
+
+진입 전 디자인 기반(2026-07-25): 공식 LIG Defense & Aerospace CI의 Innovative Blue/Futuristic Gray를 토큰화하고, 독자적인 LIGClaw 앱·트레이 심벌, 공용 WPF 스타일, 작업 중심 메인 화면을 적용했다. 상세 사용 규칙과 자산 재생성 절차는 `docs/DESIGN_SYSTEM.md`를 따른다.
 
 - single-instance, tray, 시작프로그램, quick input, 설정
 - 대화/진행/오류/취소 UI
