@@ -7,8 +7,8 @@ namespace LIGClaw.Contracts.Generated;
 
 public static class ContractMetadata
 {
-    public const string ProtocolVersion = "1.1";
-    public const string Hash = "099a9ce0e4e4830cc66e6badb105536851d7e808d051d3f172a2632e579cebb9";
+    public const string ProtocolVersion = "1.2";
+    public const string Hash = "64758e61ceb2ce652e4a4cb146ff1b5919dfd45088679d0982bfa89f5b38d997";
 }
 
 public sealed record AgentEvent(
@@ -49,5 +49,17 @@ public sealed record InitializeResult(
 
 public sealed record PingResult(
     [property: JsonPropertyName("timestampUtc")] DateTimeOffset TimestampUtc);
+
+public sealed record ProviderConfigureParams(
+    [property: JsonPropertyName("baseUrl")] string BaseUrl,
+    [property: JsonPropertyName("apiKey")] string ApiKey,
+    [property: JsonPropertyName("model")] string Model);
+
+public sealed record ProviderConfigureResult(
+    [property: JsonPropertyName("configured")] bool Configured);
+
+public sealed record ProviderTestResult(
+    [property: JsonPropertyName("success")] bool Success,
+    [property: JsonPropertyName("message")] string Message);
 
 public sealed record SystemGetStatusV1();

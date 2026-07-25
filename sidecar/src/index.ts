@@ -10,6 +10,9 @@ import {
   type ConversationStartParams,
   type InitializeParams,
   type InitializeResult,
+  type ProviderConfigureParams,
+  type ProviderConfigureResult,
+  type ProviderTestResult,
   type RpcRequest,
   type RpcResponse,
 } from "./protocol.js";
@@ -45,13 +48,14 @@ function failure(id: string, code: number, message: string): RpcResponse {
   return { jsonrpc: JSON_RPC_VERSION, id, error: { code, message } };
 }
 
-function handleRequest(
+async function handleRequest(
   request: RpcRequest,
   expectedToken: string,
   state: ConnectionState,
   coordinator: RuntimeCoordinator,
+  clineRuntime: ClineAgentRuntimeAdapter,
   notify: (method: string, parameters: unknown) => void,
-): RpcResponse {
+): Promise<RpcResponse> {
   if (request.method === "initialize") {
     const parameters = request.params as Partial<InitializeParams> | undefined;
     if (parameters?.sessionToken !== expectedToken) return failure(request.id, -32001, "Invalid session token.");
@@ -62,13 +66,24 @@ function handleRequest(
       protocolVersion: PROTOCOL_VERSION,
       sidecarVersion: "0.2.0",
       contractHash: CONTRACT_HASH,
-      capabilities: ["health.ping", "conversation.start", "conversation.cancel", "agent.events", "runtime.cline.0.0.65"],
+      capabilities: ["health.ping", "conversation.start", "conversation.cancel", "agent.events", "provider.configure", "provider.test", "runtime.cline.0.0.65"],
     };
     return success(request.id, result);
   }
 
   if (!state.initialized) return failure(request.id, -32004, "Sidecar is not initialized.");
   if (request.method === "ping") return success(request.id, { timestampUtc: new Date().toISOString() });
+  if (request.method === "provider.configure" || request.method === "provider.test") {
+    const parameters = request.params as ProviderConfigureParams;
+    if (!isProviderConfiguration(parameters)) {
+      return failure(request.id, -32602, "Base URL, API key, and model are required.");
+    }
+    if (request.method === "provider.configure") {
+      clineRuntime.configure(parameters);
+      return success(request.id, { configured: true } satisfies ProviderConfigureResult);
+    }
+    return success(request.id, await testProvider(parameters));
+  }
   if (request.method === "conversation.start") {
     try {
       const parameters = request.params as ConversationStartParams;
@@ -98,9 +113,12 @@ function main(): void {
   const socket = net.createConnection(pipePath);
   const decoder = new MessageDecoder();
   const state: ConnectionState = { initialized: false };
+  const useDeterministicModel = process.env.LIGCLAW_TEST_DETERMINISTIC === "1";
+  delete process.env.LIGCLAW_TEST_DETERMINISTIC;
+  const clineRuntime = new ClineAgentRuntimeAdapter(useDeterministicModel ? createDeterministicSpikeModel() : undefined);
   const coordinator = new RuntimeCoordinator([
     new ReplayAgentRuntimeAdapter(),
-    new ClineAgentRuntimeAdapter(createDeterministicSpikeModel()),
+    clineRuntime,
   ]);
   const notify = (method: string, parameters: unknown) => socket.write(frameMessage({
     jsonrpc: JSON_RPC_VERSION,
@@ -118,11 +136,11 @@ function main(): void {
     process.exitCode = 1;
   });
   socket.pipe(decoder);
-  decoder.on("data", (message: unknown) => {
+  decoder.on("data", async (message: unknown) => {
     let response: RpcResponse;
     try {
       response = isRpcRequest(message)
-        ? handleRequest(message, options.sessionToken, state, coordinator, notify)
+        ? await handleRequest(message, options.sessionToken, state, coordinator, clineRuntime, notify)
         : failure("unknown", -32600, "Invalid JSON-RPC request.");
     } catch (error) {
       process.stderr.write(`sidecar request error: ${error instanceof Error ? error.message : String(error)}\n`);
@@ -135,6 +153,38 @@ function main(): void {
     socket.destroy();
     process.exitCode = 1;
   });
+}
+
+function isProviderConfiguration(value: ProviderConfigureParams | undefined): value is ProviderConfigureParams {
+  if (!value || !value.apiKey?.trim() || !value.model?.trim()) return false;
+  try {
+    const url = new URL(value.baseUrl);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+async function testProvider(configuration: ProviderConfigureParams): Promise<ProviderTestResult> {
+  const runtime = new ClineAgentRuntimeAdapter();
+  runtime.configure(configuration);
+  let failed = false;
+  let receivedText = false;
+  try {
+    await runtime.run(
+      { conversationId: "provider-test", runId: "provider-test", input: "Reply with OK.", runtime: "cline" },
+      (event) => {
+        if (event.type === "run_failed") failed = true;
+        if (event.type === "text_delta" && event.text) receivedText = true;
+      },
+      AbortSignal.timeout(30_000),
+    );
+    return failed || !receivedText
+      ? { success: false, message: "연결하지 못했습니다. 입력값과 네트워크를 확인해 주세요." }
+      : { success: true, message: "모델 연결을 확인했어요." };
+  } catch {
+    return { success: false, message: "연결하지 못했습니다. 입력값과 네트워크를 확인해 주세요." };
+  }
 }
 
 try {

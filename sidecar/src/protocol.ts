@@ -9,6 +9,9 @@ export type {
   InitializeParams,
   InitializeResult,
   PingResult,
+  ProviderConfigureParams,
+  ProviderConfigureResult,
+  ProviderTestResult,
 } from "./generated/contracts.js";
 export const MAXIMUM_HEADER_BYTES = 8 * 1024;
 export const MAXIMUM_PAYLOAD_BYTES = 4 * 1024 * 1024;

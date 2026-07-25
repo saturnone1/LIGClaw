@@ -1,22 +1,43 @@
 import { AgentRuntime, type AgentModel, type AgentModelRequest, type AgentRuntimeEvent } from "@cline/agents";
+import type { ProviderConfigureParams } from "../generated/contracts.js";
 import type { AgentRuntimeAdapter, RuntimeEventSink, RuntimeRunRequest } from "./contracts.js";
 
 const MAXIMUM_AGENT_ITERATIONS = 16;
 
 export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
   readonly kind = "cline" as const;
+  private provider?: ProviderConfigureParams;
 
-  constructor(private readonly model: AgentModel) {}
+  constructor(private readonly model?: AgentModel) {}
+
+  configure(provider: ProviderConfigureParams): void {
+    this.provider = provider;
+  }
+
+  get isConfigured(): boolean {
+    return this.model !== undefined || this.provider !== undefined;
+  }
 
   async run(request: RuntimeRunRequest, emit: RuntimeEventSink, signal: AbortSignal): Promise<void> {
-    const agent = new AgentRuntime({
+    const common = {
       agentId: `ligclaw-${request.conversationId}`,
       conversationId: request.conversationId,
-      model: this.model,
-      systemPrompt: "You are the LIGClaw Windows assistant runtime contract spike.",
+      systemPrompt: "당신은 사내 Windows 개인 비서 LIGClaw입니다. 사용자의 언어로 명확하고 간결하게 답하세요.",
       tools: [],
       maxIterations: MAXIMUM_AGENT_ITERATIONS,
-    });
+    } as const;
+    const agent = this.model
+      ? new AgentRuntime({ ...common, model: this.model })
+      : this.provider
+        ? new AgentRuntime({
+          ...common,
+          providerId: "openai",
+          modelId: this.provider.model,
+          apiKey: this.provider.apiKey,
+          baseUrl: this.provider.baseUrl,
+        })
+        : undefined;
+    if (!agent) throw new Error("Model connection is not configured.");
     let terminalEventEmitted = false;
     const unsubscribe = agent.subscribe((event: AgentRuntimeEvent) => {
       const mapped = mapClineEvent(event);

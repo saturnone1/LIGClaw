@@ -63,6 +63,16 @@ public sealed class SidecarSupervisor : IAsyncDisposable
             new ConversationCancelParams(conversationId),
             cancellationToken);
 
+    public Task<ProviderConfigureResult> ConfigureProviderAsync(
+        ProviderConfigureParams configuration,
+        CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<ProviderConfigureResult>("provider.configure", configuration, cancellationToken);
+
+    public Task<ProviderTestResult> TestProviderAsync(
+        ProviderConfigureParams configuration,
+        CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<ProviderTestResult>("provider.test", configuration, cancellationToken);
+
     private async Task SuperviseAsync(CancellationToken cancellationToken)
     {
         var consecutiveFailures = 0;

@@ -51,6 +51,17 @@ public sealed class SidecarConversationTests
                     sessionToken));
             Assert.Contains("agent.events", initialized.Capabilities);
             Assert.Contains("runtime.cline.0.0.65", initialized.Capabilities);
+            Assert.Contains("provider.configure", initialized.Capabilities);
+            Assert.Contains("provider.test", initialized.Capabilities);
+
+            var configured = await client.InvokeAsync<ProviderConfigureResult>(
+                "provider.configure",
+                new ProviderConfigureParams("http://127.0.0.1:1/v1", "test-key", "test-model"));
+            Assert.True(configured.Configured);
+            var connectionTest = await client.InvokeAsync<ProviderTestResult>(
+                "provider.test",
+                new ProviderConfigureParams("http://127.0.0.1:1/v1", "test-key", "test-model"));
+            Assert.False(connectionTest.Success);
 
             await Assert.ThrowsAsync<RpcException>(() =>
                 client.InvokeAsync<ConversationCancelResult>("conversation.cancel", null));
@@ -126,6 +137,7 @@ public sealed class SidecarConversationTests
         startInfo.ArgumentList.Add("--pipe");
         startInfo.ArgumentList.Add(pipeName);
         startInfo.Environment["LIGCLAW_SESSION_TOKEN"] = sessionToken;
+        startInfo.Environment["LIGCLAW_TEST_DETERMINISTIC"] = "1";
         var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start Sidecar.");
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();

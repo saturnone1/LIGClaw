@@ -307,7 +307,7 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 
 진입 전 디자인 기반(2026-07-25): 공식 LIG Defense & Aerospace CI의 Innovative Blue/Futuristic Gray를 토큰화하고, 독자적인 LIGClaw 앱·트레이 심벌, 공용 WPF 스타일, 작업 중심 메인 화면을 적용했다. 상세 사용 규칙과 자산 재생성 절차는 `docs/DESIGN_SYSTEM.md`를 따른다.
 
-**상태: 진행 중 (2026-07-25).** 단일 인스턴스, 두 번째 실행 시 기존 창 복원, 트레이 상주, `Ctrl + Alt + Space` 빠른 호출, 현재 사용자 시작프로그램 설정, 진행/오류/취소 UI를 완료했다. 다음 수직 기능은 provider 설정과 Credential Locker이다.
+**상태: 진행 중 (2026-07-25).** 단일 인스턴스, 기존 창 복원, 트레이 상주, 빠른 호출, 시작프로그램, 진행/오류/취소 UI와 범용 OpenAI 호환 `Base URL/API Key/Model` 연결 및 Windows Credential Manager 저장을 완료했다. 다음 수직 기능은 conversation/event persistence이다.
 
 - single-instance, tray, 시작프로그램, quick input, 설정
 - 대화/진행/오류/취소 UI

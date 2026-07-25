@@ -13,8 +13,10 @@ public partial class MainWindow : Window
 {
     private readonly SidecarSupervisor _sidecar = new();
     private readonly QuickAccessHotkey _quickAccessHotkey = new();
+    private readonly ModelConnectionSettingsStore _modelSettingsStore = new();
     private string? _activeConversationId;
     private bool _isConnected;
+    private bool _isModelConfigured;
     private bool _isRunning;
 
     public MainWindow()
@@ -48,6 +50,36 @@ public partial class MainWindow : Window
     {
         ConversationInput.Focus();
         Keyboard.Focus(ConversationInput);
+    }
+
+    internal async Task<ProviderTestResult> TestProviderAsync(ModelConnectionSettings settings) =>
+        await _sidecar.TestProviderAsync(new ProviderConfigureParams(settings.BaseUrl, settings.ApiKey, settings.Model));
+
+    internal async Task ApplyProviderAsync(ModelConnectionSettings settings)
+    {
+        _ = await _sidecar.ConfigureProviderAsync(new ProviderConfigureParams(settings.BaseUrl, settings.ApiKey, settings.Model));
+        _isModelConfigured = true;
+        UpdateCommandState();
+    }
+
+    private async Task ConfigureStoredProviderAsync()
+    {
+        var settings = _modelSettingsStore.Load();
+        if (settings is null)
+        {
+            RunStatus.Text = "설정에서 모델 API를 연결해 주세요.";
+            return;
+        }
+        try
+        {
+            await ApplyProviderAsync(settings);
+            RunStatus.Text = "요청을 입력해 주세요.";
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"모델 설정 적용 실패: {exception.Message}");
+            RunStatus.Text = "모델 연결을 확인해 주세요.";
+        }
     }
 
     private void QuickAccessHotkey_Pressed(object? sender, EventArgs e) =>
@@ -180,7 +212,7 @@ public partial class MainWindow : Window
     private void UpdateCommandState()
     {
         if (!IsInitialized) return;
-        SendButton.IsEnabled = _isConnected && !_isRunning && !string.IsNullOrWhiteSpace(ConversationInput.Text);
+        SendButton.IsEnabled = _isConnected && _isModelConfigured && !_isRunning && !string.IsNullOrWhiteSpace(ConversationInput.Text);
         CancelButton.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -188,6 +220,7 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             _isConnected = status.State == SidecarState.Connected;
+            if (!_isConnected) _isModelConfigured = false;
             if (!_isConnected && _isRunning)
             {
                 ShowRunFailure("연결이 끊어져 요청이 중단됐어요. 다시 연결되면 재시도해 주세요.");
@@ -225,6 +258,7 @@ public partial class MainWindow : Window
                 _ => RunStatus.Text,
             };
             UpdateCommandState();
+            if (status.State == SidecarState.Connected) _ = ConfigureStoredProviderAsync();
             AddDiagnostic($"{status.ChangedAtUtc:HH:mm:ss}  {status.State}: {status.Message}");
         });
 
