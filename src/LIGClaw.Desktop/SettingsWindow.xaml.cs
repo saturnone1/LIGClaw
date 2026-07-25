@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using LIGClaw.Contracts.Generated;
+using LIGClaw.Desktop.Infrastructure.Platform;
 using LIGClaw.Desktop.Infrastructure.Shell;
 
 namespace LIGClaw.Desktop;
@@ -15,11 +16,15 @@ public partial class SettingsWindow : Window
     private CancellationTokenSource? _operationCancellation;
     private bool _isBusy;
 
-    internal SettingsWindow(bool isQuickAccessAvailable, QuickAccessShortcut currentShortcut)
+    internal SettingsWindow(
+        bool isQuickAccessAvailable,
+        QuickAccessShortcut currentShortcut,
+        WindowsPlatformProfile? platformProfile)
     {
         _wasQuickAccessAvailable = isQuickAccessAvailable;
         _initialShortcut = currentShortcut;
         InitializeComponent();
+        if (platformProfile is not null) SourceInitialized += (_, _) => WindowsWindowAppearance.Apply(this, platformProfile);
         ShortcutComboBox.ItemsSource = QuickAccessShortcutCatalog.All;
         ShortcutComboBox.SelectedValue = currentShortcut.Id;
         if (!isQuickAccessAvailable)

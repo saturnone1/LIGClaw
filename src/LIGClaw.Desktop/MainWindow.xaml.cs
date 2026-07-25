@@ -4,6 +4,8 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using LIGClaw.Contracts.Generated;
+using LIGClaw.Desktop.Infrastructure.Persistence;
+using LIGClaw.Desktop.Infrastructure.Platform;
 using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Sidecar;
 
@@ -15,7 +17,11 @@ public partial class MainWindow : Window
     private readonly QuickAccessHotkey _quickAccessHotkey = new();
     private readonly QuickAccessShortcutStore _quickAccessShortcutStore = new();
     private readonly ModelConnectionSettingsStore _modelSettingsStore = new();
+    private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
     private QuickAccessShortcut _configuredQuickAccessShortcut = QuickAccessShortcutCatalog.Default;
+    private WindowsPlatformProfile? _platformProfile;
+    private Task _persistenceInitialization = Task.CompletedTask;
+    private bool _persistenceAvailable;
     private string? _activeConversationId;
     private bool _isConnected;
     private bool _isModelConfigured;
@@ -37,12 +43,27 @@ public partial class MainWindow : Window
     }
 
     internal bool IsQuickAccessAvailable => _quickAccessHotkey.IsRegistered;
+    internal WindowsPlatformProfile? PlatformProfile => _platformProfile;
     internal QuickAccessShortcut CurrentQuickAccessShortcut =>
         _quickAccessHotkey.Shortcut ?? _configuredQuickAccessShortcut;
 
     internal void InitializeBackgroundServices()
     {
+        try
+        {
+            _platformProfile = WindowsPlatformDetector.Detect();
+            AddDiagnostic($"플랫폼: {_platformProfile.DisplayName}");
+            if (!_platformProfile.IsSupported)
+                AddDiagnostic($"이 Windows 빌드는 공식 지원 기준 {WindowsPlatformProfile.MinimumSupportedBuild}보다 낮거나 클라이언트 OS가 아닙니다.");
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"Windows 플랫폼 감지 실패: {exception.Message}");
+        }
+
         var handle = new WindowInteropHelper(this).EnsureHandle();
+        if (_platformProfile is not null && !WindowsWindowAppearance.Apply(this, _platformProfile))
+            AddDiagnostic("현재 Windows의 창 모양 최적화를 적용하지 못했습니다.");
         QuickAccessShortcut preferredShortcut;
         try
         {
@@ -54,11 +75,33 @@ public partial class MainWindow : Window
             AddDiagnostic($"빠른 호출 설정을 불러오지 못해 기본값을 사용합니다: {exception.Message}");
         }
         _configuredQuickAccessShortcut = preferredShortcut;
-        if (!_quickAccessHotkey.Register(handle, preferredShortcut))
+        var canUseGlobalHotkey = _platformProfile?.Supports(WindowsCapability.GlobalHotkey) ?? true;
+        if (canUseGlobalHotkey && !_quickAccessHotkey.Register(handle, preferredShortcut))
         {
             AddDiagnostic("빠른 호출 단축키를 등록하지 못했습니다.");
         }
+        else if (!canUseGlobalHotkey)
+        {
+            AddDiagnostic("현재 Windows에서는 전역 단축키 capability를 사용할 수 없습니다.");
+        }
+        _persistenceInitialization = InitializePersistenceAsync();
         _sidecar.Start();
+    }
+
+    private async Task InitializePersistenceAsync()
+    {
+        try
+        {
+            await _conversationStore.InitializeAsync();
+            await _conversationStore.MarkRunningConversationsInterruptedAsync();
+            _persistenceAvailable = true;
+            await RefreshRecentConversationsAsync();
+        }
+        catch (Exception exception)
+        {
+            _persistenceAvailable = false;
+            AddDiagnostic($"대화 기록 저장소 초기화 실패: {exception.Message}");
+        }
     }
 
     internal void FocusRequestInput()
@@ -128,7 +171,7 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
-        var settings = new SettingsWindow(IsQuickAccessAvailable, CurrentQuickAccessShortcut) { Owner = this };
+        var settings = new SettingsWindow(IsQuickAccessAvailable, CurrentQuickAccessShortcut, PlatformProfile) { Owner = this };
         settings.ShowDialog();
     }
 
@@ -171,12 +214,15 @@ public partial class MainWindow : Window
         _activeConversationId = Guid.NewGuid().ToString("N");
         var conversationId = _activeConversationId;
         _isRunning = true;
+        RecentConversationsList.SelectedItem = null;
+        RecentConversationsList.IsEnabled = false;
         Transcript.Clear();
         TranscriptPlaceholder.Visibility = Visibility.Collapsed;
         RunStatus.Text = "요청을 확인하고 있어요…";
         UpdateCommandState();
         try
         {
+            await PersistConversationStartAsync(conversationId, input);
             _ = await _sidecar.StartConversationAsync(_activeConversationId, input, "cline");
             if (_isRunning && StringComparer.Ordinal.Equals(_activeConversationId, conversationId))
             {
@@ -210,44 +256,145 @@ public partial class MainWindow : Window
     }
 
     private void Sidecar_AgentEventReceived(object? sender, AgentEvent agentEvent) =>
-        Dispatcher.InvokeAsync(() =>
+        _ = Dispatcher.InvokeAsync(() => HandleAgentEventAsync(agentEvent));
+
+    private async Task HandleAgentEventAsync(AgentEvent agentEvent)
+    {
+        if (!StringComparer.Ordinal.Equals(agentEvent.ConversationId, _activeConversationId))
         {
-            if (!StringComparer.Ordinal.Equals(agentEvent.ConversationId, _activeConversationId)) return;
-            switch (agentEvent.Type)
-            {
-                case "run_started":
-                    RunStatus.Text = "답변을 작성하고 있어요…";
-                    break;
-                case "text_delta":
-                    Transcript.AppendText(agentEvent.Text ?? string.Empty);
-                    Transcript.ScrollToEnd();
-                    break;
-                case "run_completed":
-                    CompleteRun("답변을 마쳤어요.");
-                    break;
-                case "run_cancelled":
-                    CompleteRun("요청을 중단했어요.");
-                    break;
-                case "run_failed":
-                    AddDiagnostic($"요청 처리 실패: {agentEvent.Message}");
-                    ShowRunFailure("요청을 처리하지 못했어요. 다시 시도해 주세요.");
-                    break;
-            }
-        });
+            await PersistAgentEventAsync(agentEvent);
+            return;
+        }
+        switch (agentEvent.Type)
+        {
+            case "run_started":
+                RunStatus.Text = "답변을 작성하고 있어요…";
+                break;
+            case "text_delta":
+                Transcript.AppendText(agentEvent.Text ?? string.Empty);
+                Transcript.ScrollToEnd();
+                break;
+            case "run_completed":
+                CompleteRun("답변을 마쳤어요.");
+                break;
+            case "run_cancelled":
+                CompleteRun("요청을 중단했어요.");
+                break;
+            case "run_failed":
+                AddDiagnostic($"요청 처리 실패: {agentEvent.Message}");
+                ShowRunFailure("요청을 처리하지 못했어요. 다시 시도해 주세요.");
+                break;
+        }
+        await PersistAgentEventAsync(agentEvent);
+        if (agentEvent.Type is "run_completed" or "run_cancelled" or "run_failed")
+            await RefreshRecentConversationsAsync();
+    }
 
     private void CompleteRun(string status)
     {
         RunStatus.Text = status;
         _activeConversationId = null;
         _isRunning = false;
+        RecentConversationsList.IsEnabled = true;
         UpdateCommandState();
     }
 
     private void ShowRunFailure(string message)
     {
+        var failedConversationId = _activeConversationId;
         Transcript.Text = message;
         TranscriptPlaceholder.Visibility = Visibility.Collapsed;
         CompleteRun(message);
+        if (failedConversationId is not null)
+            _ = MarkConversationAsync(failedConversationId, "failed");
+    }
+
+    private async Task PersistConversationStartAsync(string conversationId, string input)
+    {
+        await _persistenceInitialization;
+        if (!_persistenceAvailable) return;
+        try
+        {
+            await _conversationStore.StartConversationAsync(conversationId, input, DateTimeOffset.UtcNow);
+            await RefreshRecentConversationsAsync();
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"대화 시작 기록 실패: {exception.Message}");
+        }
+    }
+
+    private async Task PersistAgentEventAsync(AgentEvent agentEvent)
+    {
+        await _persistenceInitialization;
+        if (!_persistenceAvailable) return;
+        try
+        {
+            await _conversationStore.AppendEventAsync(agentEvent);
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"대화 이벤트 기록 실패: {exception.Message}");
+        }
+    }
+
+    private async Task MarkConversationAsync(string conversationId, string status)
+    {
+        await _persistenceInitialization;
+        if (!_persistenceAvailable) return;
+        try
+        {
+            await _conversationStore.MarkConversationAsync(conversationId, status, DateTimeOffset.UtcNow);
+            await RefreshRecentConversationsAsync();
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"대화 상태 기록 실패: {exception.Message}");
+        }
+    }
+
+    private async Task RefreshRecentConversationsAsync()
+    {
+        if (!_persistenceAvailable) return;
+        try
+        {
+            var selectedId = (RecentConversationsList.SelectedItem as ConversationSummary)?.Id;
+            var conversations = await _conversationStore.GetRecentConversationsAsync();
+            RecentConversationsList.ItemsSource = conversations;
+            if (selectedId is not null)
+                RecentConversationsList.SelectedItem = conversations.FirstOrDefault(item => item.Id == selectedId);
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"최근 대화 불러오기 실패: {exception.Message}");
+        }
+    }
+
+    private async void RecentConversationsList_SelectionChanged(
+        object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isRunning || RecentConversationsList.SelectedItem is not ConversationSummary conversation) return;
+        await _persistenceInitialization;
+        if (!_persistenceAvailable) return;
+        try
+        {
+            Transcript.Text = await _conversationStore.GetTranscriptAsync(conversation.Id);
+            TranscriptPlaceholder.Visibility = string.IsNullOrEmpty(Transcript.Text)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            RunStatus.Text = conversation.Status switch
+            {
+                "completed" => "지난 대화를 불러왔어요.",
+                "cancelled" => "중단한 대화를 불러왔어요.",
+                "interrupted" => "앱 종료로 중단된 대화예요.",
+                _ => "지난 대화를 불러왔어요.",
+            };
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"대화 내용 불러오기 실패: {exception.Message}");
+        }
     }
 
     private void UpdateCommandState()
@@ -347,6 +494,8 @@ public partial class MainWindow : Window
         _quickAccessHotkey.Pressed -= QuickAccessHotkey_Pressed;
         _quickAccessHotkey.Dispose();
         await _sidecar.DisposeAsync();
+        await _persistenceInitialization;
+        _conversationStore.Dispose();
         System.Windows.Application.Current.Shutdown();
     }
 }

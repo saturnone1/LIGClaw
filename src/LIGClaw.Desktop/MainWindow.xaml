@@ -48,6 +48,57 @@
                             Click="Settings_Click" Content="설정" />
                 </StackPanel>
 
+                <Grid Grid.Row="2" Margin="0,28,0,18">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Foreground="#BFD0E5" FontSize="11" FontWeight="SemiBold"
+                               Text="최근 대화" />
+                    <ListBox x:Name="RecentConversationsList" Grid.Row="1" Margin="-7,8,-5,0"
+                             Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             SelectionChanged="RecentConversationsList_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="Padding" Value="8,7" />
+                                <Setter Property="Margin" Value="0,0,0,3" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="RecentConversationChrome"
+                                                    Padding="{TemplateBinding Padding}" CornerRadius="6"
+                                                    Background="Transparent">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="RecentConversationChrome" Property="Background" Value="#18FFFFFF" />
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="RecentConversationChrome" Property="Background" Value="#28FFFFFF" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Foreground="White" FontSize="11" Text="{Binding Title}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Margin="0,3,0,0" Foreground="#8FAAC8" FontSize="9"
+                                               Text="{Binding UpdatedAtDisplay}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+
                 <StackPanel Grid.Row="3">
                     <Border Padding="13" CornerRadius="10" Background="#17FFFFFF">
                         <StackPanel>
