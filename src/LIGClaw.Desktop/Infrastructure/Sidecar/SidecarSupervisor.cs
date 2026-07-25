@@ -28,6 +28,7 @@ public sealed class SidecarSupervisor : IAsyncDisposable
     public event EventHandler<SidecarStatus>? StatusChanged;
     public event EventHandler<string>? DiagnosticMessage;
     public event EventHandler<AgentEvent>? AgentEventReceived;
+    public event EventHandler<ToolInvokeParams>? ToolInvocationReceived;
 
     public void Start()
     {
@@ -72,6 +73,11 @@ public sealed class SidecarSupervisor : IAsyncDisposable
         ProviderConfigureParams configuration,
         CancellationToken cancellationToken = default) =>
         GetConnectedClient().InvokeAsync<ProviderTestResult>("provider.test", configuration, cancellationToken);
+
+    public Task<ToolResultResult> SubmitToolResultAsync(
+        ToolResultParams result,
+        CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<ToolResultResult>("tool.result", result, cancellationToken);
 
     private async Task SuperviseAsync(CancellationToken cancellationToken)
     {
@@ -194,9 +200,23 @@ public sealed class SidecarSupervisor : IAsyncDisposable
 
     private void Client_NotificationReceived(object? sender, RpcNotification notification)
     {
-        if (!StringComparer.Ordinal.Equals(notification.Method, "agent.event") || notification.Params is null) return;
+        if (notification.Params is null) return;
         try
         {
+            if (StringComparer.Ordinal.Equals(notification.Method, "tool.invoke"))
+            {
+                var invocation = notification.Params.Value.Deserialize<ToolInvokeParams>(ContentLengthMessageStream.SerializerOptions)
+                    ?? throw new InvalidDataException("Tool invocation was empty.");
+                if (string.IsNullOrWhiteSpace(invocation.ToolCallId) ||
+                    string.IsNullOrWhiteSpace(invocation.ConversationId) ||
+                    string.IsNullOrWhiteSpace(invocation.RunId) ||
+                    string.IsNullOrWhiteSpace(invocation.Name) ||
+                    invocation.Risk is not ("R0" or "R1" or "R2" or "R3" or "R4"))
+                    throw new InvalidDataException("Tool invocation fields were invalid.");
+                ToolInvocationReceived?.Invoke(this, invocation);
+                return;
+            }
+            if (!StringComparer.Ordinal.Equals(notification.Method, "agent.event")) return;
             var agentEvent = notification.Params.Value.Deserialize<AgentEvent>(ContentLengthMessageStream.SerializerOptions)
                 ?? throw new InvalidDataException("Agent event was empty.");
             var expected = _eventSequences.TryGetValue(agentEvent.RunId, out var last) ? last + 1 : 0;
@@ -212,7 +232,7 @@ public sealed class SidecarSupervisor : IAsyncDisposable
         }
         catch (Exception exception)
         {
-            PublishDiagnostic($"Ignored invalid agent event: {exception.Message}");
+            PublishDiagnostic($"Ignored invalid Sidecar notification: {exception.Message}");
         }
     }
 

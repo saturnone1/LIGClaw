@@ -7,8 +7,8 @@ namespace LIGClaw.Contracts.Generated;
 
 public static class ContractMetadata
 {
-    public const string ProtocolVersion = "1.2";
-    public const string Hash = "64758e61ceb2ce652e4a4cb146ff1b5919dfd45088679d0982bfa89f5b38d997";
+    public const string ProtocolVersion = "1.3";
+    public const string Hash = "3dc529e92ff22d597056c3fed8ccef52938d9207cdbe6e06891cc87a43a0d279";
 }
 
 public sealed record AgentEvent(
@@ -63,3 +63,28 @@ public sealed record ProviderTestResult(
     [property: JsonPropertyName("message")] string Message);
 
 public sealed record SystemGetStatusV1();
+
+public sealed record SystemGetStatusV1Result(
+    [property: JsonPropertyName("windowsRelease")] string WindowsRelease,
+    [property: JsonPropertyName("buildNumber")] long BuildNumber,
+    [property: JsonPropertyName("architecture")] string Architecture,
+    [property: JsonPropertyName("localTime")] DateTimeOffset LocalTime,
+    [property: JsonPropertyName("timeZone")] string TimeZone,
+    [property: JsonPropertyName("powerSource")] string PowerSource);
+
+public sealed record ToolInvokeParams(
+    [property: JsonPropertyName("toolCallId")] string ToolCallId,
+    [property: JsonPropertyName("conversationId")] string ConversationId,
+    [property: JsonPropertyName("runId")] string RunId,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("risk")] string Risk,
+    [property: JsonPropertyName("input")] IReadOnlyDictionary<string, object?> Input);
+
+public sealed record ToolResultParams(
+    [property: JsonPropertyName("toolCallId")] string ToolCallId,
+    [property: JsonPropertyName("success")] bool Success,
+    [property: JsonPropertyName("output")] IReadOnlyDictionary<string, object?> Output,
+    [property: JsonPropertyName("error")] string? Error);
+
+public sealed record ToolResultResult(
+    [property: JsonPropertyName("accepted")] bool Accepted);

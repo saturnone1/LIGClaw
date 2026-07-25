@@ -8,6 +8,7 @@ using LIGClaw.Desktop.Infrastructure.Persistence;
 using LIGClaw.Desktop.Infrastructure.Platform;
 using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Sidecar;
+using LIGClaw.Desktop.Infrastructure.Tools;
 
 namespace LIGClaw.Desktop;
 
@@ -20,6 +21,7 @@ public partial class MainWindow : Window
     private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
     private QuickAccessShortcut _configuredQuickAccessShortcut = QuickAccessShortcutCatalog.Default;
     private WindowsPlatformProfile? _platformProfile;
+    private WindowsToolHost? _windowsToolHost;
     private Task _persistenceInitialization = Task.CompletedTask;
     private bool _persistenceAvailable;
     private string? _activeConversationId;
@@ -33,6 +35,7 @@ public partial class MainWindow : Window
         _sidecar.StatusChanged += Sidecar_StatusChanged;
         _sidecar.DiagnosticMessage += Sidecar_DiagnosticMessage;
         _sidecar.AgentEventReceived += Sidecar_AgentEventReceived;
+        _sidecar.ToolInvocationReceived += Sidecar_ToolInvocationReceived;
         _quickAccessHotkey.Pressed += QuickAccessHotkey_Pressed;
         Loaded += (_, _) =>
         {
@@ -60,6 +63,7 @@ public partial class MainWindow : Window
         {
             AddDiagnostic($"Windows 플랫폼 감지 실패: {exception.Message}");
         }
+        if (_platformProfile is not null) _windowsToolHost = new WindowsToolHost(_platformProfile);
 
         var handle = new WindowInteropHelper(this).EnsureHandle();
         if (_platformProfile is not null && !WindowsWindowAppearance.Apply(this, _platformProfile))
@@ -290,6 +294,48 @@ public partial class MainWindow : Window
             await RefreshRecentConversationsAsync();
     }
 
+    private async void Sidecar_ToolInvocationReceived(object? sender, ToolInvokeParams invocation)
+    {
+        WindowsToolExecutionResult execution;
+        var belongsToActiveRun = await Dispatcher.InvokeAsync(() =>
+            _isRunning && StringComparer.Ordinal.Equals(_activeConversationId, invocation.ConversationId));
+        if (!belongsToActiveRun)
+        {
+            execution = new WindowsToolExecutionResult(
+                false,
+                new Dictionary<string, object?>(),
+                "현재 요청에 속하지 않은 Tool 호출을 거부했어요.");
+        }
+        else if (_windowsToolHost is null)
+        {
+            execution = new WindowsToolExecutionResult(
+                false,
+                new Dictionary<string, object?>(),
+                "Windows 플랫폼을 확인할 수 없어 기능을 실행하지 못했어요.");
+        }
+        else
+        {
+            execution = await _windowsToolHost.ExecuteAsync(invocation);
+        }
+
+        try
+        {
+            var acknowledged = await _sidecar.SubmitToolResultAsync(new ToolResultParams(
+                invocation.ToolCallId,
+                execution.Success,
+                execution.Output,
+                execution.Error));
+            if (!acknowledged.Accepted)
+                await Dispatcher.InvokeAsync(() => AddDiagnostic("Sidecar가 만료된 Tool 결과를 거부했습니다."));
+            else if (execution.ActivitySummary is not null)
+                await Dispatcher.InvokeAsync(() => AddDiagnostic(execution.ActivitySummary));
+        }
+        catch (Exception exception)
+        {
+            await Dispatcher.InvokeAsync(() => AddDiagnostic($"Tool 결과 전달 실패: {exception.Message}"));
+        }
+    }
+
     private void CompleteRun(string status)
     {
         RunStatus.Text = status;
@@ -491,6 +537,7 @@ public partial class MainWindow : Window
         _sidecar.StatusChanged -= Sidecar_StatusChanged;
         _sidecar.DiagnosticMessage -= Sidecar_DiagnosticMessage;
         _sidecar.AgentEventReceived -= Sidecar_AgentEventReceived;
+        _sidecar.ToolInvocationReceived -= Sidecar_ToolInvocationReceived;
         _quickAccessHotkey.Pressed -= QuickAccessHotkey_Pressed;
         _quickAccessHotkey.Dispose();
         await _sidecar.DisposeAsync();

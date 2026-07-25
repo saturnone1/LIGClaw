@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { ClineAgentRuntimeAdapter, createDeterministicSpikeModel } from "../dist/runtime/cline-agent-runtime-adapter.js";
+import { DesktopToolBridge } from "../dist/runtime/desktop-tool-bridge.js";
 import { RuntimeCoordinator } from "../dist/runtime/runtime-coordinator.js";
 
 test("real Cline agent loop maps deterministic model events", async () => {
@@ -18,6 +19,37 @@ test("real Cline agent loop maps deterministic model events", async () => {
   assert.equal(
     events.filter((event) => event.type === "text_delta").map((event) => event.text).join(""),
     "요청을 확인했어요.\n\n“hello”\n\n현재는 대화 연결을 준비하는 단계예요. Windows 작업 기능이 연결되면 이 요청을 직접 처리할 수 있어요.",
+  );
+  assert.equal(events.at(-1).type, "run_completed");
+});
+
+test("Cline tool calls round-trip through the Desktop bridge", async () => {
+  const invocations = [];
+  let bridge;
+  bridge = new DesktopToolBridge((method, parameters) => {
+    invocations.push({ method, parameters });
+    queueMicrotask(() => bridge.complete({
+      toolCallId: parameters.toolCallId,
+      success: true,
+      output: { windowsRelease: "Windows 10" },
+    }));
+  });
+  const adapter = new ClineAgentRuntimeAdapter(createDeterministicSpikeModel(), bridge);
+  const events = [];
+
+  await adapter.run(
+    { conversationId: "conversation-tool", runId: "run-tool", input: "__test_system_status__", runtime: "cline" },
+    (event) => events.push(event),
+    new AbortController().signal,
+  );
+
+  assert.equal(invocations.length, 1);
+  assert.equal(invocations[0].method, "tool.invoke");
+  assert.equal(invocations[0].parameters.name, "system.get_status.v1");
+  assert.equal(invocations[0].parameters.risk, "R0");
+  assert.equal(
+    events.filter((event) => event.type === "text_delta").map((event) => event.text).join(""),
+    "현재 운영체제는 Windows 10입니다.",
   );
   assert.equal(events.at(-1).type, "run_completed");
 });

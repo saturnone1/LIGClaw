@@ -1,6 +1,14 @@
-import { AgentRuntime, type AgentModel, type AgentModelRequest, type AgentRuntimeEvent } from "@cline/agents";
+import {
+  AgentRuntime,
+  type AgentMessage,
+  type AgentModel,
+  type AgentModelRequest,
+  type AgentRuntimeEvent,
+  type AgentTool,
+} from "@cline/agents";
 import type { ProviderConfigureParams } from "../generated/contracts.js";
 import type { AgentRuntimeAdapter, RuntimeEventSink, RuntimeRunRequest } from "./contracts.js";
+import type { DesktopToolBridge } from "./desktop-tool-bridge.js";
 
 const MAXIMUM_AGENT_ITERATIONS = 16;
 
@@ -8,7 +16,10 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
   readonly kind = "cline" as const;
   private provider?: ProviderConfigureParams;
 
-  constructor(private readonly model?: AgentModel) {}
+  constructor(
+    private readonly model?: AgentModel,
+    private readonly desktopToolBridge?: DesktopToolBridge,
+  ) {}
 
   configure(provider: ProviderConfigureParams): void {
     this.provider = provider;
@@ -22,8 +33,8 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
     const common = {
       agentId: `ligclaw-${request.conversationId}`,
       conversationId: request.conversationId,
-      systemPrompt: "당신은 사내 Windows 개인 비서 LIGClaw입니다. 사용자의 언어로 명확하고 간결하게 답하세요.",
-      tools: [],
+      systemPrompt: "당신은 사내 Windows 개인 비서 LIGClaw입니다. 사용자의 언어로 명확하고 간결하게 답하세요. 현재 PC 정보가 필요하면 제공된 Windows Tool을 사용하세요.",
+      tools: this.desktopToolBridge ? createDesktopTools(this.desktopToolBridge) : [],
       maxIterations: MAXIMUM_AGENT_ITERATIONS,
     } as const;
     const agent = this.model
@@ -95,6 +106,30 @@ export function createDeterministicSpikeModel(): AgentModel {
           if (part.type === "text") userText = part.text;
         }
       }
+      if (userText === "__test_system_status__") {
+        const toolResult = request.messages
+          .flatMap((message: AgentMessage) => message.content)
+          .find((part: AgentMessage["content"][number]) =>
+            part.type === "tool-result" && part.toolName === "system_get_status"
+          );
+        if (!toolResult || toolResult.type !== "tool-result") {
+          yield {
+            type: "tool-call-delta",
+            toolCallId: "deterministic-status-call",
+            toolName: "system_get_status",
+            input: {},
+          };
+          yield { type: "finish", reason: "tool-calls" };
+          return;
+        }
+        const release = typeof toolResult.output === "object" && toolResult.output !== null &&
+            "windowsRelease" in toolResult.output
+          ? String(toolResult.output.windowsRelease)
+          : "unknown";
+        yield { type: "text-delta", text: `현재 운영체제는 ${release}입니다.` };
+        yield { type: "finish", reason: "stop" };
+        return;
+      }
       for (const text of [
         "요청을 확인했어요.\n\n",
         `“${userText}”\n\n`,
@@ -109,4 +144,37 @@ export function createDeterministicSpikeModel(): AgentModel {
       yield { type: "finish", reason: "stop" };
     },
   };
+}
+
+function createDesktopTools(bridge: DesktopToolBridge): readonly AgentTool[] {
+  const systemGetStatus: AgentTool<Record<string, never>, Readonly<Record<string, unknown>>> = {
+    name: "system_get_status",
+    description: "현재 Windows 버전, 시간대, 전원 상태를 확인합니다. 민감한 사용자 데이터는 반환하지 않습니다.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {},
+    },
+    timeoutMs: 20_000,
+    retryable: false,
+    async execute(_input: Record<string, never>, context: DesktopToolContext) {
+      if (!context.conversationId || !context.runId) throw new Error("Tool execution context is incomplete.");
+      return await bridge.invoke({
+        ...(context.toolCallId ? { toolCallId: context.toolCallId } : {}),
+        conversationId: context.conversationId,
+        runId: context.runId,
+        name: "system.get_status.v1",
+        risk: "R0",
+        input: {},
+      }, context.signal);
+    },
+  };
+  return [systemGetStatus];
+}
+
+interface DesktopToolContext {
+  readonly conversationId?: string;
+  readonly runId?: string;
+  readonly toolCallId?: string;
+  readonly signal?: AbortSignal;
 }

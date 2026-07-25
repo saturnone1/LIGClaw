@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/tool-result-params.schema.json",
+  "title": "ToolResultParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["toolCallId", "success", "output"],
+  "properties": {
+    "toolCallId": { "type": "string" },
+    "success": { "type": "boolean" },
+    "output": { "type": "object" },
+    "error": { "type": "string" }
+  }
+}

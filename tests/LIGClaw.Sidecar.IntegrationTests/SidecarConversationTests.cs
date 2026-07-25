@@ -32,10 +32,25 @@ public sealed class SidecarConversationTests
             await pipe.WaitForConnectionAsync().WaitAsync(TimeSpan.FromSeconds(10));
             await using var client = new RpcClient(pipe);
             var events = new ConcurrentQueue<AgentEvent>();
+            var toolInvocations = new ConcurrentQueue<ToolInvokeParams>();
             var terminalEvents = new ConcurrentDictionary<string, TaskCompletionSource<AgentEvent>>();
             client.NotificationReceived += (_, notification) =>
             {
-                if (notification.Method != "agent.event" || notification.Params is null) return;
+                if (notification.Params is null) return;
+                if (notification.Method == "tool.invoke")
+                {
+                    var invocation = notification.Params.Value.Deserialize<ToolInvokeParams>(ContentLengthMessageStream.SerializerOptions)!;
+                    toolInvocations.Enqueue(invocation);
+                    _ = client.InvokeAsync<ToolResultResult>(
+                        "tool.result",
+                        new ToolResultParams(
+                            invocation.ToolCallId,
+                            true,
+                            new Dictionary<string, object?> { ["windowsRelease"] = "Windows 10" },
+                            null));
+                    return;
+                }
+                if (notification.Method != "agent.event") return;
                 var agentEvent = notification.Params.Value.Deserialize<AgentEvent>(ContentLengthMessageStream.SerializerOptions)!;
                 events.Enqueue(agentEvent);
                 if (agentEvent.Type is "run_completed" or "run_cancelled" or "run_failed")
@@ -53,6 +68,7 @@ public sealed class SidecarConversationTests
             Assert.Contains("runtime.cline.0.0.65", initialized.Capabilities);
             Assert.Contains("provider.configure", initialized.Capabilities);
             Assert.Contains("provider.test", initialized.Capabilities);
+            Assert.Contains("tool.system.get_status.v1", initialized.Capabilities);
 
             var configured = await client.InvokeAsync<ProviderConfigureResult>(
                 "provider.configure",
@@ -76,6 +92,17 @@ public sealed class SidecarConversationTests
                 "cline",
                 "hello cline",
                 "요청을 확인했어요.\n\n“hello cline”\n\n현재는 대화 연결을 준비하는 단계예요. Windows 작업 기능이 연결되면 이 요청을 직접 처리할 수 있어요.");
+            await RunAndAssertAsync(
+                client,
+                events,
+                terminalEvents,
+                "tool-conversation",
+                "cline",
+                "__test_system_status__",
+                "현재 운영체제는 Windows 10입니다.");
+            var toolInvocation = Assert.Single(toolInvocations);
+            Assert.Equal("system.get_status.v1", toolInvocation.Name);
+            Assert.Equal("R0", toolInvocation.Risk);
 
             var cancelConversationId = "cancel-conversation";
             var cancellationTerminal = terminalEvents.GetOrAdd(cancelConversationId, _ => NewCompletion());

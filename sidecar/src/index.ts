@@ -15,10 +15,12 @@ import {
   type ProviderTestResult,
   type RpcRequest,
   type RpcResponse,
+  type ToolResultParams,
 } from "./protocol.js";
 import { ClineAgentRuntimeAdapter, createDeterministicSpikeModel } from "./runtime/cline-agent-runtime-adapter.js";
 import { ReplayAgentRuntimeAdapter } from "./runtime/replay-agent-runtime-adapter.js";
 import { RuntimeCoordinator } from "./runtime/runtime-coordinator.js";
+import { DesktopToolBridge } from "./runtime/desktop-tool-bridge.js";
 
 interface StartupOptions {
   readonly pipeName: string;
@@ -54,6 +56,7 @@ async function handleRequest(
   state: ConnectionState,
   coordinator: RuntimeCoordinator,
   clineRuntime: ClineAgentRuntimeAdapter,
+  toolBridge: DesktopToolBridge,
   notify: (method: string, parameters: unknown) => void,
 ): Promise<RpcResponse> {
   if (request.method === "initialize") {
@@ -66,13 +69,21 @@ async function handleRequest(
       protocolVersion: PROTOCOL_VERSION,
       sidecarVersion: "0.2.0",
       contractHash: CONTRACT_HASH,
-      capabilities: ["health.ping", "conversation.start", "conversation.cancel", "agent.events", "provider.configure", "provider.test", "runtime.cline.0.0.65"],
+      capabilities: ["health.ping", "conversation.start", "conversation.cancel", "agent.events", "provider.configure", "provider.test", "tool.invoke", "tool.result", "tool.system.get_status.v1", "runtime.cline.0.0.65"],
     };
     return success(request.id, result);
   }
 
   if (!state.initialized) return failure(request.id, -32004, "Sidecar is not initialized.");
   if (request.method === "ping") return success(request.id, { timestampUtc: new Date().toISOString() });
+  if (request.method === "tool.result") {
+    const parameters = request.params as ToolResultParams;
+    if (!parameters?.toolCallId?.trim() || typeof parameters.success !== "boolean" ||
+        typeof parameters.output !== "object" || parameters.output === null) {
+      return failure(request.id, -32602, "A valid Desktop tool result is required.");
+    }
+    return success(request.id, { accepted: toolBridge.complete(parameters) });
+  }
   if (request.method === "provider.configure" || request.method === "provider.test") {
     const parameters = request.params as ProviderConfigureParams;
     if (!isProviderConfiguration(parameters)) {
@@ -113,21 +124,26 @@ function main(): void {
   const socket = net.createConnection(pipePath);
   const decoder = new MessageDecoder();
   const state: ConnectionState = { initialized: false };
-  const useDeterministicModel = process.env.LIGCLAW_TEST_DETERMINISTIC === "1";
-  delete process.env.LIGCLAW_TEST_DETERMINISTIC;
-  const clineRuntime = new ClineAgentRuntimeAdapter(useDeterministicModel ? createDeterministicSpikeModel() : undefined);
-  const coordinator = new RuntimeCoordinator([
-    new ReplayAgentRuntimeAdapter(),
-    clineRuntime,
-  ]);
   const notify = (method: string, parameters: unknown) => socket.write(frameMessage({
     jsonrpc: JSON_RPC_VERSION,
     method,
     params: parameters,
   }));
+  const toolBridge = new DesktopToolBridge(notify);
+  const useDeterministicModel = process.env.LIGCLAW_TEST_DETERMINISTIC === "1";
+  delete process.env.LIGCLAW_TEST_DETERMINISTIC;
+  const clineRuntime = new ClineAgentRuntimeAdapter(
+    useDeterministicModel ? createDeterministicSpikeModel() : undefined,
+    toolBridge,
+  );
+  const coordinator = new RuntimeCoordinator([
+    new ReplayAgentRuntimeAdapter(),
+    clineRuntime,
+  ]);
 
   socket.on("connect", () => process.stdout.write("sidecar connected\n"));
   socket.on("close", () => {
+    toolBridge.dispose();
     coordinator.abortAll();
     setImmediate(() => process.exit(process.exitCode ?? 0));
   });
@@ -140,7 +156,7 @@ function main(): void {
     let response: RpcResponse;
     try {
       response = isRpcRequest(message)
-        ? await handleRequest(message, options.sessionToken, state, coordinator, clineRuntime, notify)
+        ? await handleRequest(message, options.sessionToken, state, coordinator, clineRuntime, toolBridge, notify)
         : failure("unknown", -32600, "Invalid JSON-RPC request.");
     } catch (error) {
       process.stderr.write(`sidecar request error: ${error instanceof Error ? error.message : String(error)}\n`);
