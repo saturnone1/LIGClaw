@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LIGClaw.Application/LIGClaw.Application.csproj" />
+    <Project Path="src/LIGClaw.Contracts/LIGClaw.Contracts.csproj" />
+    <Project Path="src/LIGClaw.Desktop/LIGClaw.Desktop.csproj" />
+    <Project Path="src/LIGClaw.Domain/LIGClaw.Domain.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LIGClaw.Contracts.Tests/LIGClaw.Contracts.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/TestResults/
+sidecar/node_modules/
+sidecar/dist/
+.vs/
+.vscode/
+*.user
+*.suo
+*.log
+artifacts/

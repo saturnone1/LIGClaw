@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/initialize.schema.json",
+  "title": "InitializeParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "hostVersion", "contractHash", "sessionToken"],
+  "properties": {
+    "protocolVersion": { "type": "string", "const": "1.0" },
+    "hostVersion": { "type": "string", "minLength": 1 },
+    "contractHash": { "type": "string", "minLength": 1 },
+    "sessionToken": { "type": "string", "minLength": 32 }
+  }
+}
