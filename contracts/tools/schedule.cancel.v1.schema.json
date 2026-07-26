@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/schedule.cancel.v1.schema.json",
+  "title": "schedule.cancel.v1",
+  "description": "Cancels one durable local notification schedule after explicit user approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jobId", "reason"],
+  "properties": {
+    "jobId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

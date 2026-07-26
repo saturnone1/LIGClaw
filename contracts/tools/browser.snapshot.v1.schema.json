@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/browser.snapshot.v1.schema.json",
+  "title": "BrowserSnapshotV1",
+  "description": "Reads a bounded accessibility snapshot from an active isolated Edge handle.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["browserHandle", "reason"],
+  "properties": {
+    "browserHandle": { "type": "string", "minLength": 32, "maxLength": 32 },
+    "query": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "maxElements": { "type": "integer", "minimum": 1, "maximum": 50 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

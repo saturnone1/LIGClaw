@@ -9,6 +9,31 @@
     "conversationId": { "type": "string", "minLength": 1 },
     "runId": { "type": "string", "minLength": 1 },
     "input": { "type": "string", "minLength": 1 },
-    "runtime": { "type": "string", "enum": ["replay", "cline"] }
+    "runtime": { "type": "string", "enum": ["replay", "cline"] },
+    "history": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "content"],
+        "properties": {
+          "role": { "type": "string", "enum": ["user", "assistant"] },
+          "content": { "type": "string", "minLength": 1, "maxLength": 20000 }
+        }
+      }
+    },
+    "providerRouting": {
+      "type": "object",
+      "description": "Immutable per-run provider routing snapshot. Secrets remain process-local and are never logged.",
+      "additionalProperties": false,
+      "required": ["primary", "fallbacks", "allowFallback", "explicitSelection"],
+      "properties": {
+        "primary": { "type": "object" },
+        "fallbacks": { "type": "array", "maxItems": 4, "items": { "type": "object" } },
+        "allowFallback": { "type": "boolean" },
+        "explicitSelection": { "type": "boolean" }
+      }
+    }
   }
 }

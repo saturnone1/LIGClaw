@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.search_installed.v1.schema.json",
+  "title": "app.search_installed.v1",
+  "description": "Searches Start Menu registered applications by display name without returning launch targets or executable paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query"],
+  "properties": {
+    "query": { "type": "string", "minLength": 1, "maxLength": 128 }
+  }
+}

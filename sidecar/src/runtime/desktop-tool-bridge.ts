@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ToolInvokeParams, ToolResultParams } from "../generated/contracts.js";
+import { DESKTOP_TOOL_RESPONSE_TIMEOUT_MS } from "./runtime-policy.js";
 
 interface PendingToolCall {
   readonly resolve: (output: Readonly<Record<string, unknown>>) => void;
@@ -16,6 +17,7 @@ export class DesktopToolBridge {
   invoke(
     request: Omit<ToolInvokeParams, "toolCallId"> & { readonly toolCallId?: string },
     signal?: AbortSignal,
+    timeoutMs = DESKTOP_TOOL_RESPONSE_TIMEOUT_MS,
   ): Promise<Readonly<Record<string, unknown>>> {
     const toolCallId = request.toolCallId?.trim() || randomUUID();
     if (this.pending.has(toolCallId)) throw new Error("Duplicate Desktop tool call id.");
@@ -26,7 +28,7 @@ export class DesktopToolBridge {
       signal?.addEventListener("abort", abort, { once: true });
       const timeout = setTimeout(
         () => this.reject(toolCallId, new Error("Desktop tool call timed out.")),
-        20_000,
+        timeoutMs,
       );
       this.pending.set(toolCallId, {
         resolve,

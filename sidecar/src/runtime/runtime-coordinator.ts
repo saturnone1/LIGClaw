@@ -1,11 +1,11 @@
 import type { AgentEvent, ConversationCancelResult, ConversationStartParams, ConversationStartResult } from "../generated/contracts.js";
 import type { AgentRuntimeAdapter, RuntimeEventPayload } from "./contracts.js";
+import { classifyRuntimeFailure } from "./runtime-failure.js";
 
 interface ActiveRun {
   readonly runId: string;
   readonly cancellation: AbortController;
 }
-
 export class RuntimeCoordinator {
   private readonly adapters: ReadonlyMap<string, AgentRuntimeAdapter>;
   private readonly activeRuns = new Map<string, ActiveRun>();
@@ -33,6 +33,7 @@ export class RuntimeCoordinator {
       const isTerminal = event.type === "run_completed" || event.type === "run_cancelled" || event.type === "run_failed";
       if (terminalEventEmitted) return;
       if (isTerminal) terminalEventEmitted = true;
+      const message = event.type === "run_failed" ? classifyRuntimeFailure(event.message) : event.message;
       notify({
         conversationId: parameters.conversationId,
         runId,
@@ -40,14 +41,14 @@ export class RuntimeCoordinator {
         type: event.type,
         timestampUtc: new Date().toISOString(),
         ...(event.text === undefined ? {} : { text: event.text }),
-        ...(event.message === undefined ? {} : { message: event.message }),
+        ...(message === undefined ? {} : { message }),
       });
     };
 
     void adapter.run(parameters, emit, cancellation.signal)
       .catch((error: unknown) => emit(cancellation.signal.aborted
         ? { type: "run_cancelled" }
-        : { type: "run_failed", message: toErrorMessage(error) }))
+        : { type: "run_failed", message: classifyRuntimeFailure(error) }))
       .finally(() => {
         const current = this.activeRuns.get(parameters.conversationId);
         if (current?.runId === runId) {
@@ -70,8 +71,4 @@ export class RuntimeCoordinator {
     this.activeRuns.clear();
     this.activeRunIds.clear();
   }
-}
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

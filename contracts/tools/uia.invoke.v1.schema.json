@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/uia.invoke.v1.schema.json",
+  "title": "uia.invoke.v1",
+  "description": "Invokes one Desktop-issued UI Automation element after identity and focus revalidation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["elementId", "reason"],
+  "properties": {
+    "elementId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

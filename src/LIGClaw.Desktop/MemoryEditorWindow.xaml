@@ -1,0 +1,45 @@
+<Window x:Class="LIGClaw.Desktop.MemoryEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="기억 편집 · LIGClaw" Height="560" Width="590"
+        MinHeight="500" MinWidth="500" Icon="Assets/ligclaw.ico"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="MEMORY / LOCAL CONTEXT" />
+                <TextBlock x:Name="Heading" Style="{StaticResource PageTitleStyle}" Text="기억 추가" />
+                <TextBlock Margin="0,18,0,5" Text="종류" />
+                <ComboBox x:Name="KindBox" AutomationProperties.Name="기억 종류">
+                    <ComboBoxItem Tag="alias" Content="별칭" />
+                    <ComboBoxItem Tag="preference" Content="선호" />
+                    <ComboBoxItem Tag="note" Content="메모" />
+                </ComboBox>
+                <TextBlock Margin="0,14,0,5" Text="키" />
+                <TextBox x:Name="KeyBox" MaxLength="80" AutomationProperties.Name="기억 키" />
+                <TextBlock Margin="0,14,0,5" Text="내용" />
+                <TextBox x:Name="ValueBox" MaxLength="2000" MinHeight="100"
+                         AutomationProperties.Name="기억 내용"
+                         AcceptsReturn="True" TextWrapping="Wrap" />
+                <TextBlock Margin="0,14,0,5" Text="민감도" />
+                <ComboBox x:Name="SensitivityBox" AutomationProperties.Name="민감도">
+                    <ComboBoxItem Tag="general" Content="일반" />
+                    <ComboBoxItem Tag="personal" Content="개인" />
+                    <ComboBoxItem Tag="sensitive" Content="민감" />
+                </ComboBox>
+                <TextBlock Margin="0,14,0,5" Text="만료 날짜 (선택, yyyy-MM-dd)" />
+                <TextBox x:Name="ExpiryBox" AutomationProperties.Name="만료 날짜" />
+                <TextBlock x:Name="ValidationMessage" Margin="0,13,0,0"
+                           Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="1" Margin="0,20,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Width="92" Style="{StaticResource SecondaryButtonStyle}" Click="Cancel_Click" Content="취소" />
+            <Button Width="92" Margin="9,0,0,0" Style="{StaticResource PrimaryButtonStyle}" Click="Save_Click" Content="저장" />
+        </StackPanel>
+    </Grid>
+</Window>

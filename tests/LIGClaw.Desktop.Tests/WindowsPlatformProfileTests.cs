@@ -23,6 +23,10 @@ public sealed class WindowsPlatformProfileTests
 
         Assert.Equal(WindowsClientRelease.Windows10, profile.Release);
         Assert.True(profile.Supports(WindowsCapability.Win32DesktopShell));
+        Assert.True(profile.Supports(WindowsCapability.UserNotification));
+        Assert.True(profile.Supports(WindowsCapability.AppLaunch));
+        Assert.True(profile.Supports(WindowsCapability.ExplorerContext));
+        Assert.True(profile.Supports(WindowsCapability.UiAutomation));
         Assert.False(profile.Supports(WindowsCapability.Windows11Shell));
     }
 

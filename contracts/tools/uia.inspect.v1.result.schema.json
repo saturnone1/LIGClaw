@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/uia.inspect.v1.result.schema.json",
+  "title": "UiaInspectV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["windowId", "title", "processName", "elements", "truncated"],
+  "properties": {
+    "windowId": { "type": "string" },
+    "title": { "type": "string" },
+    "processName": { "type": "string" },
+    "elements": { "type": "array", "items": { "type": "object" } },
+    "truncated": { "type": "boolean" }
+  }
+}

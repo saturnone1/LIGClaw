@@ -7,9 +7,49 @@ namespace LIGClaw.Contracts.Generated;
 
 public static class ContractMetadata
 {
-    public const string ProtocolVersion = "1.4";
-    public const string Hash = "3c8db0167f60bc29e2f0a75b6b78ad0bdae50ac898923e27d4278e132775c9c6";
+    public const string ProtocolVersion = "1.13";
+    public const string Hash = "11ccbc50c3399406be20e25cfaa1888b52b9aa999a11ea2e069c246ad1b3a694";
 }
+
+public sealed record AgentJobCancelV1(
+    [property: JsonPropertyName("jobId")] string JobId,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record AgentJobCancelV1Result(
+    [property: JsonPropertyName("cancelled")] bool Cancelled);
+
+public sealed record AgentJobControlV1(
+    [property: JsonPropertyName("jobId")] string JobId,
+    [property: JsonPropertyName("action")] string Action,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record AgentJobCreateV1(
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("prompt")] string Prompt,
+    [property: JsonPropertyName("startLocal")] string? StartLocal,
+    [property: JsonPropertyName("timeZoneId")] string? TimeZoneId,
+    [property: JsonPropertyName("delayMinutes")] long DelayMinutes,
+    [property: JsonPropertyName("recurrence")] string Recurrence,
+    [property: JsonPropertyName("interval")] long Interval,
+    [property: JsonPropertyName("misfirePolicy")] string MisfirePolicy,
+    [property: JsonPropertyName("modelProfileId")] string? ModelProfileId,
+    [property: JsonPropertyName("maxRuntimeSeconds")] long MaxRuntimeSeconds,
+    [property: JsonPropertyName("maxAttempts")] long MaxAttempts,
+    [property: JsonPropertyName("resultMaxCharacters")] long ResultMaxCharacters,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record AgentJobCreateV1Result(
+    [property: JsonPropertyName("jobId")] string JobId,
+    [property: JsonPropertyName("nextRunAtUtc")] DateTimeOffset NextRunAtUtc,
+    [property: JsonPropertyName("status")] string Status);
+
+public sealed record AgentJobListV1(
+    [property: JsonPropertyName("includeInactive")] bool IncludeInactive,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record AgentJobListV1Result(
+    [property: JsonPropertyName("jobs")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Jobs,
+    [property: JsonPropertyName("truncated")] bool Truncated);
 
 public sealed record AgentEvent(
     [property: JsonPropertyName("conversationId")] string ConversationId,
@@ -19,6 +59,99 @@ public sealed record AgentEvent(
     [property: JsonPropertyName("timestampUtc")] DateTimeOffset TimestampUtc,
     [property: JsonPropertyName("text")] string? Text,
     [property: JsonPropertyName("message")] string? Message);
+
+public sealed record AgentJobControlV1Result(
+    [property: JsonPropertyName("changed")] bool Changed,
+    [property: JsonPropertyName("action")] string Action);
+
+public sealed record AppActivateV1(
+    [property: JsonPropertyName("windowId")] string WindowId,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record AppCloseV1(
+    [property: JsonPropertyName("windowId")] string WindowId,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record AppListWindowsV1();
+
+public sealed record AppSearchInstalledV1(
+    [property: JsonPropertyName("query")] string Query);
+
+public sealed record AppSetWindowStateV1(
+    [property: JsonPropertyName("windowId")] string WindowId,
+    [property: JsonPropertyName("state")] string State,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record AppActivateV1Result(
+    [property: JsonPropertyName("activated")] bool Activated,
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("processName")] string ProcessName);
+
+public sealed record AppCloseV1Result(
+    [property: JsonPropertyName("closeRequested")] bool CloseRequested,
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("processName")] string ProcessName);
+
+public sealed record AppLaunchV1(
+    [property: JsonPropertyName("appName")] string AppName,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record AppLaunchV1Result(
+    [property: JsonPropertyName("launched")] bool Launched,
+    [property: JsonPropertyName("displayName")] string DisplayName);
+
+public sealed record AppListWindowsV1Result(
+    [property: JsonPropertyName("windows")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Windows);
+
+public sealed record AppSearchInstalledV1Result(
+    [property: JsonPropertyName("apps")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Apps,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record AppSetWindowStateV1Result(
+    [property: JsonPropertyName("changed")] bool Changed,
+    [property: JsonPropertyName("state")] string State,
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("processName")] string ProcessName);
+
+public sealed record BrowserOpenV1(
+    [property: JsonPropertyName("url")] string Url,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record BrowserOpenV1Result(
+    [property: JsonPropertyName("browserHandle")] string BrowserHandle,
+    [property: JsonPropertyName("windowId")] string WindowId,
+    [property: JsonPropertyName("requestedUrl")] string RequestedUrl,
+    [property: JsonPropertyName("expiresAtUtc")] DateTimeOffset ExpiresAtUtc);
+
+public sealed record BrowserSnapshotV1(
+    [property: JsonPropertyName("browserHandle")] string BrowserHandle,
+    [property: JsonPropertyName("query")] string? Query,
+    [property: JsonPropertyName("maxElements")] long MaxElements,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record BrowserSnapshotV1Result(
+    [property: JsonPropertyName("browserHandle")] string BrowserHandle,
+    [property: JsonPropertyName("windowId")] string WindowId,
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("requestedUrl")] string RequestedUrl,
+    [property: JsonPropertyName("elements")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Elements,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record ClipboardReadTextV1(
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record ClipboardWriteTextV1(
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record ClipboardReadTextV1Result(
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("length")] long Length,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record ClipboardWriteTextV1Result(
+    [property: JsonPropertyName("written")] bool Written,
+    [property: JsonPropertyName("length")] long Length);
 
 public sealed record ConversationCancelParams(
     [property: JsonPropertyName("conversationId")] string ConversationId);
@@ -30,11 +163,148 @@ public sealed record ConversationStartParams(
     [property: JsonPropertyName("conversationId")] string ConversationId,
     [property: JsonPropertyName("runId")] string RunId,
     [property: JsonPropertyName("input")] string Input,
-    [property: JsonPropertyName("runtime")] string Runtime);
+    [property: JsonPropertyName("runtime")] string Runtime,
+    [property: JsonPropertyName("history")] IReadOnlyList<IReadOnlyDictionary<string, object?>>? History,
+    [property: JsonPropertyName("providerRouting")] IReadOnlyDictionary<string, object?>? ProviderRouting);
 
 public sealed record ConversationStartResult(
     [property: JsonPropertyName("accepted")] bool Accepted,
     [property: JsonPropertyName("runId")] string RunId);
+
+public sealed record ExplorerGetContextV1(
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record ExplorerGetContextV1Result(
+    [property: JsonPropertyName("folderPath")] string FolderPath,
+    [property: JsonPropertyName("selectedItems")] IReadOnlyList<IReadOnlyDictionary<string, object?>> SelectedItems,
+    [property: JsonPropertyName("selectionTruncated")] bool SelectionTruncated);
+
+public sealed record FileCopyV1(
+    [property: JsonPropertyName("sources")] IReadOnlyList<string> Sources,
+    [property: JsonPropertyName("destinationDirectory")] string DestinationDirectory,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileCreateDirectoryV1(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileGetMetadataV1(
+    [property: JsonPropertyName("path")] string Path);
+
+public sealed record FileMoveV1(
+    [property: JsonPropertyName("sources")] IReadOnlyList<string> Sources,
+    [property: JsonPropertyName("destinationDirectory")] string DestinationDirectory,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileOpenV1(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileReadTextV1(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileRecycleV1(
+    [property: JsonPropertyName("paths")] IReadOnlyList<string> Paths,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileRenameV1(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("newName")] string NewName,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileSearchV1(
+    [property: JsonPropertyName("rootPath")] string RootPath,
+    [property: JsonPropertyName("pattern")] string Pattern);
+
+public sealed record FileUndoV1(
+    [property: JsonPropertyName("undoId")] string UndoId,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileWriteTextV1(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileZipCreateV1(
+    [property: JsonPropertyName("sourcePaths")] IReadOnlyList<string> SourcePaths,
+    [property: JsonPropertyName("destinationPath")] string DestinationPath,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileZipExtractV1(
+    [property: JsonPropertyName("zipPath")] string ZipPath,
+    [property: JsonPropertyName("destinationPath")] string DestinationPath,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record FileCopyV1Result(
+    [property: JsonPropertyName("succeeded")] long Succeeded,
+    [property: JsonPropertyName("failed")] long Failed,
+    [property: JsonPropertyName("items")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Items);
+
+public sealed record FileCreateDirectoryV1Result(
+    [property: JsonPropertyName("created")] bool Created,
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("undoId")] string? UndoId);
+
+public sealed record FileGetMetadataV1Result(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("isDirectory")] bool IsDirectory,
+    [property: JsonPropertyName("sizeBytes")] long SizeBytes,
+    [property: JsonPropertyName("lastWriteTimeUtc")] DateTimeOffset LastWriteTimeUtc,
+    [property: JsonPropertyName("readOnly")] bool ReadOnly);
+
+public sealed record FileMoveV1Result(
+    [property: JsonPropertyName("succeeded")] long Succeeded,
+    [property: JsonPropertyName("failed")] long Failed,
+    [property: JsonPropertyName("items")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Items);
+
+public sealed record FileOpenV1Result(
+    [property: JsonPropertyName("opened")] bool Opened,
+    [property: JsonPropertyName("displayName")] string DisplayName,
+    [property: JsonPropertyName("isDirectory")] bool IsDirectory);
+
+public sealed record FileReadTextV1Result(
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("length")] long Length,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record FileRecycleV1Result(
+    [property: JsonPropertyName("succeeded")] long Succeeded,
+    [property: JsonPropertyName("failed")] long Failed,
+    [property: JsonPropertyName("items")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Items);
+
+public sealed record FileRenameV1Result(
+    [property: JsonPropertyName("renamed")] bool Renamed,
+    [property: JsonPropertyName("displayName")] string DisplayName,
+    [property: JsonPropertyName("undoId")] string? UndoId);
+
+public sealed record FileSearchV1Result(
+    [property: JsonPropertyName("rootPath")] string RootPath,
+    [property: JsonPropertyName("matches")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Matches,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record FileUndoV1Result(
+    [property: JsonPropertyName("undone")] bool Undone,
+    [property: JsonPropertyName("displayName")] string DisplayName);
+
+public sealed record FileWriteTextV1Result(
+    [property: JsonPropertyName("created")] bool Created,
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("bytesWritten")] long BytesWritten,
+    [property: JsonPropertyName("undoId")] string? UndoId);
+
+public sealed record FileZipCreateV1Result(
+    [property: JsonPropertyName("created")] bool Created,
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("sourceCount")] long SourceCount,
+    [property: JsonPropertyName("undoId")] string? UndoId);
+
+public sealed record FileZipExtractV1Result(
+    [property: JsonPropertyName("extracted")] bool Extracted,
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("entryCount")] long EntryCount,
+    [property: JsonPropertyName("undoId")] string? UndoId);
 
 public sealed record InitializeParams(
     [property: JsonPropertyName("protocolVersion")] string ProtocolVersion,
@@ -47,6 +317,65 @@ public sealed record InitializeResult(
     [property: JsonPropertyName("sidecarVersion")] string SidecarVersion,
     [property: JsonPropertyName("contractHash")] string ContractHash,
     [property: JsonPropertyName("capabilities")] IReadOnlyList<string> Capabilities);
+
+public sealed record McpReadV1(
+    [property: JsonPropertyName("connectionId")] string ConnectionId,
+    [property: JsonPropertyName("toolName")] string ToolName,
+    [property: JsonPropertyName("arguments")] IReadOnlyDictionary<string, object?> Arguments,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record McpCallParams(
+    [property: JsonPropertyName("connectionId")] string ConnectionId,
+    [property: JsonPropertyName("toolName")] string ToolName,
+    [property: JsonPropertyName("arguments")] IReadOnlyDictionary<string, object?> Arguments);
+
+public sealed record McpCallResult(
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("isError")] bool IsError,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record McpConfigureParams(
+    [property: JsonPropertyName("connections")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Connections);
+
+public sealed record McpConfigureResult(
+    [property: JsonPropertyName("connections")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Connections);
+
+public sealed record McpReadV1Result(
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("source")] string Source,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record McpStatusParams();
+
+public sealed record McpStatusResult(
+    [property: JsonPropertyName("connections")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Connections);
+
+public sealed record MemoryForgetV1(
+    [property: JsonPropertyName("memoryId")] string MemoryId,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record MemoryListV1(
+    [property: JsonPropertyName("query")] string? Query,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record MemoryRememberV1(
+    [property: JsonPropertyName("kind")] string Kind,
+    [property: JsonPropertyName("key")] string Key,
+    [property: JsonPropertyName("value")] string Value,
+    [property: JsonPropertyName("sensitivity")] string Sensitivity,
+    [property: JsonPropertyName("ttlDays")] long TtlDays,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record MemoryForgetV1Result(
+    [property: JsonPropertyName("forgotten")] bool Forgotten);
+
+public sealed record MemoryListV1Result(
+    [property: JsonPropertyName("memories")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Memories,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record MemoryRememberV1Result(
+    [property: JsonPropertyName("memoryId")] string MemoryId,
+    [property: JsonPropertyName("created")] bool Created);
 
 public sealed record PingResult(
     [property: JsonPropertyName("timestampUtc")] DateTimeOffset TimestampUtc);
@@ -63,7 +392,93 @@ public sealed record ProviderTestResult(
     [property: JsonPropertyName("success")] bool Success,
     [property: JsonPropertyName("message")] string Message);
 
+public sealed record ScheduleCancelV1(
+    [property: JsonPropertyName("jobId")] string JobId,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record ScheduleCancelV1Result(
+    [property: JsonPropertyName("cancelled")] bool Cancelled);
+
+public sealed record ScheduleCreateV1(
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("message")] string Message,
+    [property: JsonPropertyName("startLocal")] string? StartLocal,
+    [property: JsonPropertyName("timeZoneId")] string? TimeZoneId,
+    [property: JsonPropertyName("delayMinutes")] long DelayMinutes,
+    [property: JsonPropertyName("recurrence")] string Recurrence,
+    [property: JsonPropertyName("interval")] long Interval,
+    [property: JsonPropertyName("misfirePolicy")] string MisfirePolicy,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record ScheduleCreateV1Result(
+    [property: JsonPropertyName("jobId")] string JobId,
+    [property: JsonPropertyName("nextRunAtUtc")] DateTimeOffset NextRunAtUtc,
+    [property: JsonPropertyName("status")] string Status);
+
+public sealed record ScheduleListV1(
+    [property: JsonPropertyName("includeInactive")] bool IncludeInactive,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record ScheduleListV1Result(
+    [property: JsonPropertyName("jobs")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Jobs,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record SubagentRunV1(
+    [property: JsonPropertyName("tasks")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Tasks,
+    [property: JsonPropertyName("modelProfileId")] string? ModelProfileId,
+    [property: JsonPropertyName("maxRisk")] string MaxRisk,
+    [property: JsonPropertyName("maxRuntimeSeconds")] long MaxRuntimeSeconds,
+    [property: JsonPropertyName("resultMaxCharacters")] long ResultMaxCharacters,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record SubagentRunV1Result(
+    [property: JsonPropertyName("batchId")] string BatchId,
+    [property: JsonPropertyName("tasks")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Tasks,
+    [property: JsonPropertyName("succeeded")] long Succeeded,
+    [property: JsonPropertyName("failed")] long Failed);
+
+public sealed record SystemGetDiskHealthV1();
+
+public sealed record SystemGetNetworkStatusV1();
+
+public sealed record SystemGetResourceStatusV1();
+
+public sealed record SystemGetSecurityStatusV1();
+
 public sealed record SystemGetStatusV1();
+
+public sealed record SystemGetStorageStatusV1();
+
+public sealed record SystemOpenSettingsV1(
+    [property: JsonPropertyName("page")] string Page,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record SystemSessionActionV1(
+    [property: JsonPropertyName("action")] string Action,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record SystemGetDiskHealthV1Result(
+    [property: JsonPropertyName("physicalDiskProviderStatus")] string PhysicalDiskProviderStatus,
+    [property: JsonPropertyName("physicalDisks")] IReadOnlyList<IReadOnlyDictionary<string, object?>> PhysicalDisks,
+    [property: JsonPropertyName("bitLockerProviderStatus")] string BitLockerProviderStatus,
+    [property: JsonPropertyName("bitLockerVolumes")] IReadOnlyList<IReadOnlyDictionary<string, object?>> BitLockerVolumes);
+
+public sealed record SystemGetNetworkStatusV1Result(
+    [property: JsonPropertyName("networkAvailable")] bool NetworkAvailable,
+    [property: JsonPropertyName("adapters")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Adapters);
+
+public sealed record SystemGetResourceStatusV1Result(
+    [property: JsonPropertyName("uptimeSeconds")] long UptimeSeconds,
+    [property: JsonPropertyName("logicalProcessorCount")] long LogicalProcessorCount,
+    [property: JsonPropertyName("cpuUsagePercent")] double CpuUsagePercent,
+    [property: JsonPropertyName("memoryTotalBytes")] long MemoryTotalBytes,
+    [property: JsonPropertyName("memoryAvailableBytes")] long MemoryAvailableBytes,
+    [property: JsonPropertyName("memoryUsedPercent")] double MemoryUsedPercent);
+
+public sealed record SystemGetSecurityStatusV1Result(
+    [property: JsonPropertyName("defender")] IReadOnlyDictionary<string, object?> Defender,
+    [property: JsonPropertyName("firewall")] IReadOnlyDictionary<string, object?> Firewall,
+    [property: JsonPropertyName("windowsUpdate")] IReadOnlyDictionary<string, object?> WindowsUpdate);
 
 public sealed record SystemGetStatusV1Result(
     [property: JsonPropertyName("windowsRelease")] string WindowsRelease,
@@ -72,6 +487,27 @@ public sealed record SystemGetStatusV1Result(
     [property: JsonPropertyName("localTime")] DateTimeOffset LocalTime,
     [property: JsonPropertyName("timeZone")] string TimeZone,
     [property: JsonPropertyName("powerSource")] string PowerSource);
+
+public sealed record SystemGetStorageStatusV1Result(
+    [property: JsonPropertyName("volumes")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Volumes,
+    [property: JsonPropertyName("physicalHealthAvailable")] bool PhysicalHealthAvailable,
+    [property: JsonPropertyName("healthNote")] string HealthNote);
+
+public sealed record SystemOpenSettingsV1Result(
+    [property: JsonPropertyName("opened")] bool Opened,
+    [property: JsonPropertyName("page")] string Page);
+
+public sealed record SystemSessionActionV1Result(
+    [property: JsonPropertyName("requested")] bool Requested,
+    [property: JsonPropertyName("action")] string Action);
+
+public sealed record SystemShowNotificationV1(
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("message")] string Message,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record SystemShowNotificationV1Result(
+    [property: JsonPropertyName("shown")] bool Shown);
 
 public sealed record ToolInvokeParams(
     [property: JsonPropertyName("toolCallId")] string ToolCallId,
@@ -89,3 +525,65 @@ public sealed record ToolResultParams(
 
 public sealed record ToolResultResult(
     [property: JsonPropertyName("accepted")] bool Accepted);
+
+public sealed record UiaInspectV1(
+    [property: JsonPropertyName("windowId")] string WindowId,
+    [property: JsonPropertyName("query")] string? Query,
+    [property: JsonPropertyName("maxElements")] long MaxElements,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record UiaInvokeV1(
+    [property: JsonPropertyName("elementId")] string ElementId,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record UiaSendTextV1(
+    [property: JsonPropertyName("elementId")] string ElementId,
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record UiaSetValueV1(
+    [property: JsonPropertyName("elementId")] string ElementId,
+    [property: JsonPropertyName("value")] string Value,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record UiaInspectV1Result(
+    [property: JsonPropertyName("windowId")] string WindowId,
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("processName")] string ProcessName,
+    [property: JsonPropertyName("elements")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Elements,
+    [property: JsonPropertyName("truncated")] bool Truncated);
+
+public sealed record UiaInvokeV1Result(
+    [property: JsonPropertyName("invoked")] bool Invoked);
+
+public sealed record UiaSendTextV1Result(
+    [property: JsonPropertyName("textSent")] bool TextSent);
+
+public sealed record UiaSetValueV1Result(
+    [property: JsonPropertyName("valueSet")] bool ValueSet);
+
+public sealed record WebFetchV1(
+    [property: JsonPropertyName("url")] string Url,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record WebFetchV1Result(
+    [property: JsonPropertyName("requestedUrl")] string RequestedUrl,
+    [property: JsonPropertyName("finalUrl")] string FinalUrl,
+    [property: JsonPropertyName("statusCode")] long StatusCode,
+    [property: JsonPropertyName("contentType")] string ContentType,
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("truncated")] bool Truncated,
+    [property: JsonPropertyName("redirectCount")] long RedirectCount);
+
+public sealed record WebSearchV1(
+    [property: JsonPropertyName("query")] string Query,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record WebSearchV1Result(
+    [property: JsonPropertyName("query")] string Query,
+    [property: JsonPropertyName("finalUrl")] string FinalUrl,
+    [property: JsonPropertyName("statusCode")] long StatusCode,
+    [property: JsonPropertyName("contentType")] string ContentType,
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("truncated")] bool Truncated,
+    [property: JsonPropertyName("redirectCount")] long RedirectCount);

@@ -1,10 +1,11 @@
 using System.IO;
+using LIGClaw.Desktop.Infrastructure.Tools;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 
 namespace LIGClaw.Desktop.Infrastructure.Tray;
 
-internal sealed class TrayIconService : IDisposable
+internal sealed class TrayIconService : IUserNotificationService, IDisposable
 {
     private readonly Drawing.Icon _icon;
     private readonly Forms.NotifyIcon _notifyIcon;
@@ -39,6 +40,16 @@ internal sealed class TrayIconService : IDisposable
             "LIGClaw는 계속 실행 중이에요",
             "다시 열려면 작업 표시줄의 LIGClaw 아이콘을 두 번 클릭하세요.",
             Forms.ToolTipIcon.Info);
+    }
+
+    public async Task ShowAsync(string title, string message, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var dispatcher = System.Windows.Application.Current.Dispatcher;
+        await dispatcher.InvokeAsync(() =>
+            _notifyIcon.ShowBalloonTip(5_000, title, message, Forms.ToolTipIcon.Info),
+            System.Windows.Threading.DispatcherPriority.Normal,
+            cancellationToken);
     }
 
     public void Dispose()

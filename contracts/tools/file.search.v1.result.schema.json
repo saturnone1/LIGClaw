@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.search.v1.result.schema.json",
+  "title": "FileSearchV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rootPath", "matches", "truncated"],
+  "properties": {
+    "rootPath": { "type": "string" },
+    "matches": { "type": "array", "maxItems": 100, "items": { "type": "object" } },
+    "truncated": { "type": "boolean" }
+  }
+}

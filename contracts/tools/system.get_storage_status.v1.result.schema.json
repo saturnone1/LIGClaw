@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_storage_status.v1.result.schema.json",
+  "title": "SystemGetStorageStatusV1Result",
+  "description": "Logical Windows volume capacity. Physical SMART health is intentionally outside this contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["volumes", "physicalHealthAvailable", "healthNote"],
+  "properties": {
+    "volumes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rootPath", "driveType", "status"],
+        "properties": {
+          "rootPath": { "type": "string" },
+          "driveType": { "type": "string", "enum": ["fixed", "removable", "network", "optical", "ram", "unknown"] },
+          "status": { "type": "string", "enum": ["ready", "not_ready", "unavailable"] },
+          "fileSystem": { "type": "string" },
+          "totalBytes": { "type": "integer", "minimum": 0 },
+          "freeBytes": { "type": "integer", "minimum": 0 },
+          "usedPercent": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    "physicalHealthAvailable": { "type": "boolean" },
+    "healthNote": { "type": "string" }
+  }
+}

@@ -16,4 +16,10 @@ internal static class ModelConnectionInputPolicy
         Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var uri) &&
         uri.Scheme == Uri.UriSchemeHttp &&
         !uri.IsLoopback;
+
+    public static bool RequiresSuccessfulTest(
+        ModelConnectionSettings candidate,
+        ModelConnectionSettings? stored,
+        ModelConnectionSettings? lastSuccessfulTest) =>
+        !Equals(candidate, stored) && !Equals(candidate, lastSuccessfulTest);
 }

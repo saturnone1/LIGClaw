@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/clipboard.write_text.v1.result.schema.json",
+  "title": "ClipboardWriteTextV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["written", "length"],
+  "properties": {
+    "written": { "type": "boolean" },
+    "length": { "type": "integer", "minimum": 1, "maximum": 32768 }
+  }
+}

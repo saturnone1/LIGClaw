@@ -1,7 +1,7 @@
 # LIGClaw 디자인 시스템
 
-> 상태: Phase 1 진입 전 기준 v1  
-> 기준일: 2026-07-25
+> 상태: Precision Workspace v3 구현 완료
+> 기준일: 2026-07-26
 
 ## 1. 브랜드 기준과 사용 원칙
 
@@ -56,11 +56,25 @@ LIGClaw 심벌은 열린 C형 몸체와 오른쪽으로 진행하는 세 개의 
 
 간격은 4px 배수를 기본으로 하며 카드 내부 22px, 카드 사이 18~24px, 페이지 바깥 28~34px을 권장한다. 애니메이션은 상태 이해에 필요한 경우에만 120~200ms 범위로 사용하고 운영체제의 동작 줄이기 설정을 존중한다.
 
+v3에서는 화면이 색상값이나 글꼴 크기를 직접 선택하지 않도록 다음 의미 계층을 사용한다.
+
+- surface: `Surface`, `SurfaceElevated`, `SurfaceMuted`, `SurfaceSunken`
+- feedback: `Info/Success/Warning/Danger`와 각 `Subtle` 배경
+- interaction: `Focus`, `BorderStrong`, navigation text/hover/selected
+- typography: display, page title, section title, body, caption
+- layout: `Space1`~`Space6`, `PagePadding`, small/medium/large/pill radius
+
+Precision Workspace는 `DeepNavy`, `SignalCyan`, `MetalHighlight`, `CommandHeader`, `ConversationUser`, `OverlayScrim` 의미 토큰과 eyebrow·metric·brand·command·control·action 타이포그래피를 추가한다. 작업 공간 규격은 compact/expanded AppRail 72/216px, conversation reading width 880px, hero composer width 680px로 고정한다.
+
+공용 컨트롤은 `AppRail`, `CommandHeader`, `CommandSurface`, `CommandBar`, `DataSurface`, `ActionCard`, `PageTitle`, `PageSubtitle`, `SectionTitle`, `StatusPill`, `Banner`, `StatusBadge`, `ListRow`, `EmptyState`, 명시적 keyboard focus visual을 사용한다. 세부 상태와 사용자 여정은 `docs/UI_STATE_CONTRACT.md`를 따른다. 화면 XAML의 직접 숫자 `FontSize`, 직접 HEX 색상, 문자 glyph 기능 아이콘은 회귀 검사로 금지한다.
+
 ## 5. 접근성과 Windows 동작
 
 - 본문과 배경은 WCAG AA 수준의 대비를 목표로 한다.
 - 포커스, 오류, 실행 중 상태는 색상만으로 표현하지 않는다.
-- Windows 배율 100~200%와 최소 창 크기에서 주요 실행/취소 버튼이 잘리지 않아야 한다.
+- 최소 창 크기와 지원되는 반응형 레이아웃에서 주요 실행/취소 버튼이 잘리지 않아야 한다.
+- 관리 목록은 검색 또는 상태 필터와 명시적인 정렬 기준, 결과 수, 빈 상태를 함께 제공한다.
+- 에이전트가 제공한 HTTP(S) 링크는 자동으로 열지 않고 라벨과 선택·복사 가능한 전체 주소를 함께 표시한다.
 - 창 닫기는 트레이로 숨기며, 실제 종료는 트레이 메뉴의 `종료`에서 명시적으로 수행한다.
 - 트레이 도구 설명은 제품명과 역할을 함께 표시하고, 더블 클릭하면 기존 창을 복원한다.
 
@@ -70,4 +84,4 @@ LIGClaw 심벌은 열린 C형 몸체와 오른쪽으로 진행하는 세 개의 
 2. 새 화면은 기존 의미 토큰과 공용 스타일을 먼저 재사용한다.
 3. 공식 로고 파일을 제품 심벌 위치에 추가하지 않는다.
 4. 아이콘 변경은 생성 스크립트, 256px 미리보기, 앱/트레이 ICO를 한 커밋에서 갱신한다.
-5. 화면 변경 후 빌드와 자동화 테스트에 더해 실제 렌더링을 100%, 150% 배율에서 확인한다.
+5. 화면 변경 후 빌드와 자동화 테스트에 더해 현재 검증 장비에서 실제 렌더링을 확인한다.

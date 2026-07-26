@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Tray;
 
@@ -8,12 +9,15 @@ public partial class App : System.Windows.Application
 {
     private TrayIconService? _trayIcon;
     private SingleInstanceCoordinator? _singleInstance;
+    private AccessibilityThemeService? _accessibilityTheme;
 
     internal bool IsExitRequested { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        DispatcherUnhandledException += App_DispatcherUnhandledException;
+        _accessibilityTheme = new AccessibilityThemeService(Resources);
 
         _singleInstance = new SingleInstanceCoordinator();
         if (!_singleInstance.IsPrimary)
@@ -24,9 +28,9 @@ public partial class App : System.Windows.Application
         }
         _singleInstance.ActivationRequested += SingleInstance_ActivationRequested;
 
-        var window = new MainWindow();
-        MainWindow = window;
         _trayIcon = new TrayIconService(ShowQuickInput, ExitApplication);
+        var window = new MainWindow(_trayIcon);
+        MainWindow = window;
         window.InitializeBackgroundServices();
         if (!e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase))
         {
@@ -75,6 +79,21 @@ public partial class App : System.Windows.Application
         }
     }
 
+    private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        if (!UiExceptionPolicy.CanRecover(e.Exception)) return;
+        e.Handled = true;
+        try
+        {
+            if (MainWindow is MainWindow window)
+                window.ShowUnexpectedUiFailure();
+        }
+        catch (Exception)
+        {
+            // 예외 복구 UI 자체의 실패는 원래 입력이나 예외 메시지를 로그로 남기지 않는다.
+        }
+    }
+
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
     {
         IsExitRequested = true;
@@ -83,6 +102,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        DispatcherUnhandledException -= App_DispatcherUnhandledException;
         if (_singleInstance is not null)
         {
             _singleInstance.ActivationRequested -= SingleInstance_ActivationRequested;
@@ -91,6 +111,8 @@ public partial class App : System.Windows.Application
         }
         _trayIcon?.Dispose();
         _trayIcon = null;
+        _accessibilityTheme?.Dispose();
+        _accessibilityTheme = null;
         base.OnExit(e);
     }
 }

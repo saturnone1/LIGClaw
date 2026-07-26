@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2021"
+              Version="__VERSION__"
+              Uri="__APPINSTALLER_URI__">
+  <MainPackage Name="LIGClaw" Publisher="__PUBLISHER__" Version="__VERSION__"
+               ProcessorArchitecture="x64" Uri="__PACKAGE_URI__" />
+  <UpdateSettings>
+    <OnLaunch HoursBetweenUpdateChecks="0" ShowPrompt="true" UpdateBlocksActivation="false" />
+    <AutomaticBackgroundTask />
+    <ForceUpdateFromAnyVersion>true</ForceUpdateFromAnyVersion>
+  </UpdateSettings>
+</AppInstaller>

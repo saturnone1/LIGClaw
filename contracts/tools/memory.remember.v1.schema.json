@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/memory.remember.v1.schema.json",
+  "title": "memory.remember.v1",
+  "description": "Creates or updates one explicit personal memory after user approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "key", "value", "sensitivity", "reason"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["alias", "preference", "note"] },
+    "key": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "value": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "sensitivity": { "type": "string", "enum": ["general", "personal", "sensitive"] },
+    "ttlDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

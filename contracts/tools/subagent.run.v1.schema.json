@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/subagent.run.v1.schema.json",
+  "title": "subagent.run.v1",
+  "description": "Runs a bounded set of local child-agent tasks under a Desktop-owned permission ceiling.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tasks", "maxRisk", "maxRuntimeSeconds", "resultMaxCharacters", "reason"],
+  "properties": {
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "prompt"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 4000 }
+        }
+      }
+    },
+    "modelProfileId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "maxRisk": { "type": "string", "enum": ["R0", "R1"] },
+    "maxRuntimeSeconds": { "type": "integer", "minimum": 30, "maximum": 900 },
+    "resultMaxCharacters": { "type": "integer", "minimum": 1000, "maximum": 20000 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

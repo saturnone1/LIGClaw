@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/web.search.v1.schema.json",
+  "title": "WebSearchV1",
+  "description": "Queries the user-configured HTTP(S) search endpoint.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query", "reason"],
+  "properties": {
+    "query": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

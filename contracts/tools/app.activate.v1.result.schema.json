@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.activate.v1.result.schema.json",
+  "title": "AppActivateV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["activated", "title", "processName"],
+  "properties": {
+    "activated": { "type": "boolean" },
+    "title": { "type": "string", "maxLength": 512 },
+    "processName": { "type": "string", "maxLength": 128 }
+  }
+}

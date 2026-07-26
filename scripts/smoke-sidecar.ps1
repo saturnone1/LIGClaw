@@ -3,7 +3,7 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$desktopPath = (Resolve-Path (Join-Path $repositoryRoot 'src/LIGClaw.Desktop/bin/Debug/net10.0-windows/LIGClaw.Desktop.exe')).Path
+$desktopPath = (Resolve-Path (Join-Path $repositoryRoot 'src/LIGClaw.Desktop/bin/Debug/net10.0-windows10.0.17763.0/LIGClaw.Desktop.exe')).Path
 $desktop = Start-Process -FilePath $desktopPath -WindowStyle Hidden -PassThru
 $observedSidecars = [System.Collections.Generic.List[int]]::new()
 $failure = $null
@@ -71,7 +71,7 @@ finally {
             Stop-Process -Id $sidecarPid -Force
             if (-not $failure) {
                 $failure = [System.Management.Automation.ErrorRecord]::new(
-                    [InvalidOperationException]::new('Sidecar remained after Desktop termination.'),
+                    [InvalidOperationException]::new("Sidecar $sidecarPid remained after Desktop termination."),
                     'OrphanedSidecar',
                     [System.Management.Automation.ErrorCategory]::ResourceBusy,
                     $sidecarPid)

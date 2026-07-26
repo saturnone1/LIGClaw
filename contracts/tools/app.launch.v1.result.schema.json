@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.launch.v1.result.schema.json",
+  "title": "AppLaunchV1Result",
+  "description": "The canonical Start Menu application launched by Desktop.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["launched", "displayName"],
+  "properties": {
+    "launched": { "type": "boolean" },
+    "displayName": { "type": "string" }
+  }
+}

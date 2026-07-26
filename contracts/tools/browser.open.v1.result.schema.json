@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/browser.open.v1.result.schema.json",
+  "title": "BrowserOpenV1Result",
+  "description": "Desktop-issued handle for an isolated Edge window.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["browserHandle", "windowId", "requestedUrl", "expiresAtUtc"],
+  "properties": {
+    "browserHandle": { "type": "string", "minLength": 32, "maxLength": 32 },
+    "windowId": { "type": "string" },
+    "requestedUrl": { "type": "string" },
+    "expiresAtUtc": { "type": "string", "format": "date-time" }
+  }
+}

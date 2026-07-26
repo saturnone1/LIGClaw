@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_disk_health.v1.schema.json",
+  "title": "system.get_disk_health.v1",
+  "description": "Returns bounded read-only physical disk health and BitLocker protection summaries.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

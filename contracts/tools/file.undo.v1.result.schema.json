@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.undo.v1.result.schema.json",
+  "title": "FileUndoV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["undone", "displayName"],
+  "properties": {
+    "undone": { "type": "boolean" },
+    "displayName": { "type": "string", "maxLength": 255 }
+  }
+}

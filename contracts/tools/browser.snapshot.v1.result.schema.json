@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/browser.snapshot.v1.result.schema.json",
+  "title": "BrowserSnapshotV1Result",
+  "description": "Bounded untrusted accessibility content from an isolated Edge window.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["browserHandle", "windowId", "title", "requestedUrl", "elements", "truncated"],
+  "properties": {
+    "browserHandle": { "type": "string" },
+    "windowId": { "type": "string" },
+    "title": { "type": "string" },
+    "requestedUrl": { "type": "string" },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "controlType", "isEnabled", "isOffscreen"],
+        "properties": {
+          "name": { "type": "string" },
+          "controlType": { "type": "string" },
+          "isEnabled": { "type": "boolean" },
+          "isOffscreen": { "type": "boolean" }
+        }
+      }
+    },
+    "truncated": { "type": "boolean" }
+  }
+}

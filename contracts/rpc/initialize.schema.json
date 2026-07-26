@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["protocolVersion", "hostVersion", "contractHash", "sessionToken"],
   "properties": {
-    "protocolVersion": { "type": "string", "const": "1.4" },
+    "protocolVersion": { "type": "string", "const": "1.13" },
     "hostVersion": { "type": "string", "minLength": 1 },
     "contractHash": { "type": "string", "minLength": 1 },
     "sessionToken": { "type": "string", "minLength": 32 }

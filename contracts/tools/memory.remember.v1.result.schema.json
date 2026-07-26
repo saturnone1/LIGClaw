@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/memory.remember.v1.result.schema.json",
+  "title": "MemoryRememberV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["memoryId", "created"],
+  "properties": {
+    "memoryId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "created": { "type": "boolean" }
+  }
+}

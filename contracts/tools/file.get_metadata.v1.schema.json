@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.get_metadata.v1.schema.json",
+  "title": "file.get_metadata.v1",
+  "description": "Reads bounded metadata for one existing absolute file or directory path without reading content.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path"],
+  "properties": {
+    "path": { "type": "string", "minLength": 3, "maxLength": 32767 }
+  }
+}

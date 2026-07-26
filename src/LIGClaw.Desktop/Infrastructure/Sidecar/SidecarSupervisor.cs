@@ -51,10 +51,12 @@ public sealed class SidecarSupervisor : IAsyncDisposable
         string runId,
         string input,
         string runtime,
-        CancellationToken cancellationToken = default) =>
+        IReadOnlyList<IReadOnlyDictionary<string, object?>>? history = null,
+        CancellationToken cancellationToken = default,
+        IReadOnlyDictionary<string, object?>? providerRouting = null) =>
         GetConnectedClient().InvokeAsync<ConversationStartResult>(
             "conversation.start",
-            new ConversationStartParams(conversationId, runId, input, runtime),
+            new ConversationStartParams(conversationId, runId, input, runtime, history, providerRouting),
             cancellationToken);
 
     public Task<ConversationCancelResult> CancelConversationAsync(
@@ -74,6 +76,22 @@ public sealed class SidecarSupervisor : IAsyncDisposable
         ProviderConfigureParams configuration,
         CancellationToken cancellationToken = default) =>
         GetConnectedClient().InvokeAsync<ProviderTestResult>("provider.test", configuration, cancellationToken);
+
+    public Task<McpConfigureResult> ConfigureMcpAsync(
+        IReadOnlyList<IReadOnlyDictionary<string, object?>> connections,
+        CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<McpConfigureResult>(
+            "mcp.configure",
+            new McpConfigureParams(connections),
+            cancellationToken);
+
+    public Task<McpStatusResult> GetMcpStatusAsync(CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<McpStatusResult>("mcp.status", new McpStatusParams(), cancellationToken);
+
+    public Task<McpCallResult> CallMcpAsync(
+        McpCallParams parameters,
+        CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<McpCallResult>("mcp.call", parameters, cancellationToken);
 
     public Task<ToolResultResult> SubmitToolResultAsync(
         ToolResultParams result,
@@ -245,9 +263,11 @@ public sealed class SidecarSupervisor : IAsyncDisposable
     private Process StartSidecar(string pipeName, string sessionToken)
     {
         var sidecarPath = ResolveSidecarPath();
+        var bundledNode = Path.Combine(AppContext.BaseDirectory, "sidecar", "node.exe");
         var startInfo = new ProcessStartInfo
         {
-            FileName = Environment.GetEnvironmentVariable("LIGCLAW_NODE_PATH") ?? "node",
+            FileName = Environment.GetEnvironmentVariable("LIGCLAW_NODE_PATH") ??
+                (File.Exists(bundledNode) ? bundledNode : "node"),
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
@@ -257,6 +277,8 @@ public sealed class SidecarSupervisor : IAsyncDisposable
         startInfo.ArgumentList.Add(sidecarPath);
         startInfo.ArgumentList.Add("--pipe");
         startInfo.ArgumentList.Add(pipeName);
+        startInfo.ArgumentList.Add("--parent-pid");
+        startInfo.ArgumentList.Add(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
         startInfo.Environment["LIGCLAW_SESSION_TOKEN"] = sessionToken;
         return Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start the agent sidecar.");
     }
@@ -265,6 +287,9 @@ public sealed class SidecarSupervisor : IAsyncDisposable
     {
         var configured = Environment.GetEnvironmentVariable("LIGCLAW_SIDECAR_PATH");
         if (!string.IsNullOrWhiteSpace(configured) && File.Exists(configured)) return Path.GetFullPath(configured);
+
+        var packagedCandidate = Path.Combine(AppContext.BaseDirectory, "sidecar", "dist", "index.js");
+        if (File.Exists(packagedCandidate)) return packagedCandidate;
 
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)

@@ -21,6 +21,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\LIGClaw.Desktop\LIGClaw.Desktop.csproj" />
+    <ProjectReference Include="..\LIGClaw.UiAutomationFixture\LIGClaw.UiAutomationFixture.csproj"
+                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\LIGClaw.Win32AutomationFixture\LIGClaw.Win32AutomationFixture.csproj"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

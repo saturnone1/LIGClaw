@@ -1,0 +1,18 @@
+<Window x:Class="LIGClaw.UiAutomationFixture.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LIGClaw UIA Fixture" Width="440" Height="280" WindowStartupLocation="CenterScreen">
+    <StackPanel Margin="24">
+        <TextBlock Text="UI Automation fixture" FontSize="20" FontWeight="SemiBold" />
+        <TextBox x:Name="FixtureInput" Margin="0,18,0,10"
+                 AutomationProperties.AutomationId="FixtureInput"
+                 AutomationProperties.Name="Fixture input" />
+        <PasswordBox Margin="0,0,0,10"
+                     AutomationProperties.AutomationId="FixturePassword"
+                     AutomationProperties.Name="Fixture password" />
+        <Button Content="Save fixture value" Click="Save_Click"
+                AutomationProperties.AutomationId="SaveButton" />
+        <TextBlock x:Name="FixtureStatus" Margin="0,16,0,0" Text="Fixture idle"
+                   AutomationProperties.AutomationId="FixtureStatus" />
+    </StackPanel>
+</Window>

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/uia.send_text.v1.schema.json",
+  "title": "uia.send_text.v1",
+  "description": "Sends bounded plain Unicode text to one non-password edit element after focus and user-input guards.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["elementId", "text", "reason"],
+  "properties": {
+    "elementId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "text": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}
