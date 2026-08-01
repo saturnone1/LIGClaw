@@ -8,7 +8,7 @@ namespace LIGClaw.Desktop;
 public partial class SettingsPage : System.Windows.Controls.UserControl
 {
     private readonly MainWindow _host;
-    private readonly StartupRegistrationService _startupRegistration = new();
+    private readonly ShellSettingsSectionController _shellSettings;
     private readonly ModelProfileSectionController _modelProfiles = new(new ModelConnectionSettingsStore());
     private readonly McpSettingsSectionController _mcpSettings;
     private readonly SemanticMemorySettingsSectionController _semanticMemorySettings = new(new SemanticMemorySettingsStore());
@@ -25,6 +25,11 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     internal SettingsPage(MainWindow host)
     {
         _host = host;
+        var startupRegistration = new StartupRegistrationService();
+        _shellSettings = new ShellSettingsSectionController(
+            startupRegistration.IsEnabledAsync,
+            startupRegistration.SetEnabledAsync,
+            host.ApplyQuickAccessShortcut);
         _mcpSettings = new McpSettingsSectionController(new McpConnectionSettingsStore(), host.ApplyMcpAsync);
         _wasQuickAccessAvailable = host.IsQuickAccessAvailable;
         _initialShortcut = host.CurrentQuickAccessShortcut;
@@ -53,7 +58,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         _initialized = true;
         try
         {
-            StartWithWindowsCheckBox.IsChecked = await _startupRegistration.IsEnabledAsync();
+            StartWithWindowsCheckBox.IsChecked = await _shellSettings.LoadStartupEnabledAsync();
         }
         catch (Exception)
         {
@@ -126,36 +131,14 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         var failures = new List<string>();
         try
         {
-            if (ShortcutComboBox.SelectedItem is not QuickAccessShortcut shortcut)
-            {
-                failures.Add("빠른 호출 단축키를 선택해 주세요.");
-            }
-            else if ((!_wasQuickAccessAvailable || !StringComparer.Ordinal.Equals(shortcut.Id, _initialShortcut.Id)))
-            {
-                try
-                {
-                    if (!_host.ApplyQuickAccessShortcut(shortcut))
-                        failures.Add($"{shortcut.DisplayName}은 다른 프로그램에서 사용 중이에요.");
-                    else
-                    {
-                        _initialShortcut = shortcut;
-                        _wasQuickAccessAvailable = true;
-                    }
-                }
-                catch (Exception)
-                {
-                    failures.Add("빠른 호출 단축키 설정을 저장하지 못했어요.");
-                }
-            }
-
-            try
-            {
-                await _startupRegistration.SetEnabledAsync(StartWithWindowsCheckBox.IsChecked == true);
-            }
-            catch (Exception)
-            {
-                failures.Add("Windows 자동 실행 설정을 저장하지 못했어요.");
-            }
+            var shellResult = await _shellSettings.SaveAsync(
+                ShortcutComboBox.SelectedItem as QuickAccessShortcut,
+                _initialShortcut,
+                _wasQuickAccessAvailable,
+                StartWithWindowsCheckBox.IsChecked == true);
+            _initialShortcut = shellResult.Shortcut;
+            _wasQuickAccessAvailable = shellResult.IsShortcutAvailable;
+            failures.AddRange(shellResult.Failures);
 
             try
             {
