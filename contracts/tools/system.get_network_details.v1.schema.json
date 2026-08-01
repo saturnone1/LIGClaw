@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_network_details.v1.schema.json",
+  "title": "system.get_network_details.v1",
+  "description": "Requests current network addresses and connected Wi-Fi SSID after context approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reason"],
+  "properties": {
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

@@ -40,6 +40,122 @@ public sealed class SystemObservationToolTests
     }
 
     [Fact]
+    public void Network_details_reader_returns_current_addresses_without_prompting_for_wifi_in_tests()
+    {
+        var result = new WindowsNetworkDetailsReader(
+            new FakeWifiSsidReader(new WifiSsidReadResult("not_applicable", new Dictionary<Guid, string>())))
+            .Read();
+
+        Assert.Equal("available", result.ProviderStatus);
+        Assert.Equal("not_applicable", result.WifiSsidStatus);
+        Assert.InRange(result.Adapters.Count, 0, 16);
+        Assert.All(result.Adapters, adapter =>
+        {
+            Assert.InRange(adapter.Addresses.Count, 0, 8);
+            Assert.InRange(adapter.DnsServers.Count, 0, 4);
+            Assert.InRange(adapter.Gateways.Count, 0, 4);
+        });
+    }
+
+    [Fact]
+    public async Task Network_details_requires_context_approval_and_bounds_every_address_list()
+    {
+        var adapter = new NetworkDetailsAdapterSnapshot(
+            "Wi-Fi",
+            "wireless80211",
+            Enumerable.Range(1, 12).Select(index => $"192.0.2.{index}/24").ToArray(),
+            Enumerable.Range(1, 6).Select(index => $"2001:db8::{index}").ToArray(),
+            Enumerable.Range(1, 6).Select(index => $"198.51.100.{index}").ToArray(),
+            "Office WiFi");
+        var snapshot = new NetworkDetailsSnapshot("available", "available", true, [adapter], false);
+        var tool = new SystemGetNetworkDetailsTool(new FakeNetworkDetailsReader(snapshot));
+        var host = Host(tool);
+        var invocation = NetworkDetailsInvocation("연결 문제를 확인하기 위해");
+
+        var approval = host.CreateApprovalPrompt(invocation);
+        var result = await host.ExecuteAsync(invocation);
+
+        Assert.True(approval.Success, approval.Error);
+        Assert.Equal(TimeSpan.FromSeconds(60), tool.Timeout);
+        var prompt = Assert.IsType<WindowsToolApprovalPrompt>(approval.Prompt);
+        Assert.Equal("R1", prompt.Risk);
+        Assert.Null(prompt.GrantScope);
+        Assert.Contains("위치", prompt.Details, StringComparison.Ordinal);
+        Assert.Contains("비밀번호", prompt.Details, StringComparison.Ordinal);
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(true, result.Output["truncated"]);
+        var output = Assert.Single(Assert.IsAssignableFrom<IEnumerable<IReadOnlyDictionary<string, object?>>>(result.Output["adapters"]));
+        Assert.Equal("Office WiFi", output["wifiSsid"]);
+        Assert.Equal(8, Assert.IsAssignableFrom<IEnumerable<string>>(output["addresses"]).Count());
+        Assert.Equal(4, Assert.IsAssignableFrom<IEnumerable<string>>(output["dnsServers"]).Count());
+        Assert.Equal(4, Assert.IsAssignableFrom<IEnumerable<string>>(output["gateways"]).Count());
+        Assert.DoesNotContain("macAddress", output.Keys);
+        Assert.DoesNotContain("bssid", output.Keys);
+        Assert.DoesNotContain("credential", output.Keys);
+        Assert.DoesNotContain("history", output.Keys);
+    }
+
+    [Fact]
+    public async Task Network_details_isolates_wifi_location_permission_from_address_results()
+    {
+        var snapshot = new NetworkDetailsSnapshot(
+            "available",
+            "permission_required",
+            true,
+            [new("Ethernet", "ethernet", ["192.0.2.10/24"], ["192.0.2.53"], ["192.0.2.1"], null)],
+            false);
+        var host = Host(new SystemGetNetworkDetailsTool(new FakeNetworkDetailsReader(snapshot)));
+
+        var result = await host.ExecuteAsync(NetworkDetailsInvocation("DNS 문제 확인"));
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("permission_required", result.Output["wifiSsidStatus"]);
+        Assert.Single(Assert.IsAssignableFrom<IEnumerable<IReadOnlyDictionary<string, object?>>>(result.Output["adapters"]));
+    }
+
+    [Theory]
+    [InlineData(19_045)]
+    [InlineData(22_631)]
+    public async Task Network_details_uses_the_common_adapter_on_Windows_10_and_11(int build)
+    {
+        var profile = WindowsPlatformProfile.Classify(10, 0, build, isWorkstation: true);
+        var snapshot = new NetworkDetailsSnapshot("unavailable", "unavailable", false, [], false);
+        var host = new WindowsToolHost(profile, [new SystemGetNetworkDetailsTool(new FakeNetworkDetailsReader(snapshot))]);
+
+        var result = await host.ExecuteAsync(NetworkDetailsInvocation("연결 상태 확인"));
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("unavailable", result.Output["providerStatus"]);
+    }
+
+    [Fact]
+    public void Wifi_ssid_decoder_accepts_only_bounded_valid_utf8_without_control_characters()
+    {
+        var valid = System.Text.Encoding.UTF8.GetBytes("Office WiFi");
+        var invalidUtf8 = new byte[] { 0xC3, 0x28 };
+        var control = System.Text.Encoding.UTF8.GetBytes("Office\nWiFi");
+
+        Assert.Equal("Office WiFi", WindowsWifiSsidReader.DecodeSsid(valid, valid.Length));
+        Assert.Null(WindowsWifiSsidReader.DecodeSsid(invalidUtf8, invalidUtf8.Length));
+        Assert.Null(WindowsWifiSsidReader.DecodeSsid(control, control.Length));
+        Assert.Null(WindowsWifiSsidReader.DecodeSsid(new byte[33], 33));
+    }
+
+    [Fact]
+    public async Task Network_details_rejects_missing_or_extra_context_input()
+    {
+        var host = Host(new SystemGetNetworkDetailsTool(new FakeNetworkDetailsReader(
+            new NetworkDetailsSnapshot("available", "not_applicable", true, [], false))));
+        var invalid = NetworkDetailsInvocation("이유") with
+        {
+            Input = new Dictionary<string, object?> { ["reason"] = "이유", ["includeCredentials"] = true },
+        };
+
+        Assert.False(host.CreateApprovalPrompt(invalid).Success);
+        Assert.False((await host.ExecuteAsync(invalid)).Success);
+    }
+
+    [Fact]
     public async Task Process_resource_status_requires_a_clear_one_time_context_approval()
     {
         var snapshot = new ProcessResourceStatusSnapshot(
@@ -366,6 +482,14 @@ public sealed class SystemObservationToolTests
         "R1",
         new Dictionary<string, object?> { ["maxResults"] = maximumResults, ["reason"] = reason });
 
+    private static LIGClaw.Contracts.Generated.ToolInvokeParams NetworkDetailsInvocation(string reason) => new(
+        "tool-call",
+        "conversation",
+        "run",
+        "system.get_network_details.v1",
+        "R1",
+        new Dictionary<string, object?> { ["reason"] = reason });
+
     private sealed class FakeStorageReader : IStorageStatusReader
     {
         public IReadOnlyList<StorageVolumeSnapshot> Read() =>
@@ -392,6 +516,16 @@ public sealed class SystemObservationToolTests
             MaximumResults = maximumResults;
             return Task.FromResult(snapshot);
         }
+    }
+
+    private sealed class FakeWifiSsidReader(WifiSsidReadResult result) : IWifiSsidReader
+    {
+        public WifiSsidReadResult Read() => result;
+    }
+
+    private sealed class FakeNetworkDetailsReader(NetworkDetailsSnapshot snapshot) : INetworkDetailsReader
+    {
+        public NetworkDetailsSnapshot Read() => snapshot;
     }
 
     private sealed class FakeNetworkReader : INetworkStatusReader

@@ -7,8 +7,8 @@ namespace LIGClaw.Contracts.Generated;
 
 public static class ContractMetadata
 {
-    public const string ProtocolVersion = "1.15";
-    public const string Hash = "0f699521d06925c09033f4791b63801c8ced29758e101da314c5efba2add3cde";
+    public const string ProtocolVersion = "1.16";
+    public const string Hash = "102fd2312cac5c4c0cb08848dfbf93c6258fba12d8cccb45fbef145de76a5f85";
 }
 
 public sealed record AgentJobCancelV1(
@@ -439,6 +439,9 @@ public sealed record SubagentRunV1Result(
 
 public sealed record SystemGetDiskHealthV1();
 
+public sealed record SystemGetNetworkDetailsV1(
+    [property: JsonPropertyName("reason")] string Reason);
+
 public sealed record SystemGetNetworkStatusV1();
 
 public sealed record SystemGetPowerStatusV1();
@@ -468,6 +471,13 @@ public sealed record SystemGetDiskHealthV1Result(
     [property: JsonPropertyName("physicalDisks")] IReadOnlyList<IReadOnlyDictionary<string, object?>> PhysicalDisks,
     [property: JsonPropertyName("bitLockerProviderStatus")] string BitLockerProviderStatus,
     [property: JsonPropertyName("bitLockerVolumes")] IReadOnlyList<IReadOnlyDictionary<string, object?>> BitLockerVolumes);
+
+public sealed record SystemGetNetworkDetailsV1Result(
+    [property: JsonPropertyName("providerStatus")] string ProviderStatus,
+    [property: JsonPropertyName("wifiSsidStatus")] string WifiSsidStatus,
+    [property: JsonPropertyName("networkAvailable")] bool NetworkAvailable,
+    [property: JsonPropertyName("adapters")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Adapters,
+    [property: JsonPropertyName("truncated")] bool Truncated);
 
 public sealed record SystemGetNetworkStatusV1Result(
     [property: JsonPropertyName("networkAvailable")] bool NetworkAvailable,

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_network_details.v1.result.schema.json",
+  "title": "SystemGetNetworkDetailsV1Result",
+  "description": "Bounded current network configuration without credentials or hardware addresses.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["providerStatus", "wifiSsidStatus", "networkAvailable", "adapters", "truncated"],
+  "properties": {
+    "providerStatus": { "type": "string", "enum": ["available", "unavailable"] },
+    "wifiSsidStatus": { "type": "string", "enum": ["available", "not_applicable", "permission_required", "unavailable"] },
+    "networkAvailable": { "type": "boolean" },
+    "adapters": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "interfaceType", "addresses", "dnsServers", "gateways"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "interfaceType": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "addresses": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 96 } },
+          "dnsServers": { "type": "array", "maxItems": 4, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+          "gateways": { "type": "array", "maxItems": 4, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+          "wifiSsid": { "type": "string", "minLength": 1, "maxLength": 32 }
+        }
+      }
+    },
+    "truncated": { "type": "boolean" }
+  }
+}

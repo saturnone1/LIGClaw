@@ -9,6 +9,10 @@ interface ProcessResourceInput {
   readonly reason: string;
 }
 
+interface NetworkDetailsInput {
+  readonly reason: string;
+}
+
 export function createSystemTools(
   bridge: DesktopToolInvoker,
   conversationId: string,
@@ -170,6 +174,28 @@ export function createSystemTools(
       }, context.signal);
     },
   };
+  const systemGetNetworkDetails: AgentTool<NetworkDetailsInput, Readonly<Record<string, unknown>>> = {
+    name: "system_get_network_details",
+    description: "사용자 승인 후 현재 연결된 어댑터의 IP·DNS·게이트웨이와 연결된 Wi-Fi 이름을 확인합니다. 자격 증명, MAC/BSSID와 연결 이력은 읽지 않습니다.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["reason"],
+      properties: { reason: reasonSchema },
+    },
+    timeoutMs: DESKTOP_TOOL_RESPONSE_TIMEOUT_MS,
+    retryable: false,
+    async execute(input: NetworkDetailsInput, context: DesktopToolContext) {
+      return await bridge.invoke({
+        ...(context.toolCallId ? { toolCallId: context.toolCallId } : {}),
+        conversationId,
+        runId,
+        name: desktopToolName("system_get_network_details"),
+        risk: "R1",
+        input: { reason: input.reason },
+      }, context.signal);
+    },
+  };
   const systemShowNotification: AgentTool<NotificationInput, Readonly<Record<string, unknown>>> = {
     name: "system_show_notification",
     description: "사용자 승인을 받은 뒤 이 PC에 Windows 알림 하나를 표시합니다. 알림 제목, 내용, 표시 이유를 모두 제공해야 합니다.",
@@ -233,5 +259,5 @@ export function createSystemTools(
       }, context.signal);
     },
   };
-  return [systemGetStatus, systemGetPowerStatus, systemGetStorageStatus, systemGetDiskHealth, systemGetSecurityStatus, systemGetResourceStatus, systemGetProcessResourceStatus, systemGetNetworkStatus, systemShowNotification, systemOpenSettings, systemSessionAction];
+  return [systemGetStatus, systemGetPowerStatus, systemGetStorageStatus, systemGetDiskHealth, systemGetSecurityStatus, systemGetResourceStatus, systemGetProcessResourceStatus, systemGetNetworkStatus, systemGetNetworkDetails, systemShowNotification, systemOpenSettings, systemSessionAction];
 }

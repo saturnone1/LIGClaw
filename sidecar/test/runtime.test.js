@@ -631,6 +631,13 @@ for (const observation of [
     expectedInput: { maxResults: 5, reason: "느린 PC 원인을 확인하기 위해" },
     expectedRisk: "R1",
   },
+  {
+    input: "__test_network_details__",
+    canonicalName: "system.get_network_details.v1",
+    output: { providerStatus: "available", wifiSsidStatus: "permission_required", networkAvailable: true, adapters: [], truncated: false },
+    expectedInput: { reason: "네트워크 연결 문제를 확인하기 위해" },
+    expectedRisk: "R1",
+  },
 ]) {
   test(`Cline routes ${observation.canonicalName} through the Desktop bridge`, async () => {
     const invocations = [];

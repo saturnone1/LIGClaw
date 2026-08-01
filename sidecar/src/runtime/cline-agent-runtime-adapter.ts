@@ -625,6 +625,26 @@ export function createDeterministicSpikeModel(): AgentModel {
         yield { type: "finish", reason: "stop" };
         return;
       }
+      if (userText === "__test_network_details__") {
+        const toolResult = request.messages
+          .flatMap((message: AgentMessage) => message.content)
+          .find((part: AgentMessage["content"][number]) =>
+            part.type === "tool-result" && part.toolName === "system_get_network_details"
+          );
+        if (!toolResult || toolResult.type !== "tool-result") {
+          yield {
+            type: "tool-call-delta",
+            toolCallId: "deterministic-network-details-call",
+            toolName: "system_get_network_details",
+            input: { reason: "네트워크 연결 문제를 확인하기 위해" },
+          };
+          yield { type: "finish", reason: "tool-calls" };
+          return;
+        }
+        yield { type: "text-delta", text: "현재 네트워크 주소와 연결 설정을 확인했습니다." };
+        yield { type: "finish", reason: "stop" };
+        return;
+      }
       if (userText === "__test_list_windows__") {
         const toolResult = request.messages
           .flatMap((message: AgentMessage) => message.content)
