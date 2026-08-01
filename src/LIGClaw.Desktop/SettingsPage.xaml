@@ -26,22 +26,42 @@
             </StackPanel>
 
             <Border Grid.Row="1" Margin="0,24,0,0" Style="{StaticResource CardStyle}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="BEHAVIOR / STARTUP" />
-                        <TextBlock Style="{StaticResource CardTitleStyle}" Text="Windows 시작 시 자동 실행" />
-                        <TextBlock Margin="0,5,18,0" Style="{StaticResource CaptionTextStyle}"
-                                   Text="로그인하면 창을 띄우지 않고 트레이에서 준비합니다." />
-                    </StackPanel>
-                    <CheckBox x:Name="StartWithWindowsCheckBox" Grid.Column="1"
-                              AutomationProperties.Name="Windows 시작 시 LIGClaw 자동 실행"
-                              Style="{StaticResource ToggleSwitchStyle}"
-                              VerticalAlignment="Center" />
-                </Grid>
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="BEHAVIOR / STARTUP" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="Windows 시작 시 자동 실행" />
+                            <TextBlock Margin="0,5,18,0" Style="{StaticResource CaptionTextStyle}"
+                                       Text="로그인하면 창을 띄우지 않고 트레이에서 준비합니다." />
+                        </StackPanel>
+                        <CheckBox x:Name="StartWithWindowsCheckBox" Grid.Column="1"
+                                  AutomationProperties.Name="Windows 시작 시 LIGClaw 자동 실행"
+                                  Style="{StaticResource ToggleSwitchStyle}"
+                                  VerticalAlignment="Center" />
+                    </Grid>
+                    <Border Margin="0,18,0,18" Height="1" Background="{DynamicResource DividerBrush}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="VOICE / MICROPHONE" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="누르고 말해서 입력" />
+                            <TextBlock Margin="0,5,18,0" Style="{StaticResource CaptionTextStyle}"
+                                       Text="기본은 꺼짐입니다. 켜면 버튼을 누르는 동안만 Windows 음성 인식을 사용하며 원시 오디오는 저장하지 않습니다."
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <CheckBox x:Name="VoiceInputEnabledCheckBox" Grid.Column="1"
+                                  AutomationProperties.Name="누르고 말하기 음성 입력 사용"
+                                  Style="{StaticResource ToggleSwitchStyle}"
+                                  VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
             </Border>
 
             <Border Grid.Row="2" Margin="0,14,0,0" Style="{StaticResource CardStyle}">

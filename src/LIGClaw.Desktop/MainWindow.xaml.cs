@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -24,6 +25,7 @@ using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
 using Button = System.Windows.Controls.Button;
 using FontFamily = System.Windows.Media.FontFamily;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 namespace LIGClaw.Desktop;
 
@@ -40,6 +42,9 @@ public partial class MainWindow : Window
     private readonly IScreenCapturePicker _screenCapturePicker = new WindowsScreenCapturePicker();
     private readonly IScreenTextRecognizer _screenTextRecognizer = new WindowsOcrScreenTextRecognizer();
     private readonly PreparedSensitiveContextStore _sensitiveContextStore = new();
+    private readonly IVoiceInputSettingsStore _voiceInputSettingsStore = new VoiceInputSettingsStore();
+    private readonly IPushToTalkRecognizer _pushToTalkRecognizer = new WindowsPushToTalkRecognizer();
+    private readonly PushToTalkInteractionController _pushToTalk;
     private readonly ObservableCollection<string> _diagnostics = [];
     private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
     private readonly IConversationRepository _conversationRepository;
@@ -68,9 +73,11 @@ public partial class MainWindow : Window
     private bool _isModelConfigured;
     private bool _refreshingConversations;
     private bool _isPreparingScreenContext;
+    private bool _voiceInputEnabled;
     private readonly LatestRequestController _conversationListRequests = new();
     private readonly StringBuilder _transcriptMarkdown = new();
     private readonly DispatcherTimer _transcriptRenderTimer;
+    private readonly DispatcherTimer _voiceLimitTimer;
     private bool _pendingTranscriptFollowOutput;
     private double? _pendingTranscriptVerticalOffset;
     private ActivityView? _activityView;
@@ -83,6 +90,7 @@ public partial class MainWindow : Window
     internal MainWindow(IUserNotificationService notifications)
     {
         _notifications = notifications;
+        _pushToTalk = new PushToTalkInteractionController(_pushToTalkRecognizer);
         _conversationRepository = _conversationStore.Conversations;
         _operationalRepository = _conversationStore.Operations;
         _personalMemoryRepository = _conversationStore.Memories;
@@ -113,6 +121,14 @@ public partial class MainWindow : Window
         {
             IsEnabled = false,
         };
+        _voiceLimitTimer = new DispatcherTimer(
+            TimeSpan.FromSeconds(60),
+            DispatcherPriority.Normal,
+            (_, _) => _ = EndVoiceInputAsync(timedOut: true),
+            Dispatcher)
+        {
+            IsEnabled = false,
+        };
         _sidecar.StatusChanged += Sidecar_StatusChanged;
         _sidecar.DiagnosticMessage += Sidecar_DiagnosticMessage;
         _sidecar.AgentEventReceived += Sidecar_AgentEventReceived;
@@ -135,6 +151,15 @@ public partial class MainWindow : Window
 
     internal void InitializeBackgroundServices()
     {
+        try
+        {
+            ApplyVoiceInputEnabled(_voiceInputSettingsStore.Load().Enabled);
+        }
+        catch (Exception exception)
+        {
+            _voiceInputEnabled = false;
+            AddDiagnostic($"음성 입력 설정을 불러오지 못했습니다: {exception.GetType().Name}");
+        }
         try
         {
             _platformProfile = WindowsPlatformDetector.Detect();
@@ -258,6 +283,13 @@ public partial class MainWindow : Window
     {
         ConversationInput.Focus();
         Keyboard.Focus(ConversationInput);
+    }
+
+    internal void ApplyVoiceInputEnabled(bool enabled)
+    {
+        _voiceInputEnabled = enabled;
+        if (!enabled && _pushToTalk.IsActive) _ = CancelVoiceInputAsync();
+        UpdateCommandState();
     }
 
     internal void ShowUnexpectedUiFailure()
@@ -877,6 +909,155 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void VoiceInputButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _pushToTalk.IsActive) return;
+        e.Handled = true;
+        _ = VoiceInputButton.CaptureMouse();
+        await BeginVoiceInputAsync();
+    }
+
+    private async void VoiceInputButton_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_pushToTalk.IsActive) return;
+        e.Handled = true;
+        if (VoiceInputButton.IsMouseCaptured) VoiceInputButton.ReleaseMouseCapture();
+        await EndVoiceInputAsync();
+    }
+
+    private async void VoiceInputButton_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (!_pushToTalk.IsActive) return;
+        await EndVoiceInputAsync();
+    }
+
+    private async void VoiceInputButton_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Space or Key.Enter) || e.IsRepeat || _pushToTalk.IsActive) return;
+        e.Handled = true;
+        await BeginVoiceInputAsync();
+    }
+
+    private async void VoiceInputButton_PreviewKeyUp(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Space or Key.Enter) || !_pushToTalk.IsActive) return;
+        e.Handled = true;
+        await EndVoiceInputAsync();
+    }
+
+    private void VoiceInputButton_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (!_pushToTalk.IsActive)
+            SetRunStatus("음성 입력 버튼은 마우스나 Space 키를 누른 채 사용해 주세요.");
+    }
+
+    private async Task BeginVoiceInputAsync()
+    {
+        if (!_voiceInputEnabled || _pushToTalk.IsActive || _conversationRun.IsRunning) return;
+        VoiceInputButton.Content = "마이크 준비 중…";
+        SetRunStatus("마이크를 준비하고 있어요. 버튼을 누른 채 기다려 주세요…");
+        _voiceLimitTimer.Start();
+        UpdateCommandState();
+        try
+        {
+            var result = await _pushToTalk.PressAsync();
+            if (_pushToTalk.IsEnding) return;
+            if (result.Status != PushToTalkStatus.Listening)
+            {
+                SetRunStatus(result.Error ?? "음성 입력을 시작하지 못했어요.");
+                ResetVoiceInputState();
+                return;
+            }
+
+            VoiceInputButton.Content = "듣는 중…";
+            SetRunStatus("듣고 있어요. 말을 마치면 버튼에서 손을 떼세요.");
+        }
+        catch (Exception exception) when (exception is COMException or InvalidOperationException or ObjectDisposedException)
+        {
+            AddDiagnostic($"음성 입력 시작 실패: {exception.GetType().Name}");
+            SetRunStatus("Windows 음성 입력을 시작하지 못했어요.");
+            ResetVoiceInputState();
+        }
+    }
+
+    private async Task EndVoiceInputAsync(bool timedOut = false)
+    {
+        if (!_pushToTalk.IsActive || _pushToTalk.IsEnding) return;
+        _voiceLimitTimer.Stop();
+        VoiceInputButton.Content = "글자로 바꾸는 중…";
+        SetRunStatus(timedOut
+            ? "60초 제한에 도달해 음성 입력을 마치고 있어요…"
+            : "말한 내용을 글자로 바꾸고 있어요…");
+        try
+        {
+            var result = await _pushToTalk.ReleaseAsync();
+            if (result is null) return;
+            if (result.Status == PushToTalkStatus.Recognized && !string.IsNullOrWhiteSpace(result.Text))
+            {
+                if (AppendVoiceInput(result.Text))
+                    SetRunStatus(result.WasTruncated
+                        ? "말한 내용이 길어 안전 한도까지만 요청에 추가했어요."
+                        : "말한 내용을 요청에 추가했어요.");
+            }
+            else
+            {
+                SetRunStatus(result.Error ?? "인식된 음성이 없어요.");
+            }
+        }
+        catch (Exception exception) when (exception is COMException or InvalidOperationException or ObjectDisposedException)
+        {
+            AddDiagnostic($"음성 입력 종료 실패: {exception.GetType().Name}");
+            SetRunStatus("음성 입력을 안전하게 마치지 못했어요. 다시 시도해 주세요.");
+            await _pushToTalk.CancelAsync();
+        }
+        finally
+        {
+            ResetVoiceInputState();
+        }
+    }
+
+    private async Task CancelVoiceInputAsync()
+    {
+        if (!_pushToTalk.IsActive) return;
+        _voiceLimitTimer.Stop();
+        try
+        {
+            await _pushToTalk.CancelAsync();
+        }
+        finally
+        {
+            SetRunStatus("음성 입력을 취소했어요.");
+            ResetVoiceInputState();
+        }
+    }
+
+    private bool AppendVoiceInput(string text)
+    {
+        var separator = string.IsNullOrWhiteSpace(ConversationInput.Text) ? string.Empty : " ";
+        var available = ConversationInput.MaxLength - ConversationInput.Text.Length - separator.Length;
+        if (available <= 0)
+        {
+            SetRunStatus("요청 입력란이 가득 차 말한 내용을 추가하지 못했어요.");
+            return false;
+        }
+
+        var end = Math.Min(text.Length, available);
+        if (end < text.Length && end > 0 && char.IsHighSurrogate(text[end - 1])) end--;
+        ConversationInput.AppendText(separator + text[..end]);
+        ConversationInput.CaretIndex = ConversationInput.Text.Length;
+        FocusRequestInput();
+        return true;
+    }
+
+    private void ResetVoiceInputState()
+    {
+        _voiceLimitTimer.Stop();
+        VoiceInputButton.Content = "누르고 말하기";
+        if (VoiceInputButton.IsMouseCaptured) VoiceInputButton.ReleaseMouseCapture();
+        UpdateCommandState();
+    }
+
     private bool AppendScreenContextToInput(string text)
     {
         const string heading = "[선택한 화면에서 확인한 글자]\n";
@@ -1340,12 +1521,13 @@ public partial class MainWindow : Window
     private void UpdateCommandState()
     {
         if (!IsInitialized) return;
-        SendButton.IsEnabled = _isConnected && _isModelConfigured && !_conversationRun.IsRunning && !string.IsNullOrWhiteSpace(ConversationInput.Text);
+        SendButton.IsEnabled = _isConnected && _isModelConfigured && !_conversationRun.IsRunning && !_pushToTalk.IsActive && !string.IsNullOrWhiteSpace(ConversationInput.Text);
         CancelButton.Visibility = _conversationRun.IsRunning ? Visibility.Visible : Visibility.Collapsed;
         CancelButton.IsEnabled = _conversationRun.IsRunning && !_conversationRun.IsCancelling;
         TimelineProgressCard.Visibility = _conversationRun.IsRunning ? Visibility.Visible : Visibility.Collapsed;
-        NewConversationButton.IsEnabled = !_conversationRun.IsRunning;
-        ScreenContextButton.IsEnabled = !_conversationRun.IsRunning && !_isPreparingScreenContext;
+        NewConversationButton.IsEnabled = !_conversationRun.IsRunning && !_pushToTalk.IsActive;
+        ScreenContextButton.IsEnabled = !_conversationRun.IsRunning && !_isPreparingScreenContext && !_pushToTalk.IsActive;
+        VoiceInputButton.IsEnabled = _voiceInputEnabled && !_conversationRun.IsRunning && !_isPreparingScreenContext;
     }
 
     private void SetRunStatus(string status)
@@ -1512,6 +1694,7 @@ public partial class MainWindow : Window
     private async void MainWindow_Closed(object? sender, EventArgs e)
     {
         _transcriptRenderTimer.Stop();
+        _voiceLimitTimer.Stop();
         _conversationListRequests.Dispose();
         _diagnosticsWindow?.Close();
         _sidecar.StatusChanged -= Sidecar_StatusChanged;
@@ -1536,6 +1719,14 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             System.Diagnostics.Debug.WriteLine($"Sidecar 종료 실패: {exception.GetType().Name}");
+        }
+        try
+        {
+            await _pushToTalkRecognizer.DisposeAsync();
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Debug.WriteLine($"음성 입력 서비스 종료 실패: {exception.GetType().Name}");
         }
         try
         {

@@ -22,6 +22,8 @@ public sealed class Phase5PackagingTests
         Assert.Equal("false", startupTask.Attribute("Enabled")?.Value);
         Assert.Contains(document.Descendants(restricted + "Capability"),
             capability => capability.Attribute("Name")?.Value == "runFullTrust");
+        Assert.Contains(document.Descendants(foundation + "DeviceCapability"),
+            capability => capability.Attribute("Name")?.Value == "microphone");
     }
 
     [Fact]

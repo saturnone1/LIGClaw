@@ -61,7 +61,7 @@ internal sealed class WindowsOcrScreenTextRecognizer : IScreenTextRecognizer
         if (encodedImage.IsEmpty || encodedImage.Length > PreparedSensitiveContextStore.MaximumEncodedImageBytes)
             return new(ScreenTextRecognitionStatus.Failed, Error: "화면 이미지 형식이 올바르지 않아요.");
 
-        if (!HasPackageIdentity())
+        if (!WindowsPackageIdentity.IsAvailable())
             return new(
                 ScreenTextRecognitionStatus.PackageIdentityRequired,
                 Error: "설치된 LIGClaw에서만 Windows 글자 인식을 사용할 수 있어요.");
@@ -149,20 +149,4 @@ internal sealed class WindowsOcrScreenTextRecognizer : IScreenTextRecognizer
         }
     }
 
-    private static bool HasPackageIdentity()
-    {
-        try
-        {
-            _ = Package.Current.Id.FullName;
-            return true;
-        }
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
-        catch (COMException)
-        {
-            return false;
-        }
-    }
 }

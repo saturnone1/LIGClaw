@@ -160,6 +160,22 @@ public sealed partial class XamlResourceTests
     }
 
     [Fact]
+    public void ComposerExposesOptInAccessiblePushToTalk()
+    {
+        var desktop = Path.Combine(FindRepositoryRoot(), "src", "LIGClaw.Desktop");
+        var mainXaml = File.ReadAllText(Path.Combine(desktop, "MainWindow.xaml"));
+        var settingsXaml = File.ReadAllText(Path.Combine(desktop, "SettingsPage.xaml"));
+
+        Assert.Contains("x:Name=\"VoiceInputButton\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"누르고 말해서 요청 입력\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("PreviewMouseLeftButtonDown=\"VoiceInputButton_PreviewMouseLeftButtonDown\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("PreviewKeyDown=\"VoiceInputButton_PreviewKeyDown\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"VoiceInputEnabledCheckBox\"", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("기본은 꺼짐입니다", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("원시 오디오는 저장하지 않습니다", settingsXaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ViewXamlUsesSemanticResourcesInsteadOfRawHexColors()
     {
         var desktop = Path.Combine(FindRepositoryRoot(), "src", "LIGClaw.Desktop");

@@ -151,14 +151,15 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ## C-5 — 명시적 사용자 문맥과 입출력
 
-상태: ADR 0033의 개인정보·package identity 경계, 시스템 picker 1회 캡처, preview crop과 로컬 OCR 수직 경로까지 구현했고 실기 acceptance·음성이 남았다.
+상태: ADR 0033의 개인정보·package identity 경계, 시스템 picker 1회 캡처, preview crop, 로컬 OCR, opt-in 누르고 말하기 STT까지 구현했다. 응답별 TTS와 설치 실행·Windows 10/11 실기 acceptance가 남았다.
 
 1. **민감 컨텍스트 수명·preview — 구현 완료**: Desktop 메모리 전용 `PreparedSensitiveContext`가 4,096px/16MP/8MiB 이미지·32KiB strict UTF-8 OCR 상한, conversation/run/tool-call 결합, 2분 자동 만료, 교체·거부·완료·종료 zeroing을 보장한다. 전용 preview 창은 이미지와 OCR을 함께 보여 주고 선택 마스킹·전체 삭제·32KiB 재검증을 제공하며 취소가 기본이다. 이미지가 표시되지 않으면 전송을 막고 확인한 OCR 글자만 결과로 내보낸다.
 2. **1회 캡처·선택 영역 — 구현 완료, 실기 matrix 대기**: composer의 명시적 버튼이 Windows 시스템 picker를 열고 사용자가 고른 창·디스플레이만 1회 캡처한다. D3D11 hardware→WARP fallback, 10초 timeout, 캡처 전·후 크기와 PNG 상한, 취소·미지원·실패 분리를 적용했다. preview의 드래그 영역은 DPI·letterbox를 고려해 원본 픽셀로 매핑하며 crop 실패 시 기존 내용을 유지하고 전체 화면 복원을 제공한다.
 3. **Windows 로컬 OCR — 구현 완료, 설치 실행 acceptance 대기**: package identity가 없으면 설치 필요를 명시하고 cloud로 우회하지 않는다. OCR 입력만 엔진 한도까지 비율 축소하고 원본 preview를 유지한다. crop한 영역은 다시 OCR하고 성공 시에만 이미지·텍스트를 함께 교체한다. Unicode 경계의 32KiB 제한 뒤 사용자가 확인·마스킹한 텍스트만 composer에 합류한다. store에서 preview로 전달된 컨텍스트도 자체 타이머로 2분 뒤 zeroing·창 닫기를 수행한다.
-4. opt-in 누르고 말하기 STT와 응답별 TTS, 방해 금지 시간
-5. Explorer 선택 텍스트/우클릭 진입점
-6. opt-in 반복 작업 제안
+4. **누르고 말하기 STT — 구현 완료, 설치 실행 acceptance 대기**: 설정 기본값은 꺼짐이며 사용자가 켠 경우에만 composer에서 마우스 또는 Space/Enter를 누르는 동안 Windows 연속 받아쓰기를 사용한다. release·capture 상실·취소·60초 timeout에 종료하고 최종 인식 텍스트만 16,000자로 제한해 요청에 추가한다. package identity·마이크 권한·언어·네트워크 실패를 구분하며 PCM과 중간 결과는 저장하거나 Sidecar에 전달하지 않는다.
+5. 응답별 TTS와 별도 opt-in 자동 읽기·방해 금지 시간
+6. Explorer 선택 텍스트/우클릭 진입점
+7. opt-in 반복 작업 제안
 
 화면·OCR·음성 원문은 SQLite·진단·감사에 저장하지 않는다. 모델이 고른 좌표·HWND 캡처, 인증 입력, 백그라운드 상시 캡처는 추가하지 않는다. OCR package identity가 없으면 구조화된 제한으로 알리고 cloud OCR이나 임의 executable로 우회하지 않는다.
 
@@ -188,4 +189,4 @@ C-0 기준선 복구
   └─ C-3 외부 OS·서명·UIA gate (환경 준비 시 병행)
 ```
 
-다음 실제 구현 진입점은 C-5 누르고 말하기 STT이며, TTS를 별도 opt-in 수직 기능으로 이어서 구현한다. 현재 실행 중인 사용자 앱이 종료되면 새 composer picker·crop의 UI smoke를 재검증하고, Windows SDK가 있는 환경에서 unsigned MSIX와 release manifest를 생성한다. C-3 Windows 10 실기기·production 서명·실앱 UIA와 설치 상태 OCR gate는 환경이 준비되는 대로 병행한다.
+다음 실제 구현 진입점은 C-5 응답별 TTS이며, 자동 읽기와 방해 금지 시간은 별도 opt-in으로 분리한다. 현재 실행 중인 사용자 앱이 종료되면 새 composer picker·crop·음성 입력의 UI smoke를 재검증하고, Windows SDK가 있는 환경에서 unsigned MSIX와 release manifest를 생성한다. C-3 Windows 10 실기기·production 서명·실앱 UIA와 설치 상태 OCR/STT gate는 환경이 준비되는 대로 병행한다.

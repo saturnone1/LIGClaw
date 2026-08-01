@@ -13,6 +13,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private readonly McpSettingsSectionController _mcpSettings;
     private readonly SemanticMemorySettingsSectionController _semanticMemorySettings = new(new SemanticMemorySettingsStore());
     private readonly WebSearchSettingsSectionController _webSearchSettings = new(new WebSearchSettingsStore());
+    private readonly IVoiceInputSettingsStore _voiceInputSettings = new VoiceInputSettingsStore();
     private QuickAccessShortcut _initialShortcut;
     private bool _wasQuickAccessAvailable;
     private ModelConnectionSettings? _existingModelSettings;
@@ -63,6 +64,16 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         catch (Exception)
         {
             SetStatus("Windows 자동 실행 설정을 불러오지 못했어요.", "DangerBrush");
+        }
+
+        try
+        {
+            VoiceInputEnabledCheckBox.IsChecked = _voiceInputSettings.Load().Enabled;
+        }
+        catch (Exception)
+        {
+            VoiceInputEnabledCheckBox.IsChecked = false;
+            SetStatus("음성 입력 설정을 불러오지 못해 꺼진 상태로 시작합니다.", "DangerBrush");
         }
 
         await RefreshCapabilityGrantsAsync();
@@ -139,6 +150,17 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             _initialShortcut = shellResult.Shortcut;
             _wasQuickAccessAvailable = shellResult.IsShortcutAvailable;
             failures.AddRange(shellResult.Failures);
+
+            try
+            {
+                var voiceSettings = new VoiceInputSettings(VoiceInputEnabledCheckBox.IsChecked == true);
+                _voiceInputSettings.Save(voiceSettings);
+                _host.ApplyVoiceInputEnabled(voiceSettings.Enabled);
+            }
+            catch (Exception)
+            {
+                failures.Add("음성 입력 설정을 저장하지 못했어요.");
+            }
 
             try
             {
@@ -492,6 +514,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private void SetControlsEnabled(bool enabled)
     {
         StartWithWindowsCheckBox.IsEnabled = enabled;
+        VoiceInputEnabledCheckBox.IsEnabled = enabled;
         BaseUrlTextBox.IsEnabled = enabled;
         ModelProfileComboBox.IsEnabled = enabled;
         ModelProfileIdTextBox.IsEnabled = enabled;
