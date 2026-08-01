@@ -18,13 +18,13 @@ public sealed class SubagentTests : IDisposable
         using var store = await CreateStoreAsync();
         var draft = Draft();
         var batchId = Guid.NewGuid().ToString("N");
-        var tasks = await store.CreateSubagentBatchAsync(batchId, draft, DateTimeOffset.UtcNow, CancellationToken.None);
+        var tasks = await store.Subagents.CreateSubagentBatchAsync(batchId, draft, DateTimeOffset.UtcNow, CancellationToken.None);
         var first = tasks[0];
-        await store.CompleteSubagentTaskAsync(
+        await store.Subagents.CompleteSubagentTaskAsync(
             first.ChildRunId, true, new string('x', 1_200), null, DateTimeOffset.UtcNow, CancellationToken.None);
-        await store.ReconcileSubagentTasksOnStartupAsync(DateTimeOffset.UtcNow, CancellationToken.None);
+        await store.Subagents.ReconcileSubagentTasksOnStartupAsync(DateTimeOffset.UtcNow, CancellationToken.None);
 
-        var stored = await store.ListSubagentTasksAsync(batchId, CancellationToken.None);
+        var stored = await store.Subagents.ListSubagentTasksAsync(batchId, CancellationToken.None);
         Assert.Equal("succeeded", stored[0].Status);
         Assert.Equal(1_001, stored[0].ResultText!.Length);
         Assert.Equal("interrupted", stored[1].Status);

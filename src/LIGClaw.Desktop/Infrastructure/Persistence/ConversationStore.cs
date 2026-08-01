@@ -24,6 +24,8 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
     private readonly OperationalAuditRepository _operations;
     private readonly PersonalMemoryRepository _personalMemories;
     private readonly ScheduleRepository _schedules;
+    private readonly AgentJobRepository _agentJobs;
+    private readonly LocalSubagentRepository _subagents;
 
     public ConversationStore(string databasePath)
     {
@@ -32,6 +34,8 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
         _operations = new OperationalAuditRepository(_database);
         _personalMemories = new PersonalMemoryRepository(_database);
         _schedules = new ScheduleRepository(_database);
+        _agentJobs = new AgentJobRepository(_database);
+        _subagents = new LocalSubagentRepository(_database);
     }
 
     public string DatabasePath => _database.DatabasePath;
@@ -39,6 +43,8 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
     public IOperationalAuditRepository Operations => _operations;
     public IPersonalMemoryRepository Memories => _personalMemories;
     public IScheduleRepository Schedules => _schedules;
+    public IAgentJobRepository AgentJobs => _agentJobs;
+    public ILocalSubagentRepository Subagents => _subagents;
 
     public static ConversationStore CreateDefault()
     {

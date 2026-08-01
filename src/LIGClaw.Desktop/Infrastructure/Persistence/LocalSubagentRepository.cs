@@ -1,9 +1,11 @@
+using System.Globalization;
 using LIGClaw.Application.Agents;
 using LIGClaw.Domain;
+using Microsoft.Data.Sqlite;
 
 namespace LIGClaw.Desktop.Infrastructure.Persistence;
 
-internal sealed partial class ConversationStore
+internal sealed class LocalSubagentRepository(ConversationDatabase database) : ILocalSubagentRepository
 {
     public async Task<IReadOnlyList<SubagentTaskRecord>> CreateSubagentBatchAsync(
         string batchId,
@@ -176,4 +178,20 @@ internal sealed partial class ConversationStore
         }, cancellationToken).ConfigureAwait(false);
         return results;
     }
+
+    private Task WithConnectionAsync(Func<SqliteConnection, Task> operation, CancellationToken cancellationToken) =>
+        database.WithConnectionAsync(operation, cancellationToken);
+
+    private static Task<int> ExecuteAsync(
+        SqliteConnection connection,
+        string commandText,
+        CancellationToken cancellationToken,
+        System.Data.Common.DbTransaction? transaction = null,
+        params (string Name, object? Value)[] parameters) =>
+        ConversationDatabase.ExecuteAsync(connection, commandText, cancellationToken, transaction, parameters);
+
+    private static string Format(DateTimeOffset value) => value.ToString("O", CultureInfo.InvariantCulture);
+
+    private static DateTimeOffset ParseTimestamp(string value) =>
+        DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 }

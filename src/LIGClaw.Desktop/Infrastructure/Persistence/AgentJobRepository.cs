@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 
 namespace LIGClaw.Desktop.Infrastructure.Persistence;
 
-internal sealed partial class ConversationStore
+internal sealed class AgentJobRepository(ConversationDatabase database) : IAgentJobRepository
 {
     public async Task<ScheduledAgentJob> CreateAgentJobAsync(
         AgentJobDraft draft,
@@ -558,4 +558,34 @@ internal sealed partial class ConversationStore
             transaction,
             ("$id", Guid.NewGuid().ToString("N")), ("$jobId", job.Id),
             ("$scheduledAtUtc", Format(job.NextRunAtUtc ?? nowUtc)), ("$nowUtc", Format(nowUtc)));
+
+    private Task WithConnectionAsync(Func<SqliteConnection, Task> operation, CancellationToken cancellationToken) =>
+        database.WithConnectionAsync(operation, cancellationToken);
+
+    private static Task<int> ExecuteAsync(
+        SqliteConnection connection,
+        string commandText,
+        CancellationToken cancellationToken,
+        System.Data.Common.DbTransaction? transaction = null,
+        params (string Name, object? Value)[] parameters) =>
+        ConversationDatabase.ExecuteAsync(connection, commandText, cancellationToken, transaction, parameters);
+
+    private static async Task<int> ExecuteCountAsync(
+        SqliteConnection connection,
+        string commandText,
+        CancellationToken cancellationToken,
+        System.Data.Common.DbTransaction? transaction = null,
+        params (string Name, object? Value)[] parameters)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = (SqliteTransaction?)transaction;
+        command.CommandText = commandText;
+        foreach (var (name, value) in parameters) command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+        return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string Format(DateTimeOffset value) => value.ToString("O", CultureInfo.InvariantCulture);
+
+    private static DateTimeOffset ParseTimestamp(string value) =>
+        DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 }

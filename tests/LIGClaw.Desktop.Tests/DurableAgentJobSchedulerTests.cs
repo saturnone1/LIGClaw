@@ -15,15 +15,15 @@ public sealed class DurableAgentJobSchedulerTests : IDisposable
         using var store = new ConversationStore(Path.Combine(_directory, "jobs.db"));
         await store.InitializeAsync();
         var now = DateTimeOffset.UtcNow;
-        var job = await store.CreateAgentJobAsync(Draft(now.AddSeconds(1)), now.AddMinutes(-1), CancellationToken.None);
+        var job = await store.AgentJobs.CreateAgentJobAsync(Draft(now.AddSeconds(1)), now.AddMinutes(-1), CancellationToken.None);
         var executor = new RecordingExecutor();
-        await using var scheduler = new DurableAgentJobScheduler(store, executor);
+        await using var scheduler = new DurableAgentJobScheduler(store.AgentJobs, executor);
 
         Assert.Equal(1, await scheduler.RunDueOnceAsync(now.AddSeconds(2), CancellationToken.None));
         await executor.Completed.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await WaitForAsync(async () => (await store.ListAgentJobRunsAsync(job.Id, 10, CancellationToken.None)).Single().Status == "succeeded");
+        await WaitForAsync(async () => (await store.AgentJobs.ListAgentJobRunsAsync(job.Id, 10, CancellationToken.None)).Single().Status == "succeeded");
 
-        var run = Assert.Single(await store.ListAgentJobRunsAsync(job.Id, 10, CancellationToken.None));
+        var run = Assert.Single(await store.AgentJobs.ListAgentJobRunsAsync(job.Id, 10, CancellationToken.None));
         Assert.Equal("완료된 분석", run.ResultText);
         Assert.Equal(job.Id, Assert.Single(executor.Claims).Job.Id);
     }
@@ -35,9 +35,9 @@ public sealed class DurableAgentJobSchedulerTests : IDisposable
         await store.InitializeAsync();
         var now = DateTimeOffset.UtcNow;
         for (var index = 0; index < 3; index++)
-            await store.CreateAgentJobAsync(Draft(now.AddSeconds(1)) with { Title = $"작업 {index}" }, now.AddMinutes(-1), CancellationToken.None);
+            await store.AgentJobs.CreateAgentJobAsync(Draft(now.AddSeconds(1)) with { Title = $"작업 {index}" }, now.AddMinutes(-1), CancellationToken.None);
         var executor = new BlockingExecutor();
-        await using var scheduler = new DurableAgentJobScheduler(store, executor);
+        await using var scheduler = new DurableAgentJobScheduler(store.AgentJobs, executor);
 
         Assert.Equal(2, await scheduler.RunDueOnceAsync(now.AddSeconds(2), CancellationToken.None));
         await executor.TwoStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -52,18 +52,18 @@ public sealed class DurableAgentJobSchedulerTests : IDisposable
         using var store = new ConversationStore(Path.Combine(_directory, "notification-failure.db"));
         await store.InitializeAsync();
         var now = DateTimeOffset.UtcNow;
-        var job = await store.CreateAgentJobAsync(Draft(now.AddSeconds(1)), now.AddMinutes(-1), CancellationToken.None);
+        var job = await store.AgentJobs.CreateAgentJobAsync(Draft(now.AddSeconds(1)), now.AddMinutes(-1), CancellationToken.None);
         var executor = new RecordingExecutor();
         await using var scheduler = new DurableAgentJobScheduler(
-            store,
+            store.AgentJobs,
             executor,
             (_, _, _) => Task.FromException(new InvalidOperationException("notification unavailable")));
 
         Assert.Equal(1, await scheduler.RunDueOnceAsync(now.AddSeconds(2), CancellationToken.None));
         await executor.Completed.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await WaitForAsync(async () => (await store.ListAgentJobRunsAsync(job.Id, 10, CancellationToken.None)).Single().Status == "succeeded");
+        await WaitForAsync(async () => (await store.AgentJobs.ListAgentJobRunsAsync(job.Id, 10, CancellationToken.None)).Single().Status == "succeeded");
 
-        Assert.Equal("완료된 분석", Assert.Single(await store.ListAgentJobRunsAsync(job.Id, 10, CancellationToken.None)).ResultText);
+        Assert.Equal("완료된 분석", Assert.Single(await store.AgentJobs.ListAgentJobRunsAsync(job.Id, 10, CancellationToken.None)).ResultText);
     }
 
     private static AgentJobDraft Draft(DateTimeOffset utc) => new(

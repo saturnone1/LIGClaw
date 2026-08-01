@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using LIGClaw.Application.Agents;
 using LIGClaw.Application.Scheduling;
 using LIGClaw.Application.Tools;
 using LIGClaw.Contracts.Generated;
@@ -41,6 +42,8 @@ public partial class MainWindow : Window
     private readonly IOperationalAuditRepository _operationalRepository;
     private readonly IPersonalMemoryRepository _personalMemoryRepository;
     private readonly IScheduleRepository _scheduleRepository;
+    private readonly IAgentJobRepository _agentJobRepository;
+    private readonly ILocalSubagentRepository _subagentRepository;
     private readonly SemanticMemoryRepository _memories;
     private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
     private readonly ConversationRunController _conversationRun;
@@ -79,6 +82,8 @@ public partial class MainWindow : Window
         _operationalRepository = _conversationStore.Operations;
         _personalMemoryRepository = _conversationStore.Memories;
         _scheduleRepository = _conversationStore.Schedules;
+        _agentJobRepository = _conversationStore.AgentJobs;
+        _subagentRepository = _conversationStore.Subagents;
         _conversationRun = new ConversationRunController(_toolInvocationPolicy);
         _conversationOrchestration = new ConversationOrchestrationController(
             _conversationRun,
@@ -144,7 +149,7 @@ public partial class MainWindow : Window
                 undoJournal: _operationalRepository,
                 memories: _memories,
                 schedules: _scheduleRepository,
-                agentJobs: _conversationStore,
+                agentJobs: _agentJobRepository,
                 getSubagentOrchestrator: () => _subagentOrchestrator,
                 loadMcpSettings: _mcpSettingsStore.Load,
                 callMcp: _sidecar.CallMcpAsync);
@@ -189,7 +194,7 @@ public partial class MainWindow : Window
         {
             await _conversationStore.InitializeAsync();
             await _conversationRepository.MarkRunningConversationsInterruptedAsync();
-            await _conversationStore.ReconcileSubagentTasksOnStartupAsync(DateTimeOffset.UtcNow, CancellationToken.None);
+            await _subagentRepository.ReconcileSubagentTasksOnStartupAsync(DateTimeOffset.UtcNow, CancellationToken.None);
             _persistenceAvailable = true;
             try
             {
@@ -200,7 +205,7 @@ public partial class MainWindow : Window
                     _subagentOrchestrator = new LocalSubagentOrchestrator(
                         _sidecar,
                         _windowsToolHost,
-                        _conversationStore,
+                        _subagentRepository,
                         RequestBackgroundToolApprovalAsync,
                         _modelSettingsStore.LoadRouting,
                         _operationalRepository,
@@ -213,7 +218,7 @@ public partial class MainWindow : Window
                         _operationalRepository,
                         _operationalRepository);
                     _agentJobScheduler = new DurableAgentJobScheduler(
-                        _conversationStore,
+                        _agentJobRepository,
                         _agentJobExecutor,
                         NotifyAgentJobCompletedAsync);
                     await _agentJobScheduler.StartAsync();
@@ -908,7 +913,7 @@ public partial class MainWindow : Window
                 AddDiagnostic("Agent 작업 저장소를 사용할 수 없습니다.");
                 return;
             }
-            _agentJobsPage ??= new AgentJobsPage(_conversationStore);
+            _agentJobsPage ??= new AgentJobsPage(_agentJobRepository);
             ShowShellPage(_agentJobsPage, AgentJobsNavigationButton);
             await _agentJobsPage.RefreshAsync();
         }
