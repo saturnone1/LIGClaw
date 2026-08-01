@@ -144,7 +144,7 @@ public partial class SensitiveContextPreviewWindow : Window
         if (!_imageReady)
             PreviewStatusText.Text = "이미지를 안전하게 표시하지 못해 전송할 수 없습니다.";
         else if (string.IsNullOrEmpty(PreviewStatusText.Text))
-            PreviewStatusText.Text = "확인한 OCR 글자만 전송하며 이미지는 전송하지 않습니다.";
+            PreviewStatusText.Text = "확인한 OCR 글자만 요청에 추가하며 이미지는 추가하지 않습니다.";
     }
 
     private void Cleanup()
@@ -170,6 +170,7 @@ public partial class SensitiveContextPreviewWindow : Window
         "window" => "선택한 창",
         "display" => "선택한 디스플레이",
         "region" => "선택한 영역",
+        "selection" => "Windows에서 선택한 화면",
         _ => "선택한 화면",
     };
 }

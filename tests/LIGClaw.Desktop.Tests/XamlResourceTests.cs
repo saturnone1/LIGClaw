@@ -143,6 +143,20 @@ public sealed partial class XamlResourceTests
     }
 
     [Fact]
+    public void Composer_exposes_a_user_initiated_accessible_screen_picker()
+    {
+        var mainXaml = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "LIGClaw.Desktop",
+            "MainWindow.xaml"));
+
+        Assert.Contains("x:Name=\"ScreenContextButton\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"화면 내용 가져오기\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"ScreenContext_Click\"", mainXaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ViewXamlUsesSemanticResourcesInsteadOfRawHexColors()
     {
         var desktop = Path.Combine(FindRepositoryRoot(), "src", "LIGClaw.Desktop");

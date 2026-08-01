@@ -23,7 +23,7 @@
 
         <Border Grid.Row="1" Margin="0,18,0,0" Style="{StaticResource WarningBannerStyle}">
             <TextBlock TextWrapping="Wrap"
-                       Text="이미지와 인식된 글자는 아직 이 PC를 벗어나지 않았습니다. 필요 없는 내용을 지우거나 마스킹한 뒤에만 전송하세요." />
+                       Text="이미지와 인식된 글자는 아직 이 PC를 벗어나지 않았습니다. 필요 없는 내용을 지우거나 마스킹한 뒤 요청에 추가하세요." />
         </Border>
 
         <Grid Grid.Row="2" Margin="0,18,0,0">
@@ -64,7 +64,7 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="RECOGNIZED TEXT" />
                         <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="전송할 글자만 남기세요. 선택한 부분은 한 번에 마스킹할 수 있습니다."
+                                   Text="요청에 추가할 글자만 남기세요. 선택한 부분은 한 번에 마스킹할 수 있습니다."
                                    TextWrapping="Wrap" />
                     </StackPanel>
                     <TextBox x:Name="OcrTextBox" Grid.Row="1" Margin="0,12,0,0"
@@ -103,12 +103,12 @@
                        AutomationProperties.LiveSetting="Polite" TextWrapping="Wrap" />
             <Button x:Name="CancelButton" Grid.Column="1" Margin="12,0,10,0"
                     Style="{StaticResource SecondaryButtonStyle}"
-                    AutomationProperties.Name="화면 내용 전송 취소"
+                    AutomationProperties.Name="화면 내용 추가 취소"
                     IsDefault="True" IsCancel="True"
                     Click="Cancel_Click" Content="취소" />
             <Button x:Name="ApproveButton" Grid.Column="2"
-                    AutomationProperties.Name="확인한 화면 글자 전송"
-                    Click="Approve_Click" Content="확인한 글자 전송" />
+                    AutomationProperties.Name="확인한 화면 글자를 요청에 추가"
+                    Click="Approve_Click" Content="요청에 추가" />
         </Grid>
     </Grid>
 </Window>

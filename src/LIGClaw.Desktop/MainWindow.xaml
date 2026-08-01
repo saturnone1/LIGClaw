@@ -281,6 +281,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock x:Name="RunStatus" Foreground="{DynamicResource TextSecondaryBrush}"
@@ -288,10 +289,15 @@
                             <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource InactiveBrush}" FontSize="{DynamicResource TypeCaptionSize}"
                                        Text="Ctrl + Enter로 보낼 수 있어요" />
                         </StackPanel>
-                        <Button x:Name="CancelButton" Grid.Column="1" Margin="0,0,9,0"
+                        <Button x:Name="ScreenContextButton" Grid.Column="1" Margin="0,0,9,0"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                AutomationProperties.Name="화면 내용 가져오기"
+                                AutomationProperties.HelpText="Windows에서 창이나 화면을 선택하고, 인식된 글자를 확인한 뒤 요청에 추가합니다."
+                                Click="ScreenContext_Click" Content="화면 가져오기" />
+                        <Button x:Name="CancelButton" Grid.Column="2" Margin="0,0,9,0"
                                 Style="{StaticResource SecondaryButtonStyle}" Visibility="Collapsed"
                                 Click="Cancel_Click" Content="중단" />
-                        <Button x:Name="SendButton" Grid.Column="2" IsEnabled="False"
+                        <Button x:Name="SendButton" Grid.Column="3" IsEnabled="False"
                                 AutomationProperties.HelpText="입력한 요청을 LIGClaw에 보냅니다."
                                 Click="Send_Click" Content="보내기" />
                     </Grid>

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -36,6 +37,9 @@ public partial class MainWindow : Window
     private readonly SemanticMemorySettingsStore _semanticMemorySettingsStore = new();
     private readonly HttpClient _semanticMemoryHttpClient = new() { Timeout = TimeSpan.FromSeconds(45) };
     private readonly DiagnosticBundleService _diagnosticBundleService = new();
+    private readonly IScreenCapturePicker _screenCapturePicker = new WindowsScreenCapturePicker();
+    private readonly IScreenTextRecognizer _screenTextRecognizer = new WindowsOcrScreenTextRecognizer();
+    private readonly PreparedSensitiveContextStore _sensitiveContextStore = new();
     private readonly ObservableCollection<string> _diagnostics = [];
     private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
     private readonly IConversationRepository _conversationRepository;
@@ -63,6 +67,7 @@ public partial class MainWindow : Window
     private bool _isConnected;
     private bool _isModelConfigured;
     private bool _refreshingConversations;
+    private bool _isPreparingScreenContext;
     private readonly LatestRequestController _conversationListRequests = new();
     private readonly StringBuilder _transcriptMarkdown = new();
     private readonly DispatcherTimer _transcriptRenderTimer;
@@ -773,6 +778,135 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void ScreenContext_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isPreparingScreenContext || _conversationRun.IsRunning) return;
+        _isPreparingScreenContext = true;
+        ScreenCapturePickerResult? capture = null;
+        ScreenTextRecognitionResult? recognition = null;
+        SetRunStatus("Windows에서 공유할 화면을 선택해 주세요.");
+        UpdateCommandState();
+        try
+        {
+            capture = await _screenCapturePicker.PickSingleFrameAsync(this);
+            if (capture.Status == ScreenCapturePickerStatus.Cancelled)
+            {
+                SetRunStatus("화면 가져오기를 취소했어요.");
+                return;
+            }
+
+            if (capture.Status != ScreenCapturePickerStatus.Captured || capture.EncodedImage is null)
+            {
+                ShowScreenContextProblem(capture.Error ?? "이 PC에서는 화면을 가져올 수 없어요.");
+                return;
+            }
+
+            SetRunStatus("선택한 화면에서 글자를 읽고 있어요…");
+            recognition = await _screenTextRecognizer.RecognizeAsync(capture.EncodedImage);
+            if (recognition.Status != ScreenTextRecognitionStatus.Recognized || recognition.TextUtf8 is null)
+            {
+                capture.ClearImage();
+                ShowScreenContextProblem(recognition.Error ?? "선택한 화면에서 글자를 읽지 못했어요.");
+                return;
+            }
+
+            var identity = new PreparedSensitiveContextIdentity(
+                Guid.NewGuid().ToString("N"),
+                Guid.NewGuid().ToString("N"),
+                Guid.NewGuid().ToString("N"));
+            var prepared = _sensitiveContextStore.Prepare(
+                identity,
+                new PreparedSensitiveContextDraft(
+                    "selection",
+                    capture.WidthPixels,
+                    capture.HeightPixels,
+                    capture.EncodedImage,
+                    recognition.TextUtf8,
+                    0));
+            if (!prepared.Success || prepared.Token is null)
+            {
+                ShowScreenContextProblem(prepared.Error ?? "화면 내용을 안전하게 준비하지 못했어요.");
+                return;
+            }
+
+            var taken = _sensitiveContextStore.Take(identity, prepared.Token);
+            if (!taken.Success || taken.Context is null)
+            {
+                ShowScreenContextProblem(taken.Error ?? "준비한 화면 내용을 찾지 못했어요.");
+                return;
+            }
+
+            var preview = new SensitiveContextPreviewWindow(taken.Context) { Owner = this };
+            if (preview.ShowDialog() != true)
+            {
+                SetRunStatus("화면 내용을 요청에 추가하지 않았어요.");
+                return;
+            }
+
+            var approvedText = preview.TakeApprovedOcrTextUtf8();
+            if (approvedText is null) return;
+            try
+            {
+                if (!AppendScreenContextToInput(Encoding.UTF8.GetString(approvedText))) return;
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(approvedText);
+            }
+
+            SetRunStatus(recognition.WasTruncated
+                ? "화면 글자가 길어 안전 한도까지만 요청에 추가됐어요."
+                : "확인한 화면 글자를 요청에 추가했어요.");
+            FocusRequestInput();
+        }
+        catch (OperationCanceledException)
+        {
+            SetRunStatus("화면 가져오기를 취소했어요.");
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"화면 내용 준비 실패: {exception.GetType().Name}");
+            ShowScreenContextProblem("화면 내용을 준비하는 중 문제가 생겼어요.");
+        }
+        finally
+        {
+            capture?.ClearImage();
+            recognition?.ClearText();
+            _isPreparingScreenContext = false;
+            UpdateCommandState();
+        }
+    }
+
+    private bool AppendScreenContextToInput(string text)
+    {
+        const string heading = "[선택한 화면에서 확인한 글자]\n";
+        var separator = string.IsNullOrWhiteSpace(ConversationInput.Text) ? string.Empty : "\n\n";
+        var available = ConversationInput.MaxLength - ConversationInput.Text.Length - separator.Length - heading.Length;
+        if (available <= 0)
+        {
+            ShowScreenContextProblem("요청 입력란이 가득 차 화면 글자를 추가하지 못했어요.");
+            return false;
+        }
+
+        var end = Math.Min(text.Length, available);
+        if (end > 0 && end < text.Length && char.IsHighSurrogate(text[end - 1])) end--;
+        var bounded = text[..end];
+        ConversationInput.AppendText($"{separator}{heading}{bounded}");
+        ConversationInput.CaretIndex = ConversationInput.Text.Length;
+        return true;
+    }
+
+    private void ShowScreenContextProblem(string message)
+    {
+        SetRunStatus(message);
+        System.Windows.MessageBox.Show(
+            this,
+            message,
+            "화면 가져오기",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
     private async void Cancel_Click(object sender, RoutedEventArgs e)
     {
         if (!_conversationOrchestration.TryRequestCancellation(out var activeRun) || activeRun is null) return;
@@ -1211,6 +1345,7 @@ public partial class MainWindow : Window
         CancelButton.IsEnabled = _conversationRun.IsRunning && !_conversationRun.IsCancelling;
         TimelineProgressCard.Visibility = _conversationRun.IsRunning ? Visibility.Visible : Visibility.Collapsed;
         NewConversationButton.IsEnabled = !_conversationRun.IsRunning;
+        ScreenContextButton.IsEnabled = !_conversationRun.IsRunning && !_isPreparingScreenContext;
     }
 
     private void SetRunStatus(string status)
@@ -1414,6 +1549,7 @@ public partial class MainWindow : Window
         finally
         {
             _conversationStore.Dispose();
+            _sensitiveContextStore.Dispose();
             _semanticMemoryHttpClient.Dispose();
             System.Windows.Application.Current.Shutdown();
         }

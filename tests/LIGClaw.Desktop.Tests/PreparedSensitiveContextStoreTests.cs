@@ -115,6 +115,18 @@ public sealed class PreparedSensitiveContextStoreTests
         AssertZeroed(text);
     }
 
+    [Fact]
+    public void User_picker_selection_is_an_allowed_ephemeral_target()
+    {
+        using var store = Store();
+
+        var result = store.Prepare(
+            Identity(),
+            new PreparedSensitiveContextDraft("selection", 1280, 720, [1], [65], 0));
+
+        Assert.True(result.Success, result.Error);
+    }
+
     private static PreparedSensitiveContextStore Store(Func<DateTimeOffset>? now = null) =>
         new(now, () => Guid.Parse("11111111-1111-1111-1111-111111111111"));
 

@@ -234,7 +234,7 @@ internal sealed class PreparedSensitiveContextStore : IDisposable
     {
         if (!ValidId(identity.ConversationId) || !ValidId(identity.RunId) || !ValidId(identity.ToolCallId))
             return "화면 내용의 실행 식별자가 올바르지 않아요.";
-        if (draft.TargetKind is not ("window" or "display" or "region"))
+        if (draft.TargetKind is not ("window" or "display" or "region" or "selection"))
             return "화면 캡처 대상 종류가 올바르지 않아요.";
         if (draft.WidthPixels is < 1 or > MaximumDimensionPixels ||
             draft.HeightPixels is < 1 or > MaximumDimensionPixels ||

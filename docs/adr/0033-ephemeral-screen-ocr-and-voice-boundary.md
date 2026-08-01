@@ -3,6 +3,14 @@
 - 상태: 승인
 - 날짜: 2026-08-01
 
+## 구현 현황 (2026-08-02)
+
+Desktop composer의 `화면 가져오기`가 WPF HWND에 연결한 `GraphicsCapturePicker`를 열고, 사용자가 고른 창·디스플레이에서 `CreateFreeThreaded` frame pool로 한 프레임만 가져온다. 하드웨어 D3D11 장치 생성이 실패하면 Windows WARP로 한 번 대체하며, 10초 frame timeout과 캡처 전·후 4,096px/16MP 검증, PNG 8MiB 검증을 적용한다. 취소·미지원·timeout·실패는 서로 다른 내부 상태이며 원문은 진단에 기록하지 않는다.
+
+패키지 identity가 있는 실행에서는 Windows 로컬 OCR을 사용한다. 4K 같은 일반 화면을 OCR 엔진의 더 작은 입력 한도 때문에 거부하지 않도록 OCR용 bitmap만 종횡비를 유지해 축소하며 원본 preview는 유지한다. OCR 결과는 UTF-8 32KiB 경계에서 Unicode 문자를 자르지 않고 제한한다. 사용자가 preview에서 확인·마스킹한 텍스트만 composer에 추가하고 이미지 자체는 Agent나 Sidecar로 전달하지 않는다. unpackaged 실행은 설치 필요 안내로 끝나며 cloud fallback은 없다.
+
+남은 acceptance는 signed/unsigned MSIX 설치 실행에서 OCR 성공·언어팩 부재, Windows 10 22H2와 Windows 11의 picker 취소·다중 모니터·보호 콘텐츠, preview crop이다.
+
 ## 배경
 
 화면과 음성은 비밀번호, 사내 문서, 개인정보, 알림 내용을 한 번에 포함할 수 있다. 기존 Tool 승인 창은 텍스트 동작 설명만 보여 주므로 실제 캡처 내용의 전송 전 확인·마스킹을 증명하지 못한다. 이 상태에서 모델 호출만으로 캡처를 시작하거나 원문을 Sidecar에 바로 넘기는 것은 기존 Desktop 정책 경계를 우회한다.
