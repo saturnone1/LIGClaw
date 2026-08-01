@@ -173,6 +173,11 @@ public sealed partial class XamlResourceTests
         Assert.Contains("x:Name=\"VoiceInputEnabledCheckBox\"", settingsXaml, StringComparison.Ordinal);
         Assert.Contains("기본은 꺼짐입니다", settingsXaml, StringComparison.Ordinal);
         Assert.Contains("원시 오디오는 저장하지 않습니다", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AutoReadEnabledCheckBox\"", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"QuietStartComboBox\"", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"QuietEndComboBox\"", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("기본은 꺼짐입니다", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("앱을 보고 있을 때만", settingsXaml, StringComparison.Ordinal);
     }
 
     [Fact]

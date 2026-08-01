@@ -13,7 +13,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private readonly McpSettingsSectionController _mcpSettings;
     private readonly SemanticMemorySettingsSectionController _semanticMemorySettings = new(new SemanticMemorySettingsStore());
     private readonly WebSearchSettingsSectionController _webSearchSettings = new(new WebSearchSettingsStore());
-    private readonly IVoiceInputSettingsStore _voiceInputSettings = new VoiceInputSettingsStore();
+    private readonly IVoiceSettingsStore _voiceSettings = new VoiceSettingsStore();
     private QuickAccessShortcut _initialShortcut;
     private bool _wasQuickAccessAvailable;
     private ModelConnectionSettings? _existingModelSettings;
@@ -35,6 +35,8 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         _wasQuickAccessAvailable = host.IsQuickAccessAvailable;
         _initialShortcut = host.CurrentQuickAccessShortcut;
         InitializeComponent();
+        QuietStartComboBox.ItemsSource = VoiceTimeOption.All;
+        QuietEndComboBox.ItemsSource = VoiceTimeOption.All;
         ShortcutComboBox.ItemsSource = QuickAccessShortcutCatalog.All;
         ShortcutComboBox.SelectedValue = _initialShortcut.Id;
         if (!_wasQuickAccessAvailable)
@@ -68,11 +70,18 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
         try
         {
-            VoiceInputEnabledCheckBox.IsChecked = _voiceInputSettings.Load().Enabled;
+            var voice = _voiceSettings.Load();
+            VoiceInputEnabledCheckBox.IsChecked = voice.PushToTalkEnabled;
+            AutoReadEnabledCheckBox.IsChecked = voice.AutoReadEnabled;
+            QuietStartComboBox.SelectedValue = voice.QuietStartMinute;
+            QuietEndComboBox.SelectedValue = voice.QuietEndMinute;
         }
         catch (Exception)
         {
             VoiceInputEnabledCheckBox.IsChecked = false;
+            AutoReadEnabledCheckBox.IsChecked = false;
+            QuietStartComboBox.SelectedValue = 22 * 60;
+            QuietEndComboBox.SelectedValue = 7 * 60;
             SetStatus("음성 입력 설정을 불러오지 못해 꺼진 상태로 시작합니다.", "DangerBrush");
         }
 
@@ -153,9 +162,13 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
             try
             {
-                var voiceSettings = new VoiceInputSettings(VoiceInputEnabledCheckBox.IsChecked == true);
-                _voiceInputSettings.Save(voiceSettings);
-                _host.ApplyVoiceInputEnabled(voiceSettings.Enabled);
+                var voiceSettings = new VoiceSettings(
+                    VoiceInputEnabledCheckBox.IsChecked == true,
+                    AutoReadEnabledCheckBox.IsChecked == true,
+                    QuietStartComboBox.SelectedValue as int? ?? 22 * 60,
+                    QuietEndComboBox.SelectedValue as int? ?? 7 * 60);
+                _voiceSettings.Save(voiceSettings);
+                _host.ApplyVoiceSettings(voiceSettings);
             }
             catch (Exception)
             {
@@ -515,6 +528,9 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     {
         StartWithWindowsCheckBox.IsEnabled = enabled;
         VoiceInputEnabledCheckBox.IsEnabled = enabled;
+        AutoReadEnabledCheckBox.IsEnabled = enabled;
+        QuietStartComboBox.IsEnabled = enabled;
+        QuietEndComboBox.IsEnabled = enabled;
         BaseUrlTextBox.IsEnabled = enabled;
         ModelProfileComboBox.IsEnabled = enabled;
         ModelProfileIdTextBox.IsEnabled = enabled;

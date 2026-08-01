@@ -61,6 +61,33 @@
                                   Style="{StaticResource ToggleSwitchStyle}"
                                   VerticalAlignment="Center" />
                     </Grid>
+                    <Border Margin="0,18,0,18" Height="1" Background="{DynamicResource DividerBrush}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="VOICE / AUTO READ" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="새 답변 자동 읽기" />
+                            <TextBlock Margin="0,5,18,0" Style="{StaticResource CaptionTextStyle}" TextWrapping="Wrap"
+                                       Text="기본은 꺼짐입니다. 앱을 보고 있을 때만 새 답변을 읽고 방해 금지 시간에는 소리를 내지 않습니다." />
+                            <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center" Style="{StaticResource FieldLabelStyle}" Text="방해 금지" />
+                                <ComboBox x:Name="QuietStartComboBox" Width="92" Margin="10,0,6,0"
+                                          DisplayMemberPath="DisplayName" SelectedValuePath="Minute"
+                                          AutomationProperties.Name="방해 금지 시작 시간" />
+                                <TextBlock VerticalAlignment="Center" Text="부터" />
+                                <ComboBox x:Name="QuietEndComboBox" Width="92" Margin="6,0"
+                                          DisplayMemberPath="DisplayName" SelectedValuePath="Minute"
+                                          AutomationProperties.Name="방해 금지 종료 시간" />
+                                <TextBlock VerticalAlignment="Center" Text="까지" />
+                            </StackPanel>
+                        </StackPanel>
+                        <CheckBox x:Name="AutoReadEnabledCheckBox" Grid.Column="1"
+                                  AutomationProperties.Name="새 답변 자동 읽기 사용"
+                                  Style="{StaticResource ToggleSwitchStyle}" VerticalAlignment="Center" />
+                    </Grid>
                 </StackPanel>
             </Border>
 

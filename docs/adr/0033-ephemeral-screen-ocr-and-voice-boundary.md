@@ -13,7 +13,7 @@ preview에서는 마우스 드래그 선택을 Uniform 표시 좌표에서 원�
 
 STT는 레지스트리에 저장되는 사용자 opt-in이 켜진 경우에만 composer의 `누르고 말하기`로 시작한다. MSIX manifest는 microphone device capability를 선언하고 Desktop이 Windows 연속 받아쓰기를 직접 소유한다. 마우스와 Space/Enter의 press/release, capture 상실, 취소, 60초 timeout을 하나의 interaction controller로 직렬화하며 최종 인식 텍스트만 공백 정규화 후 최대 16,000자로 요청에 추가한다. package identity·마이크 권한·언어·네트워크 오류는 사용자 상태로 구분하고 PCM과 중간 인식 결과는 로그, SQLite, Sidecar에 저장하지 않는다. 최종 텍스트는 사용자가 composer에서 확인하고 실제 요청을 보낼 때만 일반 사용자 메시지와 동일하게 처리한다. unpackaged 실행이나 권한 실패를 다른 온라인 STT로 우회하지 않는다.
 
-TTS는 transcript에서 사용자가 직접 선택한 글만 Windows 로컬 `SpeechSynthesizer`와 `MediaPlayer`로 읽는다. 선택이 없으면 시작하지 않고, 20,000자를 넘으면 임의로 잘라 읽지 않고 나누어 선택하도록 안내한다. 시작 버튼은 합성 준비와 재생 중 즉시 중지 버튼으로 바뀌며 재생 buffer는 메모리에만 두고 중지·완료·실패·창 종료에 폐기한다. 자동 읽기와 방해 금지 시간은 이 명시적 선택 재생과 분리된 opt-in으로 남긴다.
+TTS는 transcript에서 사용자가 직접 선택한 글만 Windows 로컬 `SpeechSynthesizer`와 `MediaPlayer`로 읽는다. 선택이 없으면 시작하지 않고, 20,000자를 넘으면 임의로 잘라 읽지 않고 나누어 선택하도록 안내한다. 시작 버튼은 합성 준비와 재생 중 즉시 중지 버튼으로 바뀌며 재생 buffer는 메모리에만 두고 중지·완료·실패·창 종료에 폐기한다. 자동 읽기는 이 명시적 선택 재생과 분리된 기본 꺼짐 opt-in이다. 앱이 활성화되고 STT/TTS가 유휴 상태이며 30분 단위 방해 금지 시간 밖일 때 완성된 새 답변만 읽는다. 기본 방해 금지는 22:00–07:00이다.
 
 남은 acceptance는 signed/unsigned MSIX 설치 실행에서 OCR 성공·언어팩 부재, Windows 10 22H2와 Windows 11의 picker 취소·다중 모니터·보호 콘텐츠다.
 
@@ -59,7 +59,7 @@ TTS는 사용자가 선택한 응답 하나를 읽는 동작으로 시작하고 
 2. Windows 시스템 picker 기반 1회 캡처 adapter와 취소·미지원 결과를 연결한다.
 3. package identity가 있는 Windows 로컬 OCR adapter를 연결하고 확인된 텍스트만 대화에 합류한다.
 4. Windows 10/11 picker·다중 모니터·보호 콘텐츠·메모리 비보존 acceptance를 닫는다.
-5. STT와 사용자 선택 응답 TTS를 서로 독립된 수직 기능으로 구현했다. 자동 읽기와 방해 금지 시간은 별도 opt-in으로 추가한다.
+5. STT, 사용자 선택 응답 TTS, 자동 읽기·방해 금지 opt-in을 서로 독립된 수직 기능으로 구현했다.
 
 ## 결과
 
