@@ -66,7 +66,7 @@ Windows 에이전트의 완료·부분·계획·후속 기능 전체 목록과 �
 
 ## 현재 목표: C단계 출시 후보 안정화와 유지보수성
 
-상세 구현 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 단일 작업 계획으로 사용한다. 현재 PC에서 `v0.6.0` 전체 verify와 Sidecar/UI smoke를 통과했다. Windows PowerShell 5.1이 BOM 없는 한국어 스크립트를 잘못 해석하는 회귀는 BOM 규칙과 검증 guard로 복구했다. C-1.1에서 Sidecar 내장 Tool 50개의 등록 metadata를 단일화하고 system/app/file/context/schedule/automation/web/agent 모듈로 분리했으며 catalog 누락·중복과 text fallback 일치 테스트를 추가했다. C-1.2에서는 conversation/run 수명·취소, Agent event 표시, Tool 실행 직렬화, 최근 검색 최신 요청 취소, Sidecar 시작·취소와 run persistence 순서를 독립 controller/interface로 옮겼고 persistence 중 취소 경합을 수정했다. C-1.3에서 schema/connection/backup 소유권을 `ConversationDatabase`로 좁힌 뒤 conversation run/event/search/transcript SQL을 `ConversationRepository` adapter로 옮겼다. 전체 verify 기준은 Desktop 263개이고 repository 직접 replay를 포함한 focused Desktop 264개도 통과했다. 다음은 감사·승인·undo repository 분리다.
+상세 구현 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 단일 작업 계획으로 사용한다. 현재 PC에서 `v0.6.0` 전체 verify와 Sidecar/UI smoke를 통과했다. Windows PowerShell 5.1이 BOM 없는 한국어 스크립트를 잘못 해석하는 회귀는 BOM 규칙과 검증 guard로 복구했다. C-1.1에서 Sidecar 내장 Tool 50개의 등록 metadata를 단일화하고 system/app/file/context/schedule/automation/web/agent 모듈로 분리했으며 catalog 누락·중복과 text fallback 일치 테스트를 추가했다. C-1.2에서는 conversation/run 수명·취소, Agent event 표시, Tool 실행 직렬화, 최근 검색 최신 요청 취소, Sidecar 시작·취소와 run persistence 순서를 독립 controller/interface로 옮겼고 persistence 중 취소 경합을 수정했다. C-1.3에서 schema/connection/backup 소유권을 `ConversationDatabase`로 좁힌 뒤 conversation run/event/search/transcript SQL을 `ConversationRepository` adapter로 옮겼다. 전체 verify 기준은 Desktop 263개이고 conversation 및 operational adapter 직접 replay를 포함한 focused Desktop 265개도 통과했다. 다음은 기억과 예약 repository 분리다.
 
 ## 계속 추적할 Phase 5 외부 gate
 

@@ -37,6 +37,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<string> _diagnostics = [];
     private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
     private readonly IConversationRepository _conversationRepository;
+    private readonly IOperationalAuditRepository _operationalRepository;
     private readonly SemanticMemoryRepository _memories;
     private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
     private readonly ConversationRunController _conversationRun;
@@ -72,6 +73,7 @@ public partial class MainWindow : Window
     {
         _notifications = notifications;
         _conversationRepository = _conversationStore.Conversations;
+        _operationalRepository = _conversationStore.Operations;
         _conversationRun = new ConversationRunController(_toolInvocationPolicy);
         _conversationOrchestration = new ConversationOrchestrationController(
             _conversationRun,
@@ -134,7 +136,7 @@ public partial class MainWindow : Window
             _windowsToolHost = new WindowsToolHost(
                 _platformProfile,
                 notifications: _notifications,
-                undoJournal: _conversationStore,
+                undoJournal: _operationalRepository,
                 memories: _memories,
                 schedules: _conversationStore,
                 agentJobs: _conversationStore,
@@ -145,8 +147,8 @@ public partial class MainWindow : Window
                 _toolInvocationPolicy,
                 _windowsToolHost,
                 RequestToolApprovalAsync,
-                _conversationStore,
-                _conversationStore);
+                _operationalRepository,
+                _operationalRepository);
         }
 
         var handle = new WindowInteropHelper(this).EnsureHandle();
@@ -196,15 +198,15 @@ public partial class MainWindow : Window
                         _conversationStore,
                         RequestBackgroundToolApprovalAsync,
                         _modelSettingsStore.LoadRouting,
-                        _conversationStore,
-                        _conversationStore);
+                        _operationalRepository,
+                        _operationalRepository);
                     _agentJobExecutor = new SidecarAgentJobExecutor(
                         _sidecar,
                         _windowsToolHost,
                         RequestBackgroundToolApprovalAsync,
                         _modelSettingsStore.LoadRouting,
-                        _conversationStore,
-                        _conversationStore);
+                        _operationalRepository,
+                        _operationalRepository);
                     _agentJobScheduler = new DurableAgentJobScheduler(
                         _conversationStore,
                         _agentJobExecutor,
@@ -523,8 +525,8 @@ public partial class MainWindow : Window
                 AddDiagnostic("실행 활동 저장소를 사용할 수 없습니다.");
                 return;
             }
-            var activity = await _conversationStore.GetRecentToolActivityAsync();
-            var pendingUndo = await _conversationStore.GetPendingUndoActivityAsync();
+            var activity = await _operationalRepository.GetRecentToolActivityAsync();
+            var pendingUndo = await _operationalRepository.GetPendingUndoActivityAsync();
             _activityView ??= CreateActivityView();
             _activityView.SetItems(activity, pendingUndo);
             ShowShellPage(_activityView, ActivityNavigationButton);
@@ -549,8 +551,8 @@ public partial class MainWindow : Window
         {
             var succeeded = await ExecuteManualUndoAsync(undoId);
             if (_activityView is null) return;
-            var activity = await _conversationStore.GetRecentToolActivityAsync();
-            var pendingUndo = await _conversationStore.GetPendingUndoActivityAsync();
+            var activity = await _operationalRepository.GetRecentToolActivityAsync();
+            var pendingUndo = await _operationalRepository.GetPendingUndoActivityAsync();
             _activityView.SetItems(activity, pendingUndo);
             _activityView.SetFeedback(
                 succeeded ? "파일 작업을 되돌렸어요." : "파일 작업을 되돌리지 못했어요.",
@@ -953,7 +955,7 @@ public partial class MainWindow : Window
     {
         await _persistenceInitialization.ConfigureAwait(true);
         if (!_persistenceAvailable) return [];
-        return await _conversationStore.GetActiveGrantsAsync(DateTimeOffset.UtcNow, cancellationToken).ConfigureAwait(true);
+        return await _operationalRepository.GetActiveGrantsAsync(DateTimeOffset.UtcNow, cancellationToken).ConfigureAwait(true);
     }
 
     internal async Task CreateDataBackupAsync(string path, CancellationToken cancellationToken = default)
@@ -978,7 +980,7 @@ public partial class MainWindow : Window
     {
         await _persistenceInitialization.ConfigureAwait(true);
         if (!_persistenceAvailable) return;
-        await _conversationStore.RevokeGrantAsync(grantId, DateTimeOffset.UtcNow, cancellationToken).ConfigureAwait(true);
+        await _operationalRepository.RevokeGrantAsync(grantId, DateTimeOffset.UtcNow, cancellationToken).ConfigureAwait(true);
     }
 
     private void CompleteRun(string status)

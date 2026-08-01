@@ -295,6 +295,27 @@ public sealed class ConversationStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task OperationalAuditRepositoryUsesTheSharedDatabaseWithoutRawInputs()
+    {
+        var path = Path.Combine(_directory, "operations.db");
+        using var database = new ConversationDatabase(path);
+        await database.InitializeAsync();
+        var conversations = new ConversationRepository(database);
+        IOperationalAuditRepository operations = new OperationalAuditRepository(database);
+        var now = DateTimeOffset.Parse("2026-08-01T00:00:00Z");
+        await conversations.StartRunAsync("conversation", "run", "기록하지 않을 원문", now);
+
+        await operations.RecordExecutionAsync(
+            new ToolExecutionAuditRecord(
+                "conversation", "run", "call", "system.get_status.v1", "R0", "succeeded", "상태를 확인했어요.", now),
+            CancellationToken.None);
+
+        var activity = Assert.Single(await operations.GetRecentToolActivityAsync());
+        Assert.Equal("system.get_status.v1", activity.ToolName);
+        Assert.DoesNotContain("기록하지 않을 원문", activity.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task PersistsExpiresAndRevokesCapabilityGrantsWithoutScopeContents()
     {
         using var store = CreateStore();
