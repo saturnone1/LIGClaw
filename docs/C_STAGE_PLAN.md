@@ -53,12 +53,16 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ### C-1.1 Sidecar Tool catalog 분리
 
+상태: 완료 (2026-08-01).
+
 - built-in Tool 선언을 system/app/file/context/memory/schedule/automation/web/agent 영역으로 나눈다.
 - Cline session·provider routing과 Tool catalog 조립을 분리한다.
 - Desktop canonical Tool name과 Sidecar 노출 목록의 누락·중복을 결정적 테스트로 고정한다.
 - text-only JSON fallback allowlist는 native Tool catalog와 동일한 metadata 원천을 사용하게 한다.
 
 완료 조건: 공개 프로토콜 변경 없이 Sidecar 78개 이상과 Named Pipe 통합 테스트가 통과하고, 신규 Tool 등록 지점이 한 곳으로 수렴한다.
+
+구현 결과: Cline 세션·공급자 라우팅에서 내장 Tool 조립을 분리했고, system/app/file/context/memory/schedule/automation/web/agent 영역 모듈과 공통 스키마 모듈로 나눴다. 모델 노출명과 Desktop canonical 이름 50개는 `tool-registration.ts` 한 곳에서 등록하며 실제 catalog의 누락·중복과 text-only JSON fallback allowlist 일치를 결정적 테스트로 고정했다.
 
 ### C-1.2 Desktop 대화 orchestration 분리
 
@@ -173,4 +177,4 @@ C-0 기준선 복구
   └─ C-3 외부 OS·서명·UIA gate (환경 준비 시 병행)
 ```
 
-다음 실제 구현 진입점은 C-1.1 Sidecar Tool catalog 분리다. 공개 계약과 동작을 유지하면서 catalog metadata의 단일 원천과 replay parity를 먼저 고정한다.
+다음 실제 구현 진입점은 C-1.2 Desktop 대화 orchestration 분리다. 먼저 `MainWindow`의 run lifecycle·취소·승인 표시 상태를 전용 controller로 옮기고 기존 UI smoke와 protocol replay를 유지한다.

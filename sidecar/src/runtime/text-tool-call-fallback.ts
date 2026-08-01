@@ -1,5 +1,10 @@
+import {
+  desktopToolName,
+  type TextFallbackDesktopToolName,
+} from "./tools/tool-registration.js";
+
 export interface TextToolCallFallback {
-  readonly name: "app.launch.v1" | "memory.remember.v1" | "schedule.create.v1";
+  readonly name: TextFallbackDesktopToolName;
   readonly risk: "R1";
   readonly input: Readonly<Record<string, unknown>>;
   readonly successMessage: string;
@@ -33,7 +38,7 @@ function detectMemoryRemember(value: Readonly<Record<string, unknown>>): TextToo
   const ttlDays = optionalInteger(value.ttlDays, 1, 3_650);
   if (!kind || !key || !storedValue || !sensitivity || !reason || ttlDays === null) return undefined;
   return {
-    name: "memory.remember.v1", risk: "R1", successMessage: "요청한 내용을 기억해 두었습니다.",
+    name: desktopToolName("memory_remember"), risk: "R1", successMessage: "요청한 내용을 기억해 두었습니다.",
     input: { kind, key, value: storedValue, sensitivity, ...(ttlDays === undefined ? {} : { ttlDays }), reason },
   };
 }
@@ -61,7 +66,7 @@ function detectScheduleCreate(value: Readonly<Record<string, unknown>>): TextToo
   if (!title || !message || !reason || !recurrence || !misfirePolicy || interval === null || delayMinutes === null ||
       hasDelay === hasAbsolute) return undefined;
   return {
-    name: "schedule.create.v1", risk: "R1", successMessage: "요청한 알림을 예약했습니다.",
+    name: desktopToolName("schedule_create"), risk: "R1", successMessage: "요청한 알림을 예약했습니다.",
     input: {
       title, message,
       ...(hasDelay ? { delayMinutes } : { startLocal, timeZoneId }),
@@ -76,7 +81,7 @@ function detectAppLaunch(value: Readonly<Record<string, unknown>>): TextToolCall
   const reason = boundedString(value.reason, 1, 400);
   if (!appName || !reason) return undefined;
   return {
-    name: "app.launch.v1", risk: "R1", successMessage: `${appName} 실행을 요청했습니다.`,
+    name: desktopToolName("app_launch"), risk: "R1", successMessage: `${appName} 실행을 요청했습니다.`,
     input: { appName, reason },
   };
 }
