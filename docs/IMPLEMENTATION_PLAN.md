@@ -390,7 +390,7 @@ Phase 5 착수 전 제품 작업인 **UI/UX 전면 개선 목표**는 완료했�
 
 ### Phase 8 — C단계 출시 후보 안정화와 유지보수성
 
-**상태: 진행 중 (2026-08-01).** 상세 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 따른다. Windows PowerShell 5.1·PowerShell 7 검증 기준선, Sidecar Tool catalog, Desktop 대화 orchestration, SQLite repository와 설정 section 책임 분리를 완료했다. bounded release evidence 자동화를 추가했고 외부 Windows 10 22H2·서명 설치·실앱 UIA gate는 별도 추적한다. C-4는 Protocol 1.14 R0 전원, Protocol 1.15 R1 bounded 상위 앱 리소스, Protocol 1.16 R1 현재 네트워크 상세, Protocol 1.17 R0 비식별 장치 상태 진단까지 구현했다. 다음은 C-5 개인정보 ADR이다.
+**상태: 진행 중 (2026-08-01).** 상세 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 따른다. Windows PowerShell 5.1·PowerShell 7 검증 기준선, Sidecar Tool catalog, Desktop 대화 orchestration, SQLite repository와 설정 section 책임 분리를 완료했다. bounded release evidence 자동화를 추가했고 외부 Windows 10 22H2·서명 설치·실앱 UIA gate는 별도 추적한다. C-4는 Protocol 1.14 R0 전원, Protocol 1.15 R1 bounded 상위 앱 리소스, Protocol 1.16 R1 현재 네트워크 상세, Protocol 1.17 R0 비식별 장치 상태 진단까지 구현했다. C-5는 ADR 0033으로 사용자 주도 picker, 실제 내용 preview·마스킹, package identity·음성 opt-in 경계를 확정했고 Desktop 메모리 전용 `PreparedSensitiveContext`의 상한·identity 결합·2분 만료·zeroing 수명을 구현했다. 다음은 이미지/OCR 실제 내용 preview UI다.
 
 - C-0: 검증 기준선과 문서 일치
 - C-1: AI 에이전트가 국소적으로 수정 가능한 책임 분리
