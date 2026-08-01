@@ -23,7 +23,7 @@ Updated 2026-07-26.
 - Diagnostic bundles are written to a same-directory temporary file and atomically replace the destination only after a valid archive is complete. Cancellation preserves an existing bundle and removes the temporary file. JSON credentials and `Authorization: Bearer` values are redacted in addition to the existing patterns.
 - Returning to a cached Settings page restores controls after a cancelled operation. Superseded or unloaded Memory/Schedule page refreshes now cancel remaining SQLite pagination instead of consuming resources in the background.
 - UI smoke waits for the exact Desktop PID it started to exit before returning, preventing false failures in sequential smoke/soak automation.
-- Latest v0.6.0 verification on 2026-08-01: Sidecar 80, Contracts 7, Application 20, Desktop 251, and Named Pipe integration 1 all pass with zero build warnings/errors. Sidecar handshake, heartbeat, restart, and cleanup smoke also passes. The previous five-restart follow-up soak measured 21,094,400 bytes of private-memory growth and 80 handles, within the 128 MiB/256 acceptance limits.
+- Latest v0.6.0 verification on 2026-08-01: Sidecar 80, Contracts 7, Application 20, Desktop 259, and Named Pipe integration 1 all pass with zero build warnings/errors. Sidecar handshake, heartbeat, restart, and cleanup smoke also passes. The previous five-restart follow-up soak measured 21,094,400 bytes of private-memory growth and 80 handles, within the 128 MiB/256 acceptance limits.
 
 ## External release gates
 

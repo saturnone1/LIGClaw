@@ -66,7 +66,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ### C-1.2 Desktop 대화 orchestration 분리
 
-상태: 진행 중. 1차 수직 슬라이스에서 conversation/run ID, 취소 토큰, Tool 정책 begin/end와 실행·취소 표시 상태를 `ConversationRunController`로 이동하고 수명주기 회귀 테스트를 추가했다.
+상태: 진행 중. 1차 수직 슬라이스에서 conversation/run ID, 취소 토큰, Tool 정책 begin/end와 실행·취소 표시 상태를 `ConversationRunController`로 이동했다. 2차 슬라이스에서 Agent event 표시 정책, Tool 실행 직렬화·취소·진행 상태, 최근 대화 검색의 최신 요청 취소를 각각 독립 controller/policy와 결정적 테스트로 분리했다. 다음은 Sidecar 시작·취소와 대화 persistence orchestration을 code-behind 밖으로 이동한다.
 
 - `MainWindow`에서 conversation/run 수명, 취소, Sidecar event 처리, Tool 진행 상태를 controller로 이동한다.
 - WPF control 조작과 화면 전환만 code-behind에 남긴다.

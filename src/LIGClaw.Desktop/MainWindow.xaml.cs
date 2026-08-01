@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private readonly SemanticMemoryRepository _memories;
     private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
     private readonly ConversationRunController _conversationRun;
+    private readonly ConversationToolInvocationController _conversationTools;
     private readonly IUserNotificationService _notifications;
     private QuickAccessShortcut _configuredQuickAccessShortcut = QuickAccessShortcutCatalog.Default;
     private WindowsPlatformProfile? _platformProfile;
@@ -53,9 +54,7 @@ public partial class MainWindow : Window
     private bool _isConnected;
     private bool _isModelConfigured;
     private bool _refreshingConversations;
-    private CancellationTokenSource? _conversationSearchCancellation;
-    private long _conversationListRefreshVersion;
-    private readonly SemaphoreSlim _toolInvocationGate = new(1, 1);
+    private readonly LatestRequestController _conversationListRequests = new();
     private readonly StringBuilder _transcriptMarkdown = new();
     private readonly DispatcherTimer _transcriptRenderTimer;
     private bool _pendingTranscriptFollowOutput;
@@ -71,6 +70,7 @@ public partial class MainWindow : Window
     {
         _notifications = notifications;
         _conversationRun = new ConversationRunController(_toolInvocationPolicy);
+        _conversationTools = new ConversationToolInvocationController(_conversationRun);
         var semanticSearch = new SemanticMemorySearchService(
             _conversationStore,
             new OpenAiSemanticMemoryEmbeddingClient(_semanticMemoryHttpClient),
@@ -458,16 +458,13 @@ public partial class MainWindow : Window
         object sender,
         System.Windows.Controls.TextChangedEventArgs e)
     {
-        _conversationSearchCancellation?.Cancel();
-        _conversationSearchCancellation?.Dispose();
-        var cancellation = new CancellationTokenSource();
-        _conversationSearchCancellation = cancellation;
+        var request = _conversationListRequests.Begin();
         try
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(180), cancellation.Token);
-            await RefreshConversationListAsync(ConversationSearchBox.Text, cancellation.Token);
+            await Task.Delay(TimeSpan.FromMilliseconds(180), request.CancellationToken);
+            await RefreshConversationListAsync(ConversationSearchBox.Text, request);
         }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        catch (OperationCanceledException) when (request.CancellationToken.IsCancellationRequested)
         {
         }
     }
@@ -807,37 +804,27 @@ public partial class MainWindow : Window
             AddDiagnostic("현재 요청과 일치하지 않는 Agent 이벤트를 무시했습니다.");
             return;
         }
-        switch (agentEvent.Type)
+        var decision = ConversationAgentEventPolicy.Evaluate(agentEvent);
+        if (decision.Diagnostic is not null) AddDiagnostic(decision.Diagnostic);
+        if (decision.RunStatus is not null) SetRunStatus(decision.RunStatus);
+        switch (decision.Action)
         {
-            case "run_started":
-                SetRunStatus("답변을 작성하고 있어요…");
+            case ConversationAgentEventAction.AppendText:
+                AppendTranscript(decision.Transcript);
                 break;
-            case "routing_changed":
-                var routing = agentEvent.Message?.Split('|', 2);
-                var profile = routing is { Length: 2 } ? routing[0] : "fallback";
-                var reason = routing is { Length: 2 } ? routing[1] : "provider_unavailable";
-                AddDiagnostic($"모델 fallback 전환: {profile} ({reason})");
-                AppendTranscriptStatus($"모델 연결 문제로 ‘{profile}’ 프로필로 전환했습니다. 사유: {reason}");
-                SetRunStatus("대체 모델로 답변을 계속하고 있어요…");
+            case ConversationAgentEventAction.AppendStatus:
+                if (decision.Transcript is not null) AppendTranscriptStatus(decision.Transcript);
+                if (decision.IsTerminal) CompleteRun(decision.RunStatus!);
                 break;
-            case "text_delta":
-                AppendTranscript(agentEvent.Text);
+            case ConversationAgentEventAction.Complete:
+                CompleteRun(decision.RunStatus!);
                 break;
-            case "run_completed":
-                CompleteRun("답변을 마쳤어요.");
-                break;
-            case "run_cancelled":
-                AppendTranscriptStatus("요청을 중단했습니다.");
-                CompleteRun("요청을 중단했어요.");
-                break;
-            case "run_failed":
-                var failureMessage = AgentFailurePolicy.ToUserMessage(agentEvent.Message);
-                AddDiagnostic($"요청 처리 실패: {failureMessage}");
-                ShowRunFailure(failureMessage);
+            case ConversationAgentEventAction.Fail:
+                ShowRunFailure(decision.RunStatus!);
                 break;
         }
         await PersistAgentEventAsync(agentEvent);
-        if (agentEvent.Type is "run_completed" or "run_cancelled" or "run_failed")
+        if (decision.IsTerminal)
             await RefreshRecentConversationsAsync();
     }
 
@@ -847,50 +834,18 @@ public partial class MainWindow : Window
             await _agentJobExecutor.TryHandleToolInvocationAsync(invocation)) return;
         if (_subagentOrchestrator is not null &&
             await _subagentOrchestrator.TryHandleToolInvocationAsync(invocation)) return;
-        WindowsToolExecutionResult execution;
-        var enteredGate = false;
-        _ = _conversationRun.TryGetCancellationToken(
-            invocation.ConversationId,
-            invocation.RunId,
-            out var runCancellationToken);
-        try
+        await Dispatcher.InvokeAsync(() => SetRunStatus(_conversationTools.PreparingStatus));
+        var outcome = await _conversationTools.ExecuteAsync(
+            invocation,
+            _toolInvocationCoordinator is null
+                ? null
+                : _toolInvocationCoordinator.ExecuteAsync);
+        var execution = outcome.Execution;
+        await Dispatcher.InvokeAsync(() =>
         {
-            await _toolInvocationGate.WaitAsync(runCancellationToken);
-            enteredGate = true;
-            await Dispatcher.InvokeAsync(() => SetRunStatus("Windows 작업을 준비하고 있어요…"));
-            if (_toolInvocationCoordinator is null)
-            {
-                execution = new WindowsToolExecutionResult(
-                    false,
-                    new Dictionary<string, object?>(),
-                    "Windows 플랫폼을 확인할 수 없어 기능을 실행하지 못했어요.");
-            }
-            else
-            {
-                execution = await _toolInvocationCoordinator.ExecuteAsync(invocation, runCancellationToken);
-            }
-            await Dispatcher.InvokeAsync(() => SetRunStatus(
-                execution.Success ? "Windows 작업 결과를 확인하고 있어요…" : "Windows 작업을 완료하지 못했어요."));
-        }
-        catch (OperationCanceledException) when (runCancellationToken.IsCancellationRequested)
-        {
-            execution = new WindowsToolExecutionResult(
-                false,
-                new Dictionary<string, object?>(),
-                "요청이 중단되어 Windows 작업을 실행하지 않았어요.");
-        }
-        catch (Exception exception)
-        {
-            execution = new WindowsToolExecutionResult(
-                false,
-                new Dictionary<string, object?>(),
-                "Windows 기능 요청을 안전하게 처리하지 못했어요.");
-            await Dispatcher.InvokeAsync(() => AddDiagnostic($"Tool 요청 처리 실패: {exception.Message}"));
-        }
-        finally
-        {
-            if (enteredGate) _toolInvocationGate.Release();
-        }
+            SetRunStatus(outcome.RunStatus);
+            if (outcome.Diagnostic is not null) AddDiagnostic(outcome.Diagnostic);
+        });
 
         try
         {
@@ -1201,22 +1156,22 @@ public partial class MainWindow : Window
         await RefreshConversationListAsync(ConversationSearchBox.Text);
     }
 
-    private async Task RefreshConversationListAsync(
-        string? query,
-        CancellationToken cancellationToken = default)
+    private Task RefreshConversationListAsync(string? query) =>
+        RefreshConversationListAsync(query, _conversationListRequests.Begin());
+
+    private async Task RefreshConversationListAsync(string? query, LatestRequest request)
     {
         if (!_persistenceAvailable) return;
-        var refreshVersion = Interlocked.Increment(ref _conversationListRefreshVersion);
         try
         {
             var selectedId = _conversationRun.CurrentConversationId;
             var normalizedQuery = query?.Trim() ?? string.Empty;
             var conversations = normalizedQuery.Length == 0
-                ? await _conversationStore.GetRecentConversationsAsync(cancellationToken: cancellationToken)
+                ? await _conversationStore.GetRecentConversationsAsync(cancellationToken: request.CancellationToken)
                 : await _conversationStore.SearchConversationsAsync(
                     normalizedQuery,
-                    cancellationToken: cancellationToken);
-            if (refreshVersion != Volatile.Read(ref _conversationListRefreshVersion)) return;
+                    cancellationToken: request.CancellationToken);
+            if (!request.IsCurrent) return;
             _refreshingConversations = true;
             try
             {
@@ -1234,11 +1189,12 @@ public partial class MainWindow : Window
                 _refreshingConversations = false;
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (request.CancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception exception)
         {
+            if (!request.IsCurrent) return;
             AddDiagnostic($"최근 대화 불러오기 실패: {exception.Message}");
             ConversationSearchStatus.Text = "대화를 불러오지 못했습니다.";
         }
@@ -1453,8 +1409,7 @@ public partial class MainWindow : Window
     private async void MainWindow_Closed(object? sender, EventArgs e)
     {
         _transcriptRenderTimer.Stop();
-        _conversationSearchCancellation?.Cancel();
-        _conversationSearchCancellation?.Dispose();
+        _conversationListRequests.Dispose();
         _diagnosticsWindow?.Close();
         _sidecar.StatusChanged -= Sidecar_StatusChanged;
         _sidecar.DiagnosticMessage -= Sidecar_DiagnosticMessage;
