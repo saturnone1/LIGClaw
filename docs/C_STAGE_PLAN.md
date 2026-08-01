@@ -79,7 +79,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ### C-1.3 SQLite repository와 migration 분리
 
-상태: 진행 중. 1차 슬라이스에서 schema 1~11 migration, 단일 connection/gate, pending restore와 backup 검증을 `ConversationDatabase` 단독 소유로 옮겼다. 미래 schema 거부 후 파일 잠금 해제를 회귀 테스트로 추가했고 저장소 경계는 ADR 0026에 기록했다. 2차 슬라이스에서 conversation run/event/search/transcript SQL을 `ConversationRepository`로, 3차 슬라이스에서 감사·승인 grant·undo SQL을 `OperationalAuditRepository`로, 4차 슬라이스에서 개인 기억·의미 벡터 SQL을 `PersonalMemoryRepository`로 옮겼다. composition root와 직접 replay 테스트는 facade 대신 각 interface adapter를 사용한다. 다음은 예약 repository를 분리한다.
+상태: 진행 중. 1차 슬라이스에서 schema 1~11 migration, 단일 connection/gate, pending restore와 backup 검증을 `ConversationDatabase` 단독 소유로 옮겼다. 미래 schema 거부 후 파일 잠금 해제를 회귀 테스트로 추가했고 저장소 경계는 ADR 0026에 기록했다. 2차 슬라이스에서 conversation run/event/search/transcript SQL을 `ConversationRepository`로, 3차 슬라이스에서 감사·승인 grant·undo SQL을 `OperationalAuditRepository`로, 4차 슬라이스에서 개인 기억·의미 벡터 SQL을 `PersonalMemoryRepository`로, 5차 슬라이스에서 예약·misfire·실행 lease SQL을 `ScheduleRepository`로 옮겼다. composition root와 직접 replay 테스트는 facade 대신 각 interface adapter를 사용한다. 다음은 Agent 작업과 로컬 하위 Agent repository를 분리한다.
 
 - connection·transaction·schema migration 소유자를 `ConversationDatabase` 경계로 좁힌다.
 - 대화/검색, 감사·승인·undo, 기억, 예약, Agent job, subagent repository를 인터페이스별 adapter로 분리한다.

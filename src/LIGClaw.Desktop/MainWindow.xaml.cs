@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using LIGClaw.Application.Scheduling;
 using LIGClaw.Application.Tools;
 using LIGClaw.Contracts.Generated;
 using LIGClaw.Desktop.Infrastructure.Persistence;
@@ -39,6 +40,7 @@ public partial class MainWindow : Window
     private readonly IConversationRepository _conversationRepository;
     private readonly IOperationalAuditRepository _operationalRepository;
     private readonly IPersonalMemoryRepository _personalMemoryRepository;
+    private readonly IScheduleRepository _scheduleRepository;
     private readonly SemanticMemoryRepository _memories;
     private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
     private readonly ConversationRunController _conversationRun;
@@ -76,6 +78,7 @@ public partial class MainWindow : Window
         _conversationRepository = _conversationStore.Conversations;
         _operationalRepository = _conversationStore.Operations;
         _personalMemoryRepository = _conversationStore.Memories;
+        _scheduleRepository = _conversationStore.Schedules;
         _conversationRun = new ConversationRunController(_toolInvocationPolicy);
         _conversationOrchestration = new ConversationOrchestrationController(
             _conversationRun,
@@ -140,7 +143,7 @@ public partial class MainWindow : Window
                 notifications: _notifications,
                 undoJournal: _operationalRepository,
                 memories: _memories,
-                schedules: _conversationStore,
+                schedules: _scheduleRepository,
                 agentJobs: _conversationStore,
                 getSubagentOrchestrator: () => _subagentOrchestrator,
                 loadMcpSettings: _mcpSettingsStore.Load,
@@ -190,7 +193,7 @@ public partial class MainWindow : Window
             _persistenceAvailable = true;
             try
             {
-                _scheduler = new DurableNotificationScheduler(_conversationStore, _notifications);
+                _scheduler = new DurableNotificationScheduler(_scheduleRepository, _notifications);
                 await _scheduler.StartAsync();
                 if (_windowsToolHost is not null)
                 {
@@ -598,7 +601,7 @@ public partial class MainWindow : Window
                 AddDiagnostic("예약 저장소를 사용할 수 없습니다.");
                 return;
             }
-            _schedulePage ??= new SchedulePage(_conversationStore);
+            _schedulePage ??= new SchedulePage(_scheduleRepository);
             ShowShellPage(_schedulePage, ScheduleNavigationButton);
             await _schedulePage.RefreshAsync();
         }

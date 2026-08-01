@@ -16,20 +16,20 @@ public sealed class DurableNotificationSchedulerTests : IDisposable
         await store.InitializeAsync();
         var dueAt = DateTimeOffset.Parse("2026-07-26T00:00:00Z");
         Assert.True(NotificationSchedulePolicy.TryParseLocal("2026-07-26T09:00:00", out var local));
-        var job = await store.CreateAsync(
+        var job = await store.Schedules.CreateAsync(
             new NotificationScheduleDraft(
                 "회의 알림", "회의가 시작됩니다.", local, "Korea Standard Time",
                 ScheduleValues.Once, 1, ScheduleValues.RunOnceOnResume, "test"),
             dueAt.AddDays(-1),
             CancellationToken.None);
         var notifications = new FakeNotificationService();
-        await using var scheduler = new DurableNotificationScheduler(store, notifications);
+        await using var scheduler = new DurableNotificationScheduler(store.Schedules, notifications);
 
         var count = await scheduler.RunDueOnceAsync(dueAt, CancellationToken.None);
 
         Assert.Equal(1, count);
         Assert.Equal(("회의 알림", "회의가 시작됩니다."), Assert.Single(notifications.Shown));
-        Assert.Equal(ScheduleValues.Completed, (await store.GetAsync(job.Id, CancellationToken.None))!.Status);
+        Assert.Equal(ScheduleValues.Completed, (await store.Schedules.GetAsync(job.Id, CancellationToken.None))!.Status);
     }
 
     [Fact]
@@ -39,18 +39,18 @@ public sealed class DurableNotificationSchedulerTests : IDisposable
         await store.InitializeAsync();
         var dueAt = DateTimeOffset.Parse("2026-07-26T00:00:00Z");
         Assert.True(NotificationSchedulePolicy.TryParseLocal("2026-07-26T09:00:00", out var local));
-        var job = await store.CreateAsync(
+        var job = await store.Schedules.CreateAsync(
             new NotificationScheduleDraft(
                 "회의 알림", "회의가 시작됩니다.", local, "Korea Standard Time",
                 ScheduleValues.Once, 1, ScheduleValues.RunOnceOnResume, "test"),
             dueAt.AddDays(-1),
             CancellationToken.None);
-        await using var scheduler = new DurableNotificationScheduler(store, new ThrowingNotificationService());
+        await using var scheduler = new DurableNotificationScheduler(store.Schedules, new ThrowingNotificationService());
 
         var count = await scheduler.RunDueOnceAsync(dueAt, CancellationToken.None);
 
         Assert.Equal(1, count);
-        Assert.Equal(ScheduleValues.Failed, (await store.GetAsync(job.Id, CancellationToken.None))!.Status);
+        Assert.Equal(ScheduleValues.Failed, (await store.Schedules.GetAsync(job.Id, CancellationToken.None))!.Status);
     }
 
     public void Dispose()
