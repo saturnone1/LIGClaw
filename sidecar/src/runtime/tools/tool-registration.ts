@@ -5,6 +5,7 @@ export interface BuiltInToolRegistration {
 
 export const BUILT_IN_TOOL_REGISTRATIONS = {
   system_get_status: { desktopName: "system.get_status.v1" },
+  system_get_power_status: { desktopName: "system.get_power_status.v1" },
   system_get_storage_status: { desktopName: "system.get_storage_status.v1" },
   system_get_disk_health: { desktopName: "system.get_disk_health.v1" },
   system_get_security_status: { desktopName: "system.get_security_status.v1" },
@@ -57,6 +58,9 @@ export const BUILT_IN_TOOL_REGISTRATIONS = {
 } as const satisfies Readonly<Record<string, BuiltInToolRegistration>>;
 
 export type BuiltInAgentToolName = keyof typeof BUILT_IN_TOOL_REGISTRATIONS;
+
+export const BUILT_IN_TOOL_CAPABILITIES = Object.values(BUILT_IN_TOOL_REGISTRATIONS)
+  .map((registration) => `tool.${registration.desktopName}`);
 
 export function desktopToolName<TName extends BuiltInAgentToolName>(name: TName):
   (typeof BUILT_IN_TOOL_REGISTRATIONS)[TName]["desktopName"] {

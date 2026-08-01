@@ -7,8 +7,8 @@ namespace LIGClaw.Contracts.Generated;
 
 public static class ContractMetadata
 {
-    public const string ProtocolVersion = "1.13";
-    public const string Hash = "11ccbc50c3399406be20e25cfaa1888b52b9aa999a11ea2e069c246ad1b3a694";
+    public const string ProtocolVersion = "1.14";
+    public const string Hash = "50d4716c048786df0f051ea54e365bf681dc273aac58ceed19699e828a21de69";
 }
 
 public sealed record AgentJobCancelV1(
@@ -441,6 +441,8 @@ public sealed record SystemGetDiskHealthV1();
 
 public sealed record SystemGetNetworkStatusV1();
 
+public sealed record SystemGetPowerStatusV1();
+
 public sealed record SystemGetResourceStatusV1();
 
 public sealed record SystemGetSecurityStatusV1();
@@ -466,6 +468,13 @@ public sealed record SystemGetDiskHealthV1Result(
 public sealed record SystemGetNetworkStatusV1Result(
     [property: JsonPropertyName("networkAvailable")] bool NetworkAvailable,
     [property: JsonPropertyName("adapters")] IReadOnlyList<IReadOnlyDictionary<string, object?>> Adapters);
+
+public sealed record SystemGetPowerStatusV1Result(
+    [property: JsonPropertyName("providerStatus")] string ProviderStatus,
+    [property: JsonPropertyName("powerSource")] string PowerSource,
+    [property: JsonPropertyName("batteryPresence")] string BatteryPresence,
+    [property: JsonPropertyName("energySaverStatus")] string EnergySaverStatus,
+    [property: JsonPropertyName("battery")] IReadOnlyDictionary<string, object?>? Battery);
 
 public sealed record SystemGetResourceStatusV1Result(
     [property: JsonPropertyName("uptimeSeconds")] long UptimeSeconds,

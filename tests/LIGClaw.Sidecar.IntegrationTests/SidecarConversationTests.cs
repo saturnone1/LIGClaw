@@ -155,6 +155,7 @@ public sealed class SidecarConversationTests
             Assert.Contains("mcp.configure", initialized.Capabilities);
             Assert.Contains("mcp.status", initialized.Capabilities);
             Assert.Contains("tool.system.get_status.v1", initialized.Capabilities);
+            Assert.Contains("tool.system.get_power_status.v1", initialized.Capabilities);
             Assert.Contains("tool.system.get_storage_status.v1", initialized.Capabilities);
             Assert.Contains("tool.system.get_disk_health.v1", initialized.Capabilities);
             Assert.Contains("tool.system.get_security_status.v1", initialized.Capabilities);

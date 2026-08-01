@@ -521,6 +521,26 @@ export function createDeterministicSpikeModel(): AgentModel {
         yield { type: "finish", reason: "stop" };
         return;
       }
+      if (userText === "__test_power_status__") {
+        const toolResult = request.messages
+          .flatMap((message: AgentMessage) => message.content)
+          .find((part: AgentMessage["content"][number]) =>
+            part.type === "tool-result" && part.toolName === "system_get_power_status"
+          );
+        if (!toolResult || toolResult.type !== "tool-result") {
+          yield {
+            type: "tool-call-delta",
+            toolCallId: "deterministic-power-call",
+            toolName: "system_get_power_status",
+            input: {},
+          };
+          yield { type: "finish", reason: "tool-calls" };
+          return;
+        }
+        yield { type: "text-delta", text: "전원과 배터리 상태를 확인했습니다." };
+        yield { type: "finish", reason: "stop" };
+        return;
+      }
       if (userText === "__test_disk_health__") {
         const toolResult = request.messages.flatMap((message: AgentMessage) => message.content)
           .find((part: AgentMessage["content"][number]) => part.type === "tool-result" && part.toolName === "system_get_disk_health");

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createDesktopTools } from "../dist/runtime/tools/built-in-tool-catalog.js";
 import {
+  BUILT_IN_TOOL_CAPABILITIES,
   BUILT_IN_TOOL_REGISTRATIONS,
   TEXT_FALLBACK_AGENT_TOOL_NAMES,
   desktopToolName,
@@ -18,6 +19,8 @@ test("built-in Tool catalog has one unique registration for every exposed Tool",
   assert.deepEqual([...actualNames].sort(), [...registeredNames].sort());
   assert.equal(new Set(Object.values(BUILT_IN_TOOL_REGISTRATIONS).map(value => value.desktopName)).size,
     registeredNames.length);
+  assert.deepEqual(BUILT_IN_TOOL_CAPABILITIES,
+    Object.values(BUILT_IN_TOOL_REGISTRATIONS).map(value => `tool.${value.desktopName}`));
 });
 
 test("text fallback allowlist uses registrations explicitly marked for fallback", () => {

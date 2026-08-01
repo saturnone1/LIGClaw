@@ -113,6 +113,7 @@ internal sealed class WindowsToolHost
         var defaultAdapters = new List<IWindowsToolAdapter>
         {
             new SystemGetStatusTool(platform),
+            new SystemGetPowerStatusTool(),
             new SystemGetStorageStatusTool(),
             new SystemGetDiskHealthTool(),
             new SystemGetSecurityStatusTool(),

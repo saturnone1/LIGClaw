@@ -18,7 +18,7 @@ try {
         -Package $package -Stage $stage -ContentsPath $contents -OutputRoot $temporaryRoot `
         -Version '9.8.7.6' -Publisher 'CN=Test' -Signed $false -VerificationStatus passed -EvidencePath $evidencePath
     $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-    if ($manifest.version -ne '9.8.7.6' -or $manifest.protocolVersion -ne '1.13' -or
+    if ($manifest.version -ne '9.8.7.6' -or $manifest.protocolVersion -ne '1.14' -or
         $manifest.databaseSchemaVersion -ne 11 -or $manifest.packageBytes -ne 4 -or
         $manifest.verification.status -ne 'passed' -or $manifest.releaseEvidence.automatedStatus -ne 'passed' -or
         $manifest.releaseEvidence.hardwareSleepResume -ne 'manual-required') {

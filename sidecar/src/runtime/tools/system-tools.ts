@@ -30,6 +30,27 @@ export function createSystemTools(
       }, context.signal);
     },
   };
+  const systemGetPowerStatus: AgentTool<Record<string, never>, Readonly<Record<string, unknown>>> = {
+    name: "system_get_power_status",
+    description: "Windows의 전원 연결, 배터리 잔량·충전·저전력/위험 상태와 에너지 절약 모드를 확인합니다. 배터리 식별 정보는 반환하지 않습니다.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {},
+    },
+    timeoutMs: DESKTOP_TOOL_RESPONSE_TIMEOUT_MS,
+    retryable: false,
+    async execute(_input: Record<string, never>, context: DesktopToolContext) {
+      return await bridge.invoke({
+        ...(context.toolCallId ? { toolCallId: context.toolCallId } : {}),
+        conversationId,
+        runId,
+        name: desktopToolName("system_get_power_status"),
+        risk: "R0",
+        input: {},
+      }, context.signal);
+    },
+  };
   const systemGetStorageStatus: AgentTool<Record<string, never>, Readonly<Record<string, unknown>>> = {
     name: "system_get_storage_status",
     description: "Windows 논리 볼륨별 루트 경로, 종류, 준비 상태, 파일 시스템, 전체·여유 용량과 사용률을 확인합니다. 파일 내용이나 물리 디스크 SMART 상태는 읽지 않습니다.",
@@ -182,5 +203,5 @@ export function createSystemTools(
       }, context.signal);
     },
   };
-  return [systemGetStatus, systemGetStorageStatus, systemGetDiskHealth, systemGetSecurityStatus, systemGetResourceStatus, systemGetNetworkStatus, systemShowNotification, systemOpenSettings, systemSessionAction];
+  return [systemGetStatus, systemGetPowerStatus, systemGetStorageStatus, systemGetDiskHealth, systemGetSecurityStatus, systemGetResourceStatus, systemGetNetworkStatus, systemShowNotification, systemOpenSettings, systemSessionAction];
 }

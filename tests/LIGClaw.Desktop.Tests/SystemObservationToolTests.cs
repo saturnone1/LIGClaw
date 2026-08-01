@@ -11,15 +11,105 @@ public sealed class SystemObservationToolTests
         var host = new WindowsToolHost(WindowsPlatformProfile.Classify(10, 0, Environment.OSVersion.Version.Build, isWorkstation: true));
 
         var storage = await host.ExecuteAsync(Invocation("system.get_storage_status.v1"));
+        var power = await host.ExecuteAsync(Invocation("system.get_power_status.v1"));
         var resources = await host.ExecuteAsync(Invocation("system.get_resource_status.v1"));
         var network = await host.ExecuteAsync(Invocation("system.get_network_status.v1"));
 
         Assert.True(storage.Success, storage.Error);
+        Assert.True(power.Success, power.Error);
         Assert.True(resources.Success, resources.Error);
         Assert.True(network.Success, network.Error);
         Assert.NotEmpty(Assert.IsAssignableFrom<IEnumerable<IReadOnlyDictionary<string, object?>>>(storage.Output["volumes"]));
+        Assert.Contains(Assert.IsType<string>(power.Output["providerStatus"]), new[] { "available", "unavailable" });
         Assert.InRange(Assert.IsType<double>(resources.Output["cpuUsagePercent"]), 0, 100);
         Assert.IsType<bool>(network.Output["networkAvailable"]);
+    }
+
+    [Fact]
+    public async Task Power_status_returns_bounded_battery_details_without_identifiers()
+    {
+        var snapshot = new PowerStatusSnapshot(
+            "available", "battery", "present", "on", "discharging", "low", 18, 3_600);
+        var host = Host(new SystemGetPowerStatusTool(new FakePowerStatusReader(snapshot)));
+
+        var result = await host.ExecuteAsync(Invocation("system.get_power_status.v1"));
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("battery", result.Output["powerSource"]);
+        Assert.Equal("on", result.Output["energySaverStatus"]);
+        var battery = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(result.Output["battery"]);
+        Assert.Equal(18d, battery["percent"]);
+        Assert.Equal("low", battery["safetyStatus"]);
+        Assert.DoesNotContain("serialNumber", battery.Keys);
+        Assert.DoesNotContain("deviceName", battery.Keys);
+    }
+
+    [Fact]
+    public async Task Power_status_omits_battery_details_on_a_desktop_without_a_battery()
+    {
+        var snapshot = new PowerStatusSnapshot("available", "ac", "not_present", "off");
+        var host = Host(new SystemGetPowerStatusTool(new FakePowerStatusReader(snapshot)));
+
+        var result = await host.ExecuteAsync(Invocation("system.get_power_status.v1"));
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("not_present", result.Output["batteryPresence"]);
+        Assert.DoesNotContain("battery", result.Output.Keys);
+    }
+
+    [Theory]
+    [InlineData(19_045)]
+    [InlineData(22_631)]
+    public async Task Power_status_uses_the_common_adapter_on_Windows_10_and_11(int build)
+    {
+        var profile = WindowsPlatformProfile.Classify(10, 0, build, isWorkstation: true);
+        var snapshot = new PowerStatusSnapshot("unavailable", "unknown", "unknown", "unknown");
+        var host = new WindowsToolHost(profile, [new SystemGetPowerStatusTool(new FakePowerStatusReader(snapshot))]);
+
+        var result = await host.ExecuteAsync(Invocation("system.get_power_status.v1"));
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("unavailable", result.Output["providerStatus"]);
+        Assert.Equal("unknown", result.Output["batteryPresence"]);
+        Assert.DoesNotContain("battery", result.Output.Keys);
+    }
+
+    [Theory]
+    [InlineData(0, 10, 17, 1, "battery", "charging", "low", "on")]
+    [InlineData(0, 4, 3, 0, "battery", "discharging", "critical", "off")]
+    [InlineData(1, 1, 100, 0, "ac", "not_charging", "normal", "off")]
+    public void Windows_10_and_11_power_flags_are_classified_without_OS_specific_branches(
+        byte acLineStatus,
+        byte batteryFlag,
+        byte percent,
+        byte saver,
+        string source,
+        string charging,
+        string safety,
+        string energySaver)
+    {
+        var result = WindowsPowerStatusReader.Classify(acLineStatus, batteryFlag, percent, saver, uint.MaxValue);
+
+        Assert.Equal(source, result.PowerSource);
+        Assert.Equal(charging, result.ChargingStatus);
+        Assert.Equal(safety, result.SafetyStatus);
+        Assert.Equal(energySaver, result.EnergySaverStatus);
+        Assert.Null(result.EstimatedRuntimeSeconds);
+    }
+
+    [Theory]
+    [InlineData(128, 255, "not_present")]
+    [InlineData(255, 255, "unknown")]
+    [InlineData(1, 254, "unknown")]
+    public void Power_reader_distinguishes_no_battery_from_unknown_provider_values(
+        byte batteryFlag,
+        byte percent,
+        string presence)
+    {
+        var result = WindowsPowerStatusReader.Classify(1, batteryFlag, percent, 0, uint.MaxValue);
+
+        Assert.Equal(presence, result.BatteryPresence);
+        Assert.Null(result.Percent);
     }
 
     [Fact]
@@ -153,6 +243,11 @@ public sealed class SystemObservationToolTests
     {
         public IReadOnlyList<StorageVolumeSnapshot> Read() =>
             [new("C:\\", "fixed", "ready", "NTFS", 1_000, 250, 75)];
+    }
+
+    private sealed class FakePowerStatusReader(PowerStatusSnapshot snapshot) : IPowerStatusReader
+    {
+        public PowerStatusSnapshot Read() => snapshot;
     }
 
     private sealed class FakeResourceReader : IResourceStatusReader

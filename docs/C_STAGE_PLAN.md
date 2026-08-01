@@ -99,7 +99,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ## C-2 — 로컬 출시 후보 자동화
 
-상태: 진행 중. CI에 Windows PowerShell 5.1 parser gate를 추가했고 `verify.ps1`도 parser와 release manifest fixture를 실행한다. 실행 중인 앱이 기본 build DLL을 잠그지 않도록 verify output을 `artifacts/verify`로 격리했다. `build-release-candidate.ps1` 한 명령이 전체 verify 후 self-contained x64 MSIX를 만들며, package 필수 파일·Appx identity를 검사하고 파일 목록·SHA-256·version·protocol 1.13·schema 11·Node·검증 상태를 release manifest에 기록한다. Windows PowerShell 5.1의 `utf8NoBOM` 실행 비호환도 .NET writer로 수정했다. 현재 PC에는 Windows SDK MakeAppx가 없어 실제 MSIX 생성은 SDK가 있는 CI/개발 환경에서 다시 실행해야 한다. Sidecar/UI/Desktop smoke는 실행 중인 사용자 앱을 종료하거나 두 번째 instance timeout으로 오인하지 않고 명확히 대기한다.
+상태: 진행 중. CI에 Windows PowerShell 5.1 parser gate를 추가했고 `verify.ps1`도 parser와 release manifest fixture를 실행한다. 실행 중인 앱이 기본 build DLL을 잠그지 않도록 verify output을 `artifacts/verify`로 격리했다. `build-release-candidate.ps1` 한 명령이 전체 verify 후 self-contained x64 MSIX를 만들며, package 필수 파일·Appx identity를 검사하고 파일 목록·SHA-256·version·protocol 1.14·schema 11·Node·검증 상태를 release manifest에 기록한다. Windows PowerShell 5.1의 `utf8NoBOM` 실행 비호환도 .NET writer로 수정했다. 현재 PC에는 Windows SDK MakeAppx가 없어 실제 MSIX 생성은 SDK가 있는 CI/개발 환경에서 다시 실행해야 한다. Sidecar/UI/Desktop smoke는 실행 중인 사용자 앱을 종료하거나 두 번째 instance timeout으로 오인하지 않고 명확히 대기한다.
 
 1. CI에서 `verify.ps1` 외에 Windows PowerShell 5.1 script parse 검사를 실행한다.
 2. self-contained x64 MSIX를 무서명 상태까지 재현 가능하게 만들고 파일 목록·Node 번들·manifest를 검사한다.
@@ -142,7 +142,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 상태: C-1 완료 후 한 항목씩 수직 구현. 아래 순서는 권장 우선순위다.
 
-1. **전원 진단 확장**: 배터리 잔량·충전 상태·예상 절전 상태를 R0 최소 데이터로 제공한다.
+1. **전원 진단 확장 — 구현 완료, 실기기 확인 대기**: Protocol 1.14 `system.get_power_status.v1`이 Windows 10/11 공통 API로 전원 연결, 배터리 유무·잔량·충전·저전력/위험 상태와 에너지 절약 모드를 R0 최소 데이터로 제공한다. 배터리 식별자는 반환하지 않고 데스크톱·provider unavailable을 구조화해 격리한다.
 2. **느린 PC 진단**: CPU·메모리 상위 프로세스를 bounded 결과로 제공한다. 프로세스 이름 노출은 R1 문맥 승인으로 분류한다.
 3. **네트워크 진단 상세**: IP/DNS/게이트웨이·Wi-Fi SSID를 R1로 조회하되 자격 증명과 전체 주소 이력은 저장하지 않는다.
 4. **장치 상태**: 기본 오디오 출력·디스플레이·프린터 상태를 R0로 시작하고 변경은 별도 R1/R2 Tool로 분리한다.

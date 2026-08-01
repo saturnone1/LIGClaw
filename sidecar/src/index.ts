@@ -24,6 +24,21 @@ import { RuntimeCoordinator } from "./runtime/runtime-coordinator.js";
 import { DesktopToolBridge } from "./runtime/desktop-tool-bridge.js";
 import { testProviderConnection } from "./runtime/provider-connection-probe.js";
 import { McpClientManager } from "./mcp/mcp-client-manager.js";
+import { BUILT_IN_TOOL_CAPABILITIES } from "./runtime/tools/tool-registration.js";
+
+const RUNTIME_CAPABILITIES = [
+  "health.ping",
+  "conversation.start",
+  "conversation.cancel",
+  "agent.events",
+  "provider.configure",
+  "provider.test",
+  "mcp.configure",
+  "mcp.status",
+  "mcp.call",
+  "tool.invoke",
+  "tool.result",
+] as const;
 
 interface StartupOptions {
   readonly pipeName: string;
@@ -78,7 +93,7 @@ async function handleRequest(
       protocolVersion: PROTOCOL_VERSION,
       sidecarVersion: "0.2.0",
       contractHash: CONTRACT_HASH,
-      capabilities: ["health.ping", "conversation.start", "conversation.cancel", "agent.events", "provider.configure", "provider.test", "mcp.configure", "mcp.status", "mcp.call", "tool.invoke", "tool.result", "tool.system.get_status.v1", "tool.system.get_storage_status.v1", "tool.system.get_disk_health.v1", "tool.system.get_security_status.v1", "tool.system.get_resource_status.v1", "tool.system.get_network_status.v1", "tool.app.list_windows.v1", "tool.app.search_installed.v1", "tool.system.show_notification.v1", "tool.app.launch.v1", "tool.app.activate.v1", "tool.app.close.v1", "tool.app.set_window_state.v1", "tool.system.open_settings.v1", "tool.system.session_action.v1", "tool.explorer.get_context.v1", "tool.file.search.v1", "tool.file.get_metadata.v1", "tool.file.read_text.v1", "tool.file.open.v1", "tool.file.copy.v1", "tool.file.move.v1", "tool.file.rename.v1", "tool.file.recycle.v1", "tool.file.undo.v1", "tool.file.create_directory.v1", "tool.file.write_text.v1", "tool.file.zip_create.v1", "tool.file.zip_extract.v1", "tool.clipboard.read_text.v1", "tool.clipboard.write_text.v1", "tool.memory.remember.v1", "tool.memory.list.v1", "tool.memory.forget.v1", "tool.schedule.create.v1", "tool.schedule.list.v1", "tool.schedule.cancel.v1", "tool.agent_job.create.v1", "tool.agent_job.list.v1", "tool.agent_job.cancel.v1", "tool.agent_job.control.v1", "tool.subagent.run.v1", "tool.web.fetch.v1", "tool.web.search.v1", "tool.browser.open.v1", "tool.browser.snapshot.v1", "tool.uia.inspect.v1", "tool.uia.invoke.v1", "tool.uia.set_value.v1", "tool.uia.send_text.v1", "runtime.cline.0.0.65"],
+      capabilities: [...RUNTIME_CAPABILITIES, ...BUILT_IN_TOOL_CAPABILITIES, "runtime.cline.0.0.65"],
     };
     return success(request.id, result);
   }

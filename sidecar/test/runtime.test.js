@@ -595,6 +595,11 @@ test("reused Cline session sends Tool calls under the current Desktop run id", a
 
 for (const observation of [
   {
+    input: "__test_power_status__",
+    canonicalName: "system.get_power_status.v1",
+    output: { providerStatus: "available", powerSource: "battery", batteryPresence: "present", energySaverStatus: "on", battery: { chargingStatus: "discharging", safetyStatus: "low", percent: 18 } },
+  },
+  {
     input: "__test_storage_status__",
     canonicalName: "system.get_storage_status.v1",
     output: { volumes: [], physicalHealthAvailable: false, healthNote: "logical only" },
