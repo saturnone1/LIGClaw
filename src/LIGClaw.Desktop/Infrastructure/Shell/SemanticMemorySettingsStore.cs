@@ -33,10 +33,36 @@ internal sealed class SemanticMemorySettingsStore : ISemanticMemorySettingsStore
         if (!SemanticMemorySettingsPolicy.TryValidate(settings, out var normalized, out var error))
             throw new ArgumentException(error, nameof(settings));
         using var key = Registry.CurrentUser.CreateSubKey(SettingsKeyPath, writable: true);
-        key.SetValue("Enabled", normalized.Enabled ? 1 : 0, RegistryValueKind.DWord);
-        key.SetValue("BaseUrl", normalized.BaseUrl, RegistryValueKind.String);
-        key.SetValue("Model", normalized.Model, RegistryValueKind.String);
-        if (string.IsNullOrWhiteSpace(normalized.ApiKey)) WindowsCredentialStore.Delete(CredentialTarget);
-        else WindowsCredentialStore.Write(CredentialTarget, normalized.ApiKey);
+        var previousEnabled = key.GetValue("Enabled");
+        var previousBaseUrl = key.GetValue("BaseUrl");
+        var previousModel = key.GetValue("Model");
+        var previousSecret = WindowsCredentialStore.Read(CredentialTarget);
+        AtomicSettingsMutation.Execute(
+            () =>
+            {
+                if (string.IsNullOrWhiteSpace(normalized.ApiKey)) WindowsCredentialStore.Delete(CredentialTarget);
+                else WindowsCredentialStore.Write(CredentialTarget, normalized.ApiKey);
+                key.SetValue("Enabled", normalized.Enabled ? 1 : 0, RegistryValueKind.DWord);
+                key.SetValue("BaseUrl", normalized.BaseUrl, RegistryValueKind.String);
+                key.SetValue("Model", normalized.Model, RegistryValueKind.String);
+            },
+            () => RestoreValue(key, "Enabled", previousEnabled),
+            () => RestoreValue(key, "BaseUrl", previousBaseUrl),
+            () => RestoreValue(key, "Model", previousModel),
+            () =>
+            {
+                if (previousSecret is null) WindowsCredentialStore.Delete(CredentialTarget);
+                else WindowsCredentialStore.Write(CredentialTarget, previousSecret);
+            });
+    }
+
+    private static void RestoreValue(RegistryKey key, string name, object? value)
+    {
+        if (value is null)
+        {
+            key.DeleteValue(name, throwOnMissingValue: false);
+            return;
+        }
+        key.SetValue(name, value, value is int ? RegistryValueKind.DWord : RegistryValueKind.String);
     }
 }

@@ -90,7 +90,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ### C-1.4 설정 화면 책임 분리
 
-상태: 진행 중. 첫 슬라이스에서 설정 저장·연결 테스트·진단·백업·복원·정리 작업의 단일 실행과 취소 수명을 `SettingsOperationGuard`로 옮기고 중복 시작·취소·재사용을 결정적 테스트로 고정했다. 모델 프로필 load/validation/test-before-save/fallback routing/persistence는 `ModelProfileSectionController`로, MCP load/validation/secret reuse/save/Sidecar apply 순서는 `McpSettingsSectionController`로 옮겼다. 의미 기억의 정규화·secret reuse·save와 Web 검색 template validation·save/delete도 각각 section controller로 분리했다. UI는 필드·상태 표시만 담당한다. 다음은 시작프로그램·단축키 section controller와 Credential Manager rollback 검증을 닫는다.
+상태: 구현 완료, UI smoke 재실행 대기. 설정 저장·연결 테스트·진단·백업·복원·정리 작업의 단일 실행과 취소 수명은 `SettingsOperationGuard`가 소유한다. 모델, MCP, 의미 기억, Web 검색, 시작프로그램·단축키 흐름은 section controller로 분리했고 UI는 필드·상태 표시만 담당한다. 의미 기억 metadata와 Credential Manager 비밀도 원자적 rollback을 사용하며 ADR 0027과 실패 주입 테스트로 고정했다. 전체 verify는 Desktop 281개를 포함해 통과했다. UI smoke는 실행 중인 사용자 LIGClaw 프로세스를 종료하지 않는 안전 guard 때문에 아직 재실행하지 않았다.
 
 - 모델 프로필, MCP, 의미 기억, Web 검색, 시작프로그램·단축키 저장 흐름을 section controller로 분리한다.
 - 저장 전 연결 테스트, secret rollback, stale operation cancellation 규칙을 공통 operation guard로 유지한다.
