@@ -9,7 +9,7 @@ namespace LIGClaw.Desktop.Infrastructure.Shell;
 internal sealed record SemanticMemoryMatch(PersonalMemory Memory, double Score);
 
 internal sealed class SemanticMemorySearchService(
-    ConversationStore store,
+    IPersonalMemoryRepository store,
     ISemanticMemoryEmbeddingClient embeddingClient,
     Func<SemanticMemorySettings> loadSettings)
 {

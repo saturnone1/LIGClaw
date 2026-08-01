@@ -24,7 +24,7 @@ public sealed class SemanticMemorySearchServiceTests : IDisposable
             CancellationToken.None);
         var client = new DeterministicEmbeddingClient();
         var service = new SemanticMemorySearchService(
-            store,
+            store.Memories,
             client,
             () => new SemanticMemorySettings(true, "http://127.0.0.1:11434", "test-model"));
 
@@ -47,7 +47,7 @@ public sealed class SemanticMemorySearchServiceTests : IDisposable
             CancellationToken.None);
         var client = new DeterministicEmbeddingClient();
         var settings = new SemanticMemorySettings(true, "http://127.0.0.1:11434", "test-model");
-        var service = new SemanticMemorySearchService(store, client, () => settings);
+        var service = new SemanticMemorySearchService(store.Memories, client, () => settings);
         await service.SearchAsync("코딩 도구", 1, now, CancellationToken.None);
         var firstInputCount = client.InputCount;
 
@@ -59,7 +59,7 @@ public sealed class SemanticMemorySearchServiceTests : IDisposable
         Assert.Equal(firstInputCount + 2, client.InputCount);
 
         Assert.True(await store.DeleteAsync(created.Memory.Id, CancellationToken.None));
-        var candidates = await store.GetSemanticMemoryCandidatesAsync(
+        var candidates = await store.Memories.GetSemanticMemoryCandidatesAsync(
             SemanticMemorySearchService.Hash($"{settings.BaseUrl}\n{settings.Model}"),
             now,
             cancellationToken: CancellationToken.None);
@@ -77,8 +77,8 @@ public sealed class SemanticMemorySearchServiceTests : IDisposable
             now,
             CancellationToken.None);
         var settings = new SemanticMemorySettings(true, "https://embedding.example", "test-model");
-        var service = new SemanticMemorySearchService(store, new FailingEmbeddingClient(), () => settings);
-        var repository = new SemanticMemoryRepository(store, service, () => settings);
+        var service = new SemanticMemorySearchService(store.Memories, new FailingEmbeddingClient(), () => settings);
+        var repository = new SemanticMemoryRepository(store.Memories, service, () => settings);
 
         var results = await repository.ListAsync("VS Code", 10, now, CancellationToken.None);
 

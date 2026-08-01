@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
     private readonly IConversationRepository _conversationRepository;
     private readonly IOperationalAuditRepository _operationalRepository;
+    private readonly IPersonalMemoryRepository _personalMemoryRepository;
     private readonly SemanticMemoryRepository _memories;
     private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
     private readonly ConversationRunController _conversationRun;
@@ -74,6 +75,7 @@ public partial class MainWindow : Window
         _notifications = notifications;
         _conversationRepository = _conversationStore.Conversations;
         _operationalRepository = _conversationStore.Operations;
+        _personalMemoryRepository = _conversationStore.Memories;
         _conversationRun = new ConversationRunController(_toolInvocationPolicy);
         _conversationOrchestration = new ConversationOrchestrationController(
             _conversationRun,
@@ -84,11 +86,11 @@ public partial class MainWindow : Window
                 : null);
         _conversationTools = new ConversationToolInvocationController(_conversationRun);
         var semanticSearch = new SemanticMemorySearchService(
-            _conversationStore,
+            _personalMemoryRepository,
             new OpenAiSemanticMemoryEmbeddingClient(_semanticMemoryHttpClient),
             _semanticMemorySettingsStore.Load);
         _memories = new SemanticMemoryRepository(
-            _conversationStore, semanticSearch, _semanticMemorySettingsStore.Load);
+            _personalMemoryRepository, semanticSearch, _semanticMemorySettingsStore.Load);
         InitializeComponent();
         _transcriptRenderTimer = new DispatcherTimer(
             TimeSpan.FromMilliseconds(50),
