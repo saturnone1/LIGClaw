@@ -1,6 +1,6 @@
 # LIGClaw 구현 계획
 
-> 문서 상태: 초안 v1
+> 문서 상태: living plan for v0.6.0
 > 작성 기준일: 2026-07-25
 > 제품 정의: Windows 사용자 세션에 상주하며 반복 작업을 대신하는 로컬 우선 개인 비서
 
@@ -387,6 +387,17 @@ Phase 5 착수 전 제품 작업인 **UI/UX 전면 개선 목표**는 완료했�
 - R1 exact-scope 대화 승인과 R2 매회 승인
 - durable Agent 작업 제어, 완료 알림 실패와 실행 ledger 격리
 - API 키를 제외한 로컬 데이터 백업·복원·보존 정책
+
+### Phase 8 — C단계 출시 후보 안정화와 유지보수성
+
+**상태: 진행 중 (2026-08-01).** 상세 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 따른다. Windows PowerShell 5.1·PowerShell 7 검증 기준선을 복구한 뒤 Sidecar Tool catalog, Desktop 대화 orchestration, SQLite repository, 설정 section을 동작 보존형 수직 슬라이스로 분리한다. 로컬 출시 자동화와 외부 Windows 10 22H2·서명 설치·실앱 UIA gate를 분리해 추적하고, 다음 사용자 기능은 이 경계가 안정된 뒤 전원·프로세스·네트워크·장치 진단 순으로 추가한다.
+
+- C-0: 검증 기준선과 문서 일치
+- C-1: AI 에이전트가 국소적으로 수정 가능한 책임 분리
+- C-2: 재현 가능한 로컬 release candidate 자동화
+- C-3: Windows 10/11, production 서명, 실제 UIA 외부 gate
+- C-4: 최소 데이터 기반 일상 진단 기능
+- C-5: 별도 개인정보 경계를 갖춘 화면·OCR·음성
 
 ## 11. 테스트 전략
 

@@ -1,6 +1,6 @@
 # Windows 에이전트 기능 감사
 
-> 기준일: 2026-07-26  
+> 기준일: 2026-08-01
 > 기준: `docs/IMPLEMENTATION_PLAN.md`의 로컬 우선 Windows 개인 비서 MVP와 안전 정책
 
 ## 판정 기준
@@ -31,7 +31,7 @@
 | 장치 | 후속 | 없음 | 디스플레이·오디오·프린터·Bluetooth·카메라 상태와 제한 조작(R0~R2) |
 | 화면·OCR·음성 | 후속 | 없음 | 화면 캡처/VLM·OCR·STT/TTS는 명시적 동의와 Phase 6 격리 |
 | MCP·외부 시스템 | 완료 | Streamable HTTP/Bearer 인증, 고정 실행 ID stdio, 연결별 health·장애 격리, exact-name allowlist, 읽기 전용 샘플 RAG | 외부 서비스 없이도 로컬 경로가 동작하며 사용자가 구성한 도달 가능한 endpoint는 주소 대역으로 차단하지 않음 |
-| 배포·진단 | 부분 | 로컬 실행·Sidecar 복구·SQLite | MSIX/서명/업데이트, 민감정보 제거 진단 번들, soak/fault test(Phase 5) |
+| 배포·진단 | 부분 | self-contained x64 MSIX, 번들 Node, 서명·App Installer 자동화, 민감정보 제거 진단 번들, Sidecar/MCP soak | machine-trusted production 서명으로 깨끗한 Windows 계정 설치·업데이트·제거 gate |
 
 ## 실행 순서
 
@@ -42,5 +42,6 @@
 5. **Phase 4 — 기반 완료**: identity/focus guard를 갖춘 제한 UI Automation. 다중 모니터·DPI 실기 acceptance 진행.
 6. **Phase 5 — 구현 완료**: MCP, 배포 자동화, 진단, 장시간 장애 검증. 신뢰된 서명 체인의 외부 설치 gate만 별도 추적.
 7. **B단계 — 구현 완료**: 저장소·보안 관측, 파일 생산성, 창·설정·세션 제어, 대화 범위 승인, Agent 작업 제어와 데이터 백업·복원을 typed Tool/Desktop-owned 경계로 구현.
+8. **C단계 — 진행 중**: 검증 기준선 복구, 책임 분리, 재현 가능한 release candidate, Windows 10/11·서명·실앱 UIA gate를 먼저 닫고 전원·프로세스·네트워크·장치 진단을 후속 수직 기능으로 추가.
 
 범용 PowerShell/명령 프롬프트는 누락 기능을 메우는 우회로로 사용하지 않는다. 새 기능은 안정적인 버전 Tool, 최소 데이터 결과, Desktop canonical 위험도, replay/adapter 테스트를 함께 추가한다.

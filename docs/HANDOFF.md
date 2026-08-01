@@ -1,6 +1,6 @@
 # LIGClaw 개발 인수인계
 
-> 갱신일: 2026-07-26
+> 갱신일: 2026-08-01
 > 작업 브랜치: `agent/phase1-desktop-foundation`
 
 ## 다른 PC에서 시작하기
@@ -64,7 +64,11 @@ Windows 에이전트의 완료·부분·계획·후속 기능 전체 목록과 �
 
 최신 전체 검증 기준으로 Sidecar 78개, Contracts 7개, Application 20개, Desktop 248개, Named Pipe 통합 1개 테스트가 통과하며 빌드 경고와 오류는 없다. UI smoke도 통합 관리 페이지 5개, 760×500 compact layout, 포커스·검증·정렬·대화 경계·키보드 탐색과 Precision Workspace 동작을 통과했고 Sidecar handshake·heartbeat·restart·cleanup smoke도 통과했다. Phase 5 후속 안정화에서 진행 중 MCP 호출의 세션 폐기 경합, MCP 비밀의 원자적 저장·삭제, 진단 ZIP의 원자적 교체, 캐시된 설정 페이지 복귀, 관리 목록의 오래된 페이징 취소, UI smoke 종료 대기를 보강했다. 실사용 피드백 후에는 스트리밍 Markdown 렌더를 묶어서 처리해 스크롤 위치를 보존하고, AppsFolder의 패키지 앱 검색, 기억·예약 optional null 정규화, Desktop 기준 상대 예약 계산을 추가했다. native Tool call 대신 인자 JSON 텍스트를 반환하는 OpenAI 호환 모델에는 명시적 사용자 의도와 정확한 allowlist 스키마가 일치하는 앱 실행·기억·예약만 Desktop 승인 경로로 복구하는 제한적 호환 계층을 적용했다. 승인 검토와 실제 Tool 실행의 timeout을 분리해 Sidecar의 대화형 대기 정책을 단일화했으며, 모델 공백 응답과 JSON 복구 실행 취소도 결정적으로 종료 상태를 남긴다. 최신 안정화에서는 사용자 취소와 연결 종료를 Desktop Tool까지 전파하고, Tool 승인·실행을 직렬화했으며, 긴 transcript의 Markdown 렌더 빈도를 제한하고 새 응답 표시 판정을 실제 렌더 이후로 이동했다. 에어갭 확장 A-1에서 대화 trigram FTS 검색을 추가했고 A-2에서 기본 비활성 의미 기억, schema 9 vector 색인, keyword fallback과 설정 UI를 추가했다. A-3에서는 bounded Web fetch/search와 구성형 검색 공급자, 전용 Edge profile과 읽기 전용 접근성 snapshot을 추가했다. A-4~A-6에서는 durable Agent 작업, immutable 모델 routing과 제한 fallback, bounded 로컬 하위 Agent를 추가했다. B단계에서는 저장소·보안 관측, 파일 생산성, 창·설정·세션 제어, 대화 범위 승인, Agent 작업 제어와 데이터 백업·복원을 추가했다. 네트워크 주소 대역은 앱에서 인위적으로 차단하지 않는다.
 
-## 현재 목표: Phase 5 MCP와 베타 배포
+## 현재 목표: C단계 출시 후보 안정화와 유지보수성
+
+상세 구현 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 단일 작업 계획으로 사용한다. 현재 PC에서 `v0.6.0` 전체 verify와 Sidecar/UI smoke를 통과했다. Windows PowerShell 5.1이 BOM 없는 한국어 스크립트를 잘못 해석하는 회귀는 BOM 규칙과 검증 guard로 복구했다. 다음 구조 변경은 C-1.1 Sidecar Tool catalog 분리이며 공개 계약과 동작은 유지한다.
+
+## 계속 추적할 Phase 5 외부 gate
 
 Phase 5 제품 구현과 로컬 자동 acceptance는 완료했다. `mcp.configure/status/call`, 읽기 전용 RAG, Credential Manager auth, 고정 executable registry stdio, 진단, crash recovery, soak, MSIX·서명·App Installer 자동화가 준비됐다. 자세한 증거는 `PHASE5_SECURITY_ACCEPTANCE.md`, 배포 절차는 `runbooks/phase5-msix-release.md`, 경계는 ADR 0015를 따른다.
 

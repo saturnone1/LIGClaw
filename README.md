@@ -6,6 +6,8 @@ Windows 사용자 세션에 상주하며 반복 작업을 안전하게 대신하
 
 Phase 0 walking skeleton, Phase 1 상주 셸·대화, Phase 2 안전한 Windows 작업과 Windows 문맥 확장, Phase 3 기억·예약, Phase 4 제한 UI Automation, Phase 5 MCP·베타 배포 구현을 완료했습니다. Phase 5의 최종 배포 판정은 신뢰된 서명 체인이 있는 깨끗한 Windows 계정에서 설치·로그인 자동 시작·업데이트·제거를 확인하는 외부 release gate만 남아 있습니다. WPF Desktop이 Node.js Sidecar의 생명주기를 소유하고, 사용자별 Windows Named Pipe에서 버전드 JSON-RPC handshake와 heartbeat를 수행합니다. Windows 에이전트 기능의 완료·부분·계획·후속 범위는 `docs/WINDOWS_AGENT_CAPABILITY_AUDIT.md`에서 추적합니다.
 
+현재 개발 목표는 [C단계 출시 후보 안정화와 유지보수성 계획](docs/C_STAGE_PLAN.md)입니다. 새 고위험 기능을 넓히기 전에 검증 스크립트, 큰 orchestration 파일의 책임 분리, Windows 10/11·서명 설치 gate를 순서대로 닫습니다.
+
 ## 현재 구현 범위
 
 같은 대화의 후속 요청은 하나의 `conversationId`와 문맥을 유지하고 요청마다 새 `runId`만 발급합니다. 사용자가 `새 대화`를 선택할 때만 문맥을 분리하며, 대화 턴은 Desktop SQLite에 저장되어 앱 재시작 후에도 최근 대화를 이어갈 수 있습니다.
@@ -58,7 +60,7 @@ Sidecar를 먼저 빌드한 다음 Desktop을 실행합니다. 평소 말하듯 
 ./scripts/smoke-sidecar.ps1
 ```
 
-다른 PC에서 작업을 이어갈 때는 [개발 인수인계](docs/HANDOFF.md)를 먼저 확인하십시오. 구현 범위와 단계는 [구현 계획](docs/IMPLEMENTATION_PLAN.md), 시각 언어와 아이콘 원칙은 [디자인 시스템](docs/DESIGN_SYSTEM.md), 중요한 결정은 [ADR](docs/adr/)을 참고하십시오.
+현재 작업 순서는 [C단계 계획](docs/C_STAGE_PLAN.md), 다른 PC 인수인계는 [개발 인수인계](docs/HANDOFF.md)를 먼저 확인하십시오. 전체 구현 범위는 [구현 계획](docs/IMPLEMENTATION_PLAN.md), 시각 언어와 아이콘 원칙은 [디자인 시스템](docs/DESIGN_SYSTEM.md), 중요한 결정은 [ADR](docs/adr/)을 참고하십시오.
 
 ## 현재 구조
 
