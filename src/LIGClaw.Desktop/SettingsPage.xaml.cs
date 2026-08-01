@@ -18,8 +18,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private ModelConnectionSettings? _existingModelSettings;
     private SemanticMemorySettings? _existingSemanticMemorySettings;
     private ModelConnectionSettings? _lastSuccessfulConnectionTest;
-    private CancellationTokenSource? _operationCancellation;
-    private bool _isBusy;
+    private readonly SettingsOperationGuard _operationGuard = new();
     private bool _initialized;
     private bool _loadingModelProfile;
 
@@ -37,7 +36,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             ShortcutStatusText.Foreground = (System.Windows.Media.Brush)FindResource("DangerBrush");
         }
         Loaded += SettingsPage_Loaded;
-        Unloaded += (_, _) => _operationCancellation?.Cancel();
+        Unloaded += (_, _) => _operationGuard.Cancel();
     }
 
     private async void SettingsPage_Loaded(object sender, RoutedEventArgs e)
@@ -45,9 +44,9 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         if (_initialized)
         {
             await RefreshCapabilityGrantsAsync();
-            SetControlsEnabled(!_isBusy);
+            SetControlsEnabled(!_operationGuard.IsBusy);
             CancelButton.IsEnabled = true;
-            CancelButton.Content = _isBusy ? "중단" : "대화로 돌아가기";
+            CancelButton.Content = _operationGuard.IsBusy ? "중단" : "대화로 돌아가기";
             return;
         }
         _initialized = true;
@@ -560,10 +559,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private bool TryBeginOperation(string message, out CancellationToken cancellationToken)
     {
         cancellationToken = default;
-        if (_isBusy) return false;
-        _isBusy = true;
-        _operationCancellation = new CancellationTokenSource();
-        cancellationToken = _operationCancellation.Token;
+        if (!_operationGuard.TryBegin(out cancellationToken)) return false;
         SetControlsEnabled(false);
         CancelButton.IsEnabled = true;
         CancelButton.Content = "중단";
@@ -573,9 +569,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
     private void EndOperation()
     {
-        _operationCancellation?.Dispose();
-        _operationCancellation = null;
-        _isBusy = false;
+        _operationGuard.End();
         if (!IsLoaded) return;
         SetControlsEnabled(true);
         CancelButton.Content = "대화로 돌아가기";
@@ -640,9 +634,9 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
-        if (_isBusy)
+        if (_operationGuard.IsBusy)
         {
-            _operationCancellation?.Cancel();
+            _operationGuard.Cancel();
             return;
         }
         _host.NavigateHome();

@@ -90,6 +90,8 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ### C-1.4 설정 화면 책임 분리
 
+상태: 진행 중. 첫 슬라이스에서 설정 저장·연결 테스트·진단·백업·복원·정리 작업의 단일 실행과 취소 수명을 `SettingsOperationGuard`로 옮기고 중복 시작·취소·재사용을 결정적 테스트로 고정했다. 다음은 모델 프로필과 MCP section controller를 분리한다.
+
 - 모델 프로필, MCP, 의미 기억, Web 검색, 시작프로그램·단축키 저장 흐름을 section controller로 분리한다.
 - 저장 전 연결 테스트, secret rollback, stale operation cancellation 규칙을 공통 operation guard로 유지한다.
 
