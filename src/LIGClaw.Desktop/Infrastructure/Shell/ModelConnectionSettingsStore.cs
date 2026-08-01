@@ -36,7 +36,16 @@ internal static class ModelRoutingPayload
         };
 }
 
-internal sealed class ModelConnectionSettingsStore
+internal interface IModelConnectionSettingsStore
+{
+    ModelConnectionSettings? Load();
+    IReadOnlyList<ModelConnectionSettings> ListProfiles();
+    void Save(ModelConnectionSettings settings);
+    void SaveRouting(string defaultProfileId, IReadOnlyList<string> fallbackProfileIds);
+    ModelRoutingSettings? LoadRouting(string? explicitProfileId = null);
+}
+
+internal sealed class ModelConnectionSettingsStore : IModelConnectionSettingsStore
 {
     private const string SettingsKeyPath = @"Software\LIGClaw\ModelConnection";
     private const string ProfilesKeyPath = @"Software\LIGClaw\ModelProfiles";

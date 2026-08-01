@@ -9,7 +9,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 {
     private readonly MainWindow _host;
     private readonly StartupRegistrationService _startupRegistration = new();
-    private readonly ModelConnectionSettingsStore _modelSettingsStore = new();
+    private readonly ModelProfileSectionController _modelProfiles = new(new ModelConnectionSettingsStore());
     private readonly McpConnectionSettingsStore _mcpSettingsStore = new();
     private readonly SemanticMemorySettingsStore _semanticMemorySettingsStore = new();
     private readonly WebSearchSettingsStore _webSearchSettingsStore = new();
@@ -77,16 +77,15 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
         try
         {
-            var profiles = _modelSettingsStore.ListProfiles();
-            ModelProfileComboBox.ItemsSource = profiles;
-            _existingModelSettings = _modelSettingsStore.Load();
+            var state = _modelProfiles.Load();
+            ModelProfileComboBox.ItemsSource = state.Profiles;
+            _existingModelSettings = state.Current;
             if (_existingModelSettings is not null)
             {
                 LoadModelProfile(_existingModelSettings);
                 ModelProfileComboBox.SelectedValue = _existingModelSettings.ProfileId;
-                var routing = _modelSettingsStore.LoadRouting();
                 FallbackProfileIdsTextBox.Text = string.Join(Environment.NewLine,
-                    routing?.Fallbacks.Select(profile => profile.ProfileId) ?? []);
+                    state.Routing?.Fallbacks.Select(profile => profile.ProfileId) ?? []);
             }
             else
             {
@@ -194,29 +193,17 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
                 try
                 {
                     var candidate = ReadModelSettings();
-                    if (ModelConnectionInputPolicy.RequiresSuccessfulTest(
+                    var result = _modelProfiles.Save(
                         candidate,
+                        FallbackProfileIdsTextBox.Text,
                         _existingModelSettings,
-                        _lastSuccessfulConnectionTest))
-                    {
-                        failures.Add("변경한 모델 연결을 먼저 테스트해 주세요.");
-                    }
-                    else if (!Equals(candidate, _existingModelSettings))
-                    {
-                        _modelSettingsStore.Save(candidate);
-                        var fallbackIds = ReadFallbackProfileIds(candidate.ProfileId);
-                        _modelSettingsStore.SaveRouting(candidate.ProfileId, fallbackIds);
-                        _existingModelSettings = candidate;
-                        modelSettings = candidate;
-                        ModelProfileComboBox.ItemsSource = _modelSettingsStore.ListProfiles();
-                        ModelProfileComboBox.SelectedValue = candidate.ProfileId;
-                    }
-                    else
-                    {
-                        _modelSettingsStore.SaveRouting(candidate.ProfileId, ReadFallbackProfileIds(candidate.ProfileId));
-                    }
+                        _lastSuccessfulConnectionTest);
+                    _existingModelSettings = result.Settings;
+                    modelSettings = result.RequiresApply ? result.Settings : null;
+                    ModelProfileComboBox.ItemsSource = result.Profiles;
+                    ModelProfileComboBox.SelectedValue = result.Settings.ProfileId;
                 }
-                catch (ModelSettingsValidationException exception)
+                catch (SettingsSectionValidationException exception)
                 {
                     failures.Add(exception.Message);
                 }
@@ -297,7 +284,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             _lastSuccessfulConnectionTest = result.Success ? candidate : null;
             SetStatus(result.Message, result.Success ? "SuccessBrush" : "DangerBrush");
         }
-        catch (ModelSettingsValidationException exception)
+        catch (SettingsSectionValidationException exception)
         {
             SetStatus(exception.Message, "DangerBrush");
         }
@@ -418,48 +405,27 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private ModelConnectionSettings ReadModelSettings()
     {
         ClearFieldErrors();
-        var baseUrl = BaseUrlTextBox.Text.Trim().TrimEnd('/');
-        var model = ModelTextBox.Text.Trim();
-        var profileId = ModelProfileIdTextBox.Text.Trim();
-        var displayName = ModelProfileNameTextBox.Text.Trim();
-        var apiKey = string.IsNullOrEmpty(ApiKeyPasswordBox.Password)
-            ? _existingModelSettings?.ApiKey
-            : ApiKeyPasswordBox.Password;
-        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+        try
         {
-            ShowFieldError(BaseUrlErrorText, "http:// 또는 https://로 시작하는 주소를 입력해 주세요.");
-            throw new ModelSettingsValidationException("Base URL을 http:// 또는 https://로 시작하는 주소로 입력해 주세요.");
+            return _modelProfiles.Validate(
+                new ModelProfileInput(
+                    BaseUrlTextBox.Text,
+                    ModelTextBox.Text,
+                    ApiKeyPasswordBox.Password,
+                    ModelProfileIdTextBox.Text,
+                    ModelProfileNameTextBox.Text),
+                _existingModelSettings);
         }
-        if (string.IsNullOrWhiteSpace(model))
+        catch (SettingsSectionValidationException exception)
         {
-            ShowFieldError(ModelErrorText, "사용할 모델 이름을 입력해 주세요.");
-            throw new ModelSettingsValidationException("사용할 모델 이름을 입력해 주세요.");
+            if (exception.Field == ModelProfileField.BaseUrl)
+                ShowFieldError(BaseUrlErrorText, "http:// 또는 https://로 시작하는 주소를 입력해 주세요.");
+            if (exception.Field == ModelProfileField.Model)
+                ShowFieldError(ModelErrorText, "사용할 모델 이름을 입력해 주세요.");
+            if (exception.Field == ModelProfileField.ApiKey)
+                ShowFieldError(ApiKeyErrorText, "API Key를 입력해 주세요.");
+            throw;
         }
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            ShowFieldError(ApiKeyErrorText, "API Key를 입력해 주세요.");
-            throw new ModelSettingsValidationException("API Key를 입력해 주세요.");
-        }
-        if (profileId.Length is < 1 or > 64 || profileId.Any(character =>
-                !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_'))
-            throw new ModelSettingsValidationException("프로필 ID는 영문, 숫자, -, _만 사용해 64자 이내로 입력해 주세요.");
-        if (displayName.Length is < 1 or > 80)
-            throw new ModelSettingsValidationException("프로필 표시 이름을 80자 이내로 입력해 주세요.");
-        return new ModelConnectionSettings(baseUrl, apiKey, model, profileId, displayName);
-    }
-
-    private string[] ReadFallbackProfileIds(string primaryId)
-    {
-        var ids = FallbackProfileIdsTextBox.Text
-            .Split(['\r', '\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        if (ids.Length > 4 || ids.Contains(primaryId, StringComparer.Ordinal))
-            throw new ModelSettingsValidationException("Fallback은 기본 프로필과 다른 프로필 ID를 최대 4개까지 입력해 주세요.");
-        var known = _modelSettingsStore.ListProfiles().Select(profile => profile.ProfileId).ToHashSet(StringComparer.Ordinal);
-        var missing = ids.FirstOrDefault(id => !known.Contains(id));
-        if (missing is not null) throw new ModelSettingsValidationException($"저장되지 않은 fallback 프로필입니다: {missing}");
-        return ids;
     }
 
     private void LoadModelProfile(ModelConnectionSettings profile)
