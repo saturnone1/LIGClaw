@@ -18,11 +18,13 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
         DispatcherUnhandledException += App_DispatcherUnhandledException;
         _accessibilityTheme = new AccessibilityThemeService(Resources);
+        var explorerActivation = ExplorerActivationPolicy.FromArguments(e.Args);
+        var activationPayload = explorerActivation is null ? null : ExplorerActivationPolicy.Serialize(explorerActivation);
 
         _singleInstance = new SingleInstanceCoordinator();
         if (!_singleInstance.IsPrimary)
         {
-            _singleInstance.SignalPrimary();
+            _singleInstance.SignalPrimary(activationPayload);
             Shutdown();
             return;
         }
@@ -32,14 +34,21 @@ public partial class App : System.Windows.Application
         var window = new MainWindow(_trayIcon);
         MainWindow = window;
         window.InitializeBackgroundServices();
+        if (explorerActivation is not null) window.ApplyExplorerActivation(explorerActivation);
         if (!e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase))
         {
             window.Show();
         }
     }
 
-    private void SingleInstance_ActivationRequested(object? sender, EventArgs e) =>
-        Dispatcher.InvokeAsync(ShowQuickInput);
+    private void SingleInstance_ActivationRequested(object? sender, ActivationRequestedEventArgs e) =>
+        Dispatcher.InvokeAsync(() =>
+        {
+            ShowQuickInput();
+            var activation = ExplorerActivationPolicy.Deserialize(e.Payload);
+            if (activation is not null && MainWindow is MainWindow window)
+                window.ApplyExplorerActivation(activation);
+        });
 
     internal void ShowMainWindow()
     {

@@ -291,6 +291,22 @@ public partial class MainWindow : Window
         Keyboard.Focus(ConversationInput);
     }
 
+    internal void ApplyExplorerActivation(ExplorerActivation activation)
+    {
+        ArgumentNullException.ThrowIfNull(activation);
+        var text = ExplorerActivationPolicy.ToComposerText(activation);
+        var separator = string.IsNullOrWhiteSpace(ConversationInput.Text) ? string.Empty : "\n\n";
+        if (ConversationInput.Text.Length + separator.Length + text.Length > ConversationInput.MaxLength)
+        {
+            SetRunStatus("선택한 항목이 많아 요청 입력에 추가하지 못했어요.");
+            return;
+        }
+        ConversationInput.AppendText(separator + text);
+        ConversationInput.CaretIndex = ConversationInput.Text.Length;
+        SetRunStatus($"Explorer에서 선택한 항목 {activation.Paths.Count}개를 요청에 추가했어요.");
+        FocusRequestInput();
+    }
+
     internal void ApplyVoiceSettings(VoiceSettings settings)
     {
         VoiceAutoReadPolicy.Validate(settings);

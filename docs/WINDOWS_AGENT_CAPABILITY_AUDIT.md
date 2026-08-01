@@ -20,6 +20,7 @@
 | 네트워크 | 부분 | 네트워크 사용 가능 여부·어댑터 상태·속도(R0), Protocol 1.16 현재 IP/prefix·DNS·게이트웨이·연결 SSID(R1 매회 승인, 위치 권한 격리) | 연결 변경(R2), 실기기 위치 권한 matrix |
 | 앱·창 | 부분 | 보이는 창 목록·설치 앱 검색·등록 앱 실행·창 활성화·정상 닫기·최소화·최대화·복원 | 가상 데스크톱은 후속(R2) |
 | Explorer 문맥 | 완료 | 가장 최근 활성 Explorer의 현재 폴더·선택 항목을 승인 후 최대 20개 조회 | 탭별 문맥과 선택 변경 감지는 후속 |
+| Explorer 진입점 | 부분 | 기존 파일·폴더 최대 20개를 시작 인자 또는 current-user Named Pipe로 받아 내용 열람·자동 전송 없이 composer에 미리보기 | Windows 11 상위 메뉴는 native `IExplorerCommand` COM DLL과 MSIX package identity가 필요하며 현재 PC의 C++/Windows SDK 부재로 외부 gate |
 | 파일 | 완료 | 검색·메타데이터·제한 텍스트 읽기·열기·복사·이동·이름 변경·휴지통·undo, 폴더 생성, bounded UTF-8 작성, ZIP 생성·안전 해제 | 덮어쓰기와 임의 archive 형식은 의도적으로 미제공 |
 | 클립보드 | 완료 | 승인 기반 텍스트 읽기·쓰기 | 이미지/파일 형식과 변화 감지(후속) |
 | 알림·예약 | 완료 | 즉시 알림, durable 단발·매일·매주 반복, lease/run 이력, 재시작 복구, DST·`skip`/`run_once_on_resume`/`ask`, 관리 화면 조회·수정·삭제 | 로그인 전·앱 미실행 실행이 필요하면 Task Scheduler adapter를 후속 검토 |
