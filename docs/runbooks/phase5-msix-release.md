@@ -2,6 +2,14 @@
 
 ## Build and sign
 
+Install the Windows 10/11 SDK packaging tools (`MakeAppx.exe` and `SignTool.exe`) first. A reproducible unsigned release candidate, including repository verification, is produced with one command:
+
+```powershell
+./scripts/build-release-candidate.ps1 -Version 1.0.0.0
+```
+
+The output folder contains the MSIX, `package-contents.txt`, `release-manifest.json`, and `SHA256SUMS.txt`. The manifest records the package hash and size, bundled Node version, protocol version, Desktop database schema version, signing state, staged file count, and verification result. Failed builds remove their incomplete version output so the same command can be retried.
+
 Production packages require a trusted code-signing certificate whose subject exactly matches the manifest publisher. Build and sign with SHA-256 and a trusted timestamp:
 
 ```powershell

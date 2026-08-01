@@ -7,6 +7,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
+
+function Set-Utf8NoBom {
+    param([string]$LiteralPath, [string]$Value)
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($LiteralPath, $Value, $encoding)
+}
 $initial = (Resolve-Path -LiteralPath $InitialPackage).Path
 $stage = (Resolve-Path -LiteralPath $StageDirectory).Path
 $allowedStageRoot = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'artifacts\msix')) + [System.IO.Path]::DirectorySeparatorChar
@@ -37,7 +43,7 @@ try {
         $manifestPath = Join-Path $stage 'AppxManifest.xml'
         $manifest = Get-Content -Raw -LiteralPath $manifestPath
         $manifest = [regex]::Replace($manifest, 'Version="\d+\.\d+\.\d+\.\d+"', "Version=`"$UpdateVersion`"", 1)
-        Set-Content -LiteralPath $manifestPath -Value $manifest -Encoding utf8NoBOM
+        Set-Utf8NoBom -LiteralPath $manifestPath -Value $manifest
         & $makeAppx.FullName pack /d $stage /p $update
         if ($LASTEXITCODE -ne 0) { throw 'Update package creation failed.' }
     }

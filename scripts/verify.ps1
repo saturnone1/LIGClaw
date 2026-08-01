@@ -3,6 +3,7 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
+$verifyArtifacts = Join-Path $repositoryRoot 'artifacts\verify'
 
 Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1' -File | ForEach-Object {
     $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
@@ -31,6 +32,13 @@ function Invoke-Checked {
     }
 }
 
+Invoke-Checked -FilePath powershell.exe -ArgumentList @(
+    '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
+    (Join-Path $PSScriptRoot 'test-powershell51-parse.ps1'))
+Invoke-Checked -FilePath powershell.exe -ArgumentList @(
+    '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
+    (Join-Path $PSScriptRoot 'test-release-manifest.ps1'))
+
 Push-Location (Join-Path $repositoryRoot 'sidecar')
 try {
     Invoke-Checked npm ci
@@ -47,8 +55,8 @@ finally {
 Push-Location $repositoryRoot
 try {
     Invoke-Checked dotnet format LIGClaw.slnx --verify-no-changes --no-restore
-    Invoke-Checked dotnet build LIGClaw.slnx --configuration Debug
-    Invoke-Checked dotnet test LIGClaw.slnx --configuration Debug --no-build
+    Invoke-Checked dotnet build LIGClaw.slnx --configuration Debug --artifacts-path $verifyArtifacts
+    Invoke-Checked dotnet test LIGClaw.slnx --configuration Debug --no-build --artifacts-path $verifyArtifacts
 }
 finally {
     Pop-Location

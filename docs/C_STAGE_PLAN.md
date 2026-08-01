@@ -99,7 +99,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ## C-2 — 로컬 출시 후보 자동화
 
-상태: C-1과 병행 가능한 저위험 작업부터 진행.
+상태: 진행 중. CI에 Windows PowerShell 5.1 parser gate를 추가했고 `verify.ps1`도 parser와 release manifest fixture를 실행한다. `build-release-candidate.ps1` 한 명령이 전체 verify 후 self-contained x64 MSIX를 만들며, package 필수 파일·Appx identity를 검사하고 파일 목록·SHA-256·version·protocol 1.13·schema 11·Node·검증 상태를 release manifest에 기록한다. Windows PowerShell 5.1의 `utf8NoBOM` 실행 비호환도 .NET writer로 수정했다. 현재 PC에는 Windows SDK MakeAppx가 없어 실제 MSIX 생성은 SDK가 있는 CI/개발 환경에서 다시 실행해야 한다.
 
 1. CI에서 `verify.ps1` 외에 Windows PowerShell 5.1 script parse 검사를 실행한다.
 2. self-contained x64 MSIX를 무서명 상태까지 재현 가능하게 만들고 파일 목록·Node 번들·manifest를 검사한다.
