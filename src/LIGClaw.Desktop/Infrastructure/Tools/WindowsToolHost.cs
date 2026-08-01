@@ -121,6 +121,7 @@ internal sealed class WindowsToolHost
             new SystemGetProcessResourceStatusTool(),
             new SystemGetNetworkStatusTool(),
             new SystemGetNetworkDetailsTool(),
+            new SystemGetDeviceStatusTool(),
             new AppListWindowsTool(windowCatalog),
             new AppSearchInstalledTool(appCatalog),
             new AppLaunchTool(appCatalog, new ShellRegisteredAppLauncher()),

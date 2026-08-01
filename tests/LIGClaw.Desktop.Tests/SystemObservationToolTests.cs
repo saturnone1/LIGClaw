@@ -14,15 +14,142 @@ public sealed class SystemObservationToolTests
         var power = await host.ExecuteAsync(Invocation("system.get_power_status.v1"));
         var resources = await host.ExecuteAsync(Invocation("system.get_resource_status.v1"));
         var network = await host.ExecuteAsync(Invocation("system.get_network_status.v1"));
+        var devices = await host.ExecuteAsync(Invocation("system.get_device_status.v1"));
 
         Assert.True(storage.Success, storage.Error);
         Assert.True(power.Success, power.Error);
         Assert.True(resources.Success, resources.Error);
         Assert.True(network.Success, network.Error);
+        Assert.True(devices.Success, devices.Error);
         Assert.NotEmpty(Assert.IsAssignableFrom<IEnumerable<IReadOnlyDictionary<string, object?>>>(storage.Output["volumes"]));
         Assert.Contains(Assert.IsType<string>(power.Output["providerStatus"]), new[] { "available", "unavailable" });
         Assert.InRange(Assert.IsType<double>(resources.Output["cpuUsagePercent"]), 0, 100);
         Assert.IsType<bool>(network.Output["networkAvailable"]);
+        Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(devices.Output["audioOutput"]);
+        Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(devices.Output["displays"]);
+        Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(devices.Output["printers"]);
+    }
+
+    [Fact]
+    public async Task Device_status_returns_only_bounded_non_identifying_observations()
+    {
+        var snapshot = new DeviceStatusSnapshot(
+            new AudioOutputStatusSnapshot("available", "active"),
+            new DisplayStatusSnapshot("available", 24, false, 3840, 2160),
+            new PrinterStatusSnapshot("available", 40, "offline", false));
+        var host = Host(new SystemGetDeviceStatusTool(new FakeDeviceStatusReader(snapshot)));
+
+        var result = await host.ExecuteAsync(Invocation("system.get_device_status.v1"));
+
+        Assert.True(result.Success, result.Error);
+        var audio = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(result.Output["audioOutput"]);
+        var displays = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(result.Output["displays"]);
+        var printers = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(result.Output["printers"]);
+        Assert.Equal("active", audio["defaultOutputStatus"]);
+        Assert.Equal(16, displays["activeDisplayCount"]);
+        Assert.Equal(true, displays["truncated"]);
+        Assert.Equal(32, printers["observedPrinterCount"]);
+        Assert.Equal(true, printers["truncated"]);
+        Assert.DoesNotContain("name", audio.Keys);
+        Assert.DoesNotContain("deviceName", displays.Keys);
+        Assert.DoesNotContain("hardwareId", displays.Keys);
+        Assert.DoesNotContain("port", printers.Keys);
+        Assert.DoesNotContain("driver", printers.Keys);
+    }
+
+    [Theory]
+    [InlineData(1u, "active")]
+    [InlineData(2u, "disabled")]
+    [InlineData(4u, "not_present")]
+    [InlineData(8u, "unplugged")]
+    [InlineData(16u, "unknown")]
+    public void Audio_output_state_is_classified_without_device_identity(uint state, string expected)
+    {
+        Assert.Equal(expected, WindowsAudioOutputStatusReader.ClassifyState(state));
+    }
+
+    [Fact]
+    public void Display_status_bounds_count_and_returns_only_primary_dimensions()
+    {
+        var displays = Enumerable.Range(0, 20)
+            .Select(index => (Primary: index == 3, Width: 1920 + index, Height: 1080 + index))
+            .ToArray();
+
+        var result = WindowsDisplayStatusReader.Summarize(displays);
+
+        Assert.Equal("available", result.ProviderStatus);
+        Assert.Equal(16, result.ActiveDisplayCount);
+        Assert.True(result.Truncated);
+        Assert.Equal(1923, result.PrimaryWidthPixels);
+        Assert.Equal(1083, result.PrimaryHeightPixels);
+    }
+
+    [Fact]
+    public void Printer_status_uses_only_default_and_offline_flags()
+    {
+        IReadOnlyList<IReadOnlyDictionary<string, object?>> rows =
+        [
+            new Dictionary<string, object?> { ["Default"] = false, ["WorkOffline"] = false },
+            new Dictionary<string, object?> { ["Default"] = true, ["WorkOffline"] = true },
+        ];
+
+        var result = WindowsPrinterStatusReader.Classify(rows);
+
+        Assert.Equal("available", result.ProviderStatus);
+        Assert.Equal(2, result.ObservedPrinterCount);
+        Assert.Equal("offline", result.DefaultPrinterStatus);
+        Assert.False(result.Truncated);
+    }
+
+    [Fact]
+    public void Device_status_isolates_an_unavailable_printer_provider()
+    {
+        var reader = new WindowsDeviceStatusReader(
+            new FakeAudioOutputStatusReader(new AudioOutputStatusSnapshot("available", "active")),
+            new FakeDisplayStatusReader(new DisplayStatusSnapshot("available", 1, false, 1920, 1080)),
+            new WindowsPrinterStatusReader(new UnavailablePrinterWmiClient()));
+
+        var result = reader.Read();
+
+        Assert.Equal("available", result.AudioOutput.ProviderStatus);
+        Assert.Equal("available", result.Displays.ProviderStatus);
+        Assert.Equal("unavailable", result.Printers.ProviderStatus);
+        Assert.Equal("unknown", result.Printers.DefaultPrinterStatus);
+    }
+
+    [Theory]
+    [InlineData(19_045)]
+    [InlineData(22_631)]
+    public async Task Device_status_uses_the_common_adapter_on_Windows_10_and_11(int build)
+    {
+        var profile = WindowsPlatformProfile.Classify(10, 0, build, isWorkstation: true);
+        var snapshot = new DeviceStatusSnapshot(
+            new AudioOutputStatusSnapshot("unavailable", "unknown"),
+            new DisplayStatusSnapshot("unavailable", 0, false),
+            new PrinterStatusSnapshot("unavailable", 0, "unknown", false));
+        var host = new WindowsToolHost(profile, [new SystemGetDeviceStatusTool(new FakeDeviceStatusReader(snapshot))]);
+
+        var result = await host.ExecuteAsync(Invocation("system.get_device_status.v1"));
+
+        Assert.True(result.Success, result.Error);
+    }
+
+    [Fact]
+    public async Task Device_status_rejects_model_supplied_input()
+    {
+        var snapshot = new DeviceStatusSnapshot(
+            new AudioOutputStatusSnapshot("available", "active"),
+            new DisplayStatusSnapshot("available", 1, false),
+            new PrinterStatusSnapshot("available", 0, "not_configured", false));
+        var host = Host(new SystemGetDeviceStatusTool(new FakeDeviceStatusReader(snapshot)));
+        var invocation = Invocation("system.get_device_status.v1") with
+        {
+            Input = new Dictionary<string, object?> { ["includeNames"] = true },
+        };
+
+        var result = await host.ExecuteAsync(invocation);
+
+        Assert.False(result.Success);
     }
 
     [Fact]
@@ -501,6 +628,21 @@ public sealed class SystemObservationToolTests
         public PowerStatusSnapshot Read() => snapshot;
     }
 
+    private sealed class FakeDeviceStatusReader(DeviceStatusSnapshot snapshot) : IDeviceStatusReader
+    {
+        public DeviceStatusSnapshot Read() => snapshot;
+    }
+
+    private sealed class FakeAudioOutputStatusReader(AudioOutputStatusSnapshot snapshot) : IAudioOutputStatusReader
+    {
+        public AudioOutputStatusSnapshot Read() => snapshot;
+    }
+
+    private sealed class FakeDisplayStatusReader(DisplayStatusSnapshot snapshot) : IDisplayStatusReader
+    {
+        public DisplayStatusSnapshot Read() => snapshot;
+    }
+
     private sealed class FakeResourceReader : IResourceStatusReader
     {
         public Task<ResourceStatusSnapshot> ReadAsync(CancellationToken cancellationToken) => Task.FromResult(
@@ -569,5 +711,13 @@ public sealed class SystemObservationToolTests
                 },
             ];
         }
+    }
+
+    private sealed class UnavailablePrinterWmiClient : IWmiQueryClient
+    {
+        public IReadOnlyList<IReadOnlyDictionary<string, object?>> Query(
+            string namespacePath,
+            string query,
+            IReadOnlyList<string> properties) => throw new UnauthorizedAccessException();
     }
 }

@@ -7,8 +7,8 @@ namespace LIGClaw.Contracts.Generated;
 
 public static class ContractMetadata
 {
-    public const string ProtocolVersion = "1.16";
-    public const string Hash = "102fd2312cac5c4c0cb08848dfbf93c6258fba12d8cccb45fbef145de76a5f85";
+    public const string ProtocolVersion = "1.17";
+    public const string Hash = "3c18f56a6f896737303ef6349201f69d34403fdc980166f96db9f36c9b103a6e";
 }
 
 public sealed record AgentJobCancelV1(
@@ -437,6 +437,8 @@ public sealed record SubagentRunV1Result(
     [property: JsonPropertyName("succeeded")] long Succeeded,
     [property: JsonPropertyName("failed")] long Failed);
 
+public sealed record SystemGetDeviceStatusV1();
+
 public sealed record SystemGetDiskHealthV1();
 
 public sealed record SystemGetNetworkDetailsV1(
@@ -465,6 +467,11 @@ public sealed record SystemOpenSettingsV1(
 public sealed record SystemSessionActionV1(
     [property: JsonPropertyName("action")] string Action,
     [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record SystemGetDeviceStatusV1Result(
+    [property: JsonPropertyName("audioOutput")] IReadOnlyDictionary<string, object?> AudioOutput,
+    [property: JsonPropertyName("displays")] IReadOnlyDictionary<string, object?> Displays,
+    [property: JsonPropertyName("printers")] IReadOnlyDictionary<string, object?> Printers);
 
 public sealed record SystemGetDiskHealthV1Result(
     [property: JsonPropertyName("physicalDiskProviderStatus")] string PhysicalDiskProviderStatus,

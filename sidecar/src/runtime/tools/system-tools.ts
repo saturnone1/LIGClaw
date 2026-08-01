@@ -196,6 +196,27 @@ export function createSystemTools(
       }, context.signal);
     },
   };
+  const systemGetDeviceStatus: AgentTool<Record<string, never>, Readonly<Record<string, unknown>>> = {
+    name: "system_get_device_status",
+    description: "기본 오디오 출력의 사용 가능 상태, 활성 디스플레이 수와 주 디스플레이 해상도, 프린터 구성·오프라인 상태를 확인합니다. 장치 이름, 하드웨어 ID, 드라이버와 포트는 반환하지 않습니다.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {},
+    },
+    timeoutMs: DESKTOP_TOOL_RESPONSE_TIMEOUT_MS,
+    retryable: false,
+    async execute(_input: Record<string, never>, context: DesktopToolContext) {
+      return await bridge.invoke({
+        ...(context.toolCallId ? { toolCallId: context.toolCallId } : {}),
+        conversationId,
+        runId,
+        name: desktopToolName("system_get_device_status"),
+        risk: "R0",
+        input: {},
+      }, context.signal);
+    },
+  };
   const systemShowNotification: AgentTool<NotificationInput, Readonly<Record<string, unknown>>> = {
     name: "system_show_notification",
     description: "사용자 승인을 받은 뒤 이 PC에 Windows 알림 하나를 표시합니다. 알림 제목, 내용, 표시 이유를 모두 제공해야 합니다.",
@@ -259,5 +280,5 @@ export function createSystemTools(
       }, context.signal);
     },
   };
-  return [systemGetStatus, systemGetPowerStatus, systemGetStorageStatus, systemGetDiskHealth, systemGetSecurityStatus, systemGetResourceStatus, systemGetProcessResourceStatus, systemGetNetworkStatus, systemGetNetworkDetails, systemShowNotification, systemOpenSettings, systemSessionAction];
+  return [systemGetStatus, systemGetPowerStatus, systemGetStorageStatus, systemGetDiskHealth, systemGetSecurityStatus, systemGetResourceStatus, systemGetProcessResourceStatus, systemGetNetworkStatus, systemGetNetworkDetails, systemGetDeviceStatus, systemShowNotification, systemOpenSettings, systemSessionAction];
 }

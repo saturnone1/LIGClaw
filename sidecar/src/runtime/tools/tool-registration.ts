@@ -13,6 +13,7 @@ export const BUILT_IN_TOOL_REGISTRATIONS = {
   system_get_process_resource_status: { desktopName: "system.get_process_resource_status.v1" },
   system_get_network_status: { desktopName: "system.get_network_status.v1" },
   system_get_network_details: { desktopName: "system.get_network_details.v1" },
+  system_get_device_status: { desktopName: "system.get_device_status.v1" },
   system_show_notification: { desktopName: "system.show_notification.v1" },
   system_open_settings: { desktopName: "system.open_settings.v1" },
   system_session_action: { desktopName: "system.session_action.v1" },

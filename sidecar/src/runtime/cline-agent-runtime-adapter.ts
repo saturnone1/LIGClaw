@@ -645,6 +645,26 @@ export function createDeterministicSpikeModel(): AgentModel {
         yield { type: "finish", reason: "stop" };
         return;
       }
+      if (userText === "__test_device_status__") {
+        const toolResult = request.messages
+          .flatMap((message: AgentMessage) => message.content)
+          .find((part: AgentMessage["content"][number]) =>
+            part.type === "tool-result" && part.toolName === "system_get_device_status"
+          );
+        if (!toolResult || toolResult.type !== "tool-result") {
+          yield {
+            type: "tool-call-delta",
+            toolCallId: "deterministic-device-status-call",
+            toolName: "system_get_device_status",
+            input: {},
+          };
+          yield { type: "finish", reason: "tool-calls" };
+          return;
+        }
+        yield { type: "text-delta", text: "오디오 출력, 디스플레이와 프린터 상태를 확인했습니다." };
+        yield { type: "finish", reason: "stop" };
+        return;
+      }
       if (userText === "__test_list_windows__") {
         const toolResult = request.messages
           .flatMap((message: AgentMessage) => message.content)

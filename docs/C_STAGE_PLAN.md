@@ -140,12 +140,12 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ## C-4 — 다음 사용자 가치 기능
 
-상태: C-1 완료 후 한 항목씩 수직 구현. 아래 순서는 권장 우선순위다.
+상태: 읽기 전용 수직 구현 완료, 각 장치 구성의 실기기 확인 대기.
 
 1. **전원 진단 확장 — 구현 완료, 실기기 확인 대기**: Protocol 1.14 `system.get_power_status.v1`이 Windows 10/11 공통 API로 전원 연결, 배터리 유무·잔량·충전·저전력/위험 상태와 에너지 절약 모드를 R0 최소 데이터로 제공한다. 배터리 식별자는 반환하지 않고 데스크톱·provider unavailable을 구조화해 격리한다.
 2. **느린 PC 진단 — 구현 완료, 실기기 확인 대기**: Protocol 1.15 `system.get_process_resource_status.v1`이 Windows 10/11 공통 어댑터로 500ms CPU 표본과 working set을 읽는다. 동일 프로세스 이름은 앱 단위로 합산하고 CPU·메모리 상위 목록을 각각 최대 10개로 제한한다. 프로세스 이름은 R1 매회 문맥 승인을 거치며 PID·경로·창 제목·사용자명은 반환하지 않는다.
 3. **네트워크 진단 상세 — 구현 완료, 실기기 권한 확인 대기**: Protocol 1.16 `system.get_network_details.v1`이 R1 매회 승인 뒤 현재 활성 어댑터 최대 16개의 IP/prefix·DNS·게이트웨이와 연결 SSID를 조회한다. 주소 목록은 adapter별 8/4/4개로 제한하고 MAC/BSSID·profile·자격 증명·연결 이력은 읽거나 저장하지 않는다. 최신 Windows의 위치 동의 거부는 SSID만 `permission_required`로 격리한다.
-4. **장치 상태**: 기본 오디오 출력·디스플레이·프린터 상태를 R0로 시작하고 변경은 별도 R1/R2 Tool로 분리한다.
+4. **장치 상태 — 구현 완료, 다양한 장치 구성 확인 대기**: Protocol 1.17 `system.get_device_status.v1`이 R0로 기본 오디오 출력 상태, 활성 디스플레이 수·주 화면 해상도, 관측 프린터 수·기본 프린터 오프라인 상태를 제공한다. 장치명·하드웨어 ID·드라이버·포트는 반환하지 않고 세 provider 실패를 독립 격리한다. 변경은 별도 R1/R2 Tool로 분리한다.
 
 각 기능 완료 조건은 schema-first 계약, Windows 10/11 capability adapter, canonical 위험도, 최소 데이터 결과, provider unavailable 격리, Sidecar replay와 Desktop adapter 테스트다.
 
@@ -187,4 +187,4 @@ C-0 기준선 복구
   └─ C-3 외부 OS·서명·UIA gate (환경 준비 시 병행)
 ```
 
-다음 실제 구현 진입점은 C-2 release evidence 자동화의 남은 soak·진단 비밀 검사다. C-1.4 UI smoke는 실행 중인 사용자 앱이 종료되면 재검증하고, Windows SDK가 있는 환경에서 unsigned MSIX와 release manifest를 생성한다. 이후 첫 C-4 전원 진단 수직 슬라이스를 구현한다.
+다음 실제 구현 진입점은 C-5 화면·OCR·음성의 개인정보 ADR이다. C-1.4 UI smoke는 실행 중인 사용자 앱이 종료되면 재검증하고, Windows SDK가 있는 환경에서 unsigned MSIX와 release manifest를 생성한다. C-3 Windows 10 실기기·production 서명·실앱 UIA gate는 환경이 준비되는 대로 병행한다.

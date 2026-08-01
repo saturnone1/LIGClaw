@@ -638,6 +638,15 @@ for (const observation of [
     expectedInput: { reason: "네트워크 연결 문제를 확인하기 위해" },
     expectedRisk: "R1",
   },
+  {
+    input: "__test_device_status__",
+    canonicalName: "system.get_device_status.v1",
+    output: {
+      audioOutput: { providerStatus: "available", defaultOutputStatus: "active" },
+      displays: { providerStatus: "available", activeDisplayCount: 1, truncated: false, primaryDisplay: { widthPixels: 1920, heightPixels: 1080 } },
+      printers: { providerStatus: "available", observedPrinterCount: 0, defaultPrinterStatus: "not_configured", truncated: false },
+    },
+  },
 ]) {
   test(`Cline routes ${observation.canonicalName} through the Desktop bridge`, async () => {
     const invocations = [];
