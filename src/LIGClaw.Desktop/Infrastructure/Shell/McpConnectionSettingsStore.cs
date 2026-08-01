@@ -49,7 +49,13 @@ internal static class McpConnectionPolicy
     }
 }
 
-internal sealed class McpConnectionSettingsStore
+internal interface IMcpConnectionSettingsStore
+{
+    McpConnectionSettings? Load();
+    void Save(McpConnectionSettings settings);
+}
+
+internal sealed class McpConnectionSettingsStore : IMcpConnectionSettingsStore
 {
     private const string SettingsKeyPath = @"Software\LIGClaw\Mcp\Knowledge";
     private const string CredentialTarget = "LIGClaw/Mcp/Knowledge/BearerToken";

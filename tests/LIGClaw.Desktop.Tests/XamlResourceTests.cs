@@ -240,6 +240,7 @@ public sealed partial class XamlResourceTests
         var settingsCode = File.ReadAllText(Path.Combine(desktop, "SettingsPage.xaml.cs"));
         var operationGuard = File.ReadAllText(Path.Combine(desktop, "SettingsOperationGuard.cs"));
         var modelSection = File.ReadAllText(Path.Combine(desktop, "ModelProfileSectionController.cs"));
+        var mcpSection = File.ReadAllText(Path.Combine(desktop, "McpSettingsSectionController.cs"));
 
         Assert.Contains("1. 입력  →  2. 연결 테스트  →  3. 저장", settings, StringComparison.Ordinal);
         Assert.Contains("BaseUrlErrorText", settings, StringComparison.Ordinal);
@@ -247,7 +248,7 @@ public sealed partial class XamlResourceTests
         Assert.Contains("ApiKeyErrorText", settings, StringComparison.Ordinal);
         Assert.Contains("RequiresSuccessfulTest", modelSection, StringComparison.Ordinal);
         Assert.Contains("MCP 지식 연결", settings, StringComparison.Ordinal);
-        Assert.Contains("McpConnectionPolicy.TryValidate", settingsCode, StringComparison.Ordinal);
+        Assert.Contains("McpConnectionPolicy.TryValidate", mcpSection, StringComparison.Ordinal);
         Assert.Contains("SetControlsEnabled(!_operationGuard.IsBusy)", settingsCode, StringComparison.Ordinal);
         Assert.Contains("if (_activeOperation is not null) return false", operationGuard, StringComparison.Ordinal);
         Assert.Contains("_activeOperation?.Cancel()", operationGuard, StringComparison.Ordinal);

@@ -10,7 +10,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private readonly MainWindow _host;
     private readonly StartupRegistrationService _startupRegistration = new();
     private readonly ModelProfileSectionController _modelProfiles = new(new ModelConnectionSettingsStore());
-    private readonly McpConnectionSettingsStore _mcpSettingsStore = new();
+    private readonly McpSettingsSectionController _mcpSettings;
     private readonly SemanticMemorySettingsStore _semanticMemorySettingsStore = new();
     private readonly WebSearchSettingsStore _webSearchSettingsStore = new();
     private QuickAccessShortcut _initialShortcut;
@@ -25,6 +25,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     internal SettingsPage(MainWindow host)
     {
         _host = host;
+        _mcpSettings = new McpSettingsSectionController(new McpConnectionSettingsStore(), host.ApplyMcpAsync);
         _wasQuickAccessAvailable = host.IsQuickAccessAvailable;
         _initialShortcut = host.CurrentQuickAccessShortcut;
         InitializeComponent();
@@ -63,7 +64,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
         try
         {
-            var mcp = _mcpSettingsStore.Load();
+            var mcp = _mcpSettings.Load();
             McpEnabledCheckBox.IsChecked = mcp?.Enabled ?? false;
             McpDisplayNameTextBox.Text = mcp?.DisplayName ?? "지식 검색";
             McpUrlTextBox.Text = mcp?.Url ?? string.Empty;
@@ -230,38 +231,40 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             }
 
 
-            if (McpSampleRagCheckBox.IsChecked == true || !string.IsNullOrWhiteSpace(McpUrlTextBox.Text))
+            try
             {
-                try
+                var result = await _mcpSettings.SaveAsync(
+                    new McpSettingsInput(
+                        McpDisplayNameTextBox.Text,
+                        McpUrlTextBox.Text,
+                        McpEnabledCheckBox.IsChecked == true,
+                        McpAllowedToolsTextBox.Text,
+                        McpTokenPasswordBox.Password,
+                        McpSampleRagCheckBox.IsChecked == true),
+                    cancellationToken);
+                if (result is not null)
                 {
-                    var mcpSettings = ReadMcpSettings();
-                    _mcpSettingsStore.Save(mcpSettings);
-                    var mcpStatus = await _host.ApplyMcpAsync(mcpSettings, cancellationToken);
-                    McpStatusText.Text = mcpStatus.IsConnected
-                        ? $"발견 {mcpStatus.ToolCount}개: {string.Join(", ", mcpStatus.Tools)}" +
-                          (mcpStatus.AllowedTools.Count == 0 ? " · 호출 허용 도구 없음" : $" · 호출 허용 {mcpStatus.AllowedTools.Count}개")
-                        : mcpSettings.Enabled ? "연결 실패 · 주소와 서버 상태를 확인해 주세요." : "사용 안 함";
+                    McpStatusText.Text = result.Status.IsConnected
+                        ? $"발견 {result.Status.ToolCount}개: {string.Join(", ", result.Status.Tools)}" +
+                          (result.Status.AllowedTools.Count == 0 ? " · 호출 허용 도구 없음" : $" · 호출 허용 {result.Status.AllowedTools.Count}개")
+                        : result.Settings.Enabled ? "연결 실패 · 주소와 서버 상태를 확인해 주세요." : "사용 안 함";
                     McpStatusText.Foreground = (System.Windows.Media.Brush)FindResource(
-                        mcpStatus.IsConnected ? "SuccessBrush" : mcpSettings.Enabled ? "DangerBrush" : "TextSecondaryBrush");
-                    if (mcpSettings.Enabled && !mcpStatus.IsConnected)
+                        result.Status.IsConnected ? "SuccessBrush" : result.Settings.Enabled ? "DangerBrush" : "TextSecondaryBrush");
+                    if (result.Settings.Enabled && !result.Status.IsConnected)
                         failures.Add("MCP 서버에 연결하지 못했어요. 모델 연결과 다른 기능은 계속 사용할 수 있습니다.");
                 }
-                catch (ModelSettingsValidationException exception)
-                {
-                    failures.Add(exception.Message);
-                }
-                catch (OperationCanceledException)
-                {
-                    failures.Add("MCP 연결 적용을 중단했어요.");
-                }
-                catch (Exception)
-                {
-                    failures.Add("MCP 연결 정보를 저장하거나 적용하지 못했어요.");
-                }
             }
-            else if (McpEnabledCheckBox.IsChecked == true)
+            catch (SettingsSectionValidationException exception)
             {
-                failures.Add("사용할 MCP 서버 주소를 입력해 주세요.");
+                failures.Add(exception.Message);
+            }
+            catch (OperationCanceledException)
+            {
+                failures.Add("MCP 연결 적용을 중단했어요.");
+            }
+            catch (Exception)
+            {
+                failures.Add("MCP 연결 정보를 저장하거나 적용하지 못했어요.");
             }
 
             SetStatus(
@@ -465,32 +468,6 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             _lastSuccessfulConnectionTest = null;
         }
         finally { _loadingModelProfile = false; }
-    }
-
-    private McpConnectionSettings ReadMcpSettings()
-    {
-        var displayName = McpDisplayNameTextBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(displayName)) displayName = "지식 검색";
-        var useSample = McpSampleRagCheckBox.IsChecked == true;
-        string url;
-        if (useSample) url = "stdio://ligclaw-sample-rag";
-        else if (!McpConnectionPolicy.TryValidate(McpUrlTextBox.Text, out url, out var error))
-            throw new ModelSettingsValidationException(error);
-        var allowedTools = McpAllowedToolsTextBox.Text
-            .Split(['\r', '\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        if (useSample && allowedTools.Length == 0)
-            allowedTools = ["search_knowledge", "get_document"];
-        if (allowedTools.Length > 32 || allowedTools.Any(name => name.Length > 128))
-            throw new ModelSettingsValidationException("허용할 MCP 도구는 이름 32개까지 입력할 수 있어요.");
-        var token = string.IsNullOrWhiteSpace(McpTokenPasswordBox.Password)
-            ? _mcpSettingsStore.Load()?.AuthorizationToken
-            : McpTokenPasswordBox.Password;
-        return new McpConnectionSettings(
-            displayName, url, McpEnabledCheckBox.IsChecked == true, allowedTools,
-            useSample ? null : token,
-            useSample ? "stdio" : "streamable_http");
     }
 
     private SemanticMemorySettings ReadSemanticMemorySettings()
