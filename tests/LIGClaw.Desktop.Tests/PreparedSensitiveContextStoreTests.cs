@@ -101,6 +101,20 @@ public sealed class PreparedSensitiveContextStoreTests
         Assert.Throws<ObjectDisposedException>(() => store.DiscardExpired());
     }
 
+    [Fact]
+    public void Invalid_utf8_ocr_text_is_rejected_and_zeroed()
+    {
+        var image = new byte[] { 1, 2, 3 };
+        var text = new byte[] { 0xC3, 0x28 };
+        using var store = Store();
+
+        var result = store.Prepare(Identity(), Draft(image, text));
+
+        Assert.False(result.Success);
+        AssertZeroed(image);
+        AssertZeroed(text);
+    }
+
     private static PreparedSensitiveContextStore Store(Func<DateTimeOffset>? now = null) =>
         new(now, () => Guid.Parse("11111111-1111-1111-1111-111111111111"));
 

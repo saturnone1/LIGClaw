@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Runtime.ExceptionServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Tools;
 
 namespace LIGClaw.Desktop.Tests;
@@ -17,6 +20,12 @@ public sealed class UiConstructionTests
             App? app = null;
             MainWindow? mainWindow = null;
             ToolApprovalWindow? window = null;
+            SensitiveContextPreviewWindow? sensitiveWindow = null;
+            SensitiveContextPreviewWindow? invalidSensitiveWindow = null;
+            PreparedSensitiveContextStore? sensitiveStore = null;
+            PreparedSensitiveContext? sensitiveContext = null;
+            PreparedSensitiveContext? invalidSensitiveContext = null;
+            byte[]? approvedOcr = null;
             DiagnosticsWindow? diagnosticsWindow = null;
             try
             {
@@ -47,6 +56,45 @@ public sealed class UiConstructionTests
                 Assert.True(content.DesiredSize.Height > 0);
                 Assert.Equal(Visibility.Visible, window.AllowAlwaysButton.Visibility);
 
+                sensitiveStore = new PreparedSensitiveContextStore();
+                var identity = new PreparedSensitiveContextIdentity("conversation", "run", "tool-call");
+                var image = Convert.FromBase64String(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+                var ocr = Encoding.UTF8.GetBytes("비밀 공개 문장");
+                var prepared = sensitiveStore.Prepare(identity, new PreparedSensitiveContextDraft(
+                    "window", 1, 1, image, ocr, 0));
+                Assert.True(prepared.Success, prepared.Error);
+                sensitiveContext = Assert.IsType<PreparedSensitiveContext>(
+                    sensitiveStore.Take(identity, prepared.Token!).Context);
+                sensitiveWindow = new SensitiveContextPreviewWindow(sensitiveContext);
+                sensitiveContext = null;
+                var sensitiveContent = Assert.IsAssignableFrom<FrameworkElement>(sensitiveWindow.Content);
+                sensitiveContent.Measure(new Size(920, 700));
+                sensitiveContent.Arrange(new Rect(0, 0, 920, 700));
+                sensitiveContent.UpdateLayout();
+                Assert.NotNull(sensitiveWindow.PreviewImage.Source);
+                Assert.True(sensitiveWindow.ApproveButton.IsEnabled);
+                sensitiveWindow.OcrTextBox.Select(0, 2);
+                sensitiveWindow.MaskSelectionButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal("[가림] 공개 문장", sensitiveWindow.OcrTextBox.Text);
+                approvedOcr = sensitiveWindow.CreateApprovedText();
+                Assert.Equal("[가림] 공개 문장", Encoding.UTF8.GetString(Assert.IsType<byte[]>(approvedOcr)));
+                sensitiveWindow.Close();
+                sensitiveWindow = null;
+                Assert.True(image.All(value => value == 0));
+                Assert.True(ocr.All(value => value == 0));
+
+                var invalidPrepared = sensitiveStore.Prepare(identity with { ToolCallId = "invalid" },
+                    new PreparedSensitiveContextDraft("window", 1, 1, [1, 2, 3], Encoding.UTF8.GetBytes("글자"), 0));
+                Assert.True(invalidPrepared.Success, invalidPrepared.Error);
+                invalidSensitiveContext = Assert.IsType<PreparedSensitiveContext>(sensitiveStore.Take(
+                    identity with { ToolCallId = "invalid" }, invalidPrepared.Token!).Context);
+                invalidSensitiveWindow = new SensitiveContextPreviewWindow(invalidSensitiveContext);
+                invalidSensitiveContext = null;
+                Assert.Null(invalidSensitiveWindow.PreviewImage.Source);
+                Assert.False(invalidSensitiveWindow.ApproveButton.IsEnabled);
+                Assert.Contains("미리보기", invalidSensitiveWindow.ValidationText.Text, StringComparison.Ordinal);
+
                 diagnosticsWindow = new DiagnosticsWindow(new ObservableCollection<string> { "12:00:00 test" });
                 var diagnosticsContent = Assert.IsAssignableFrom<FrameworkElement>(diagnosticsWindow.Content);
                 diagnosticsContent.Measure(new Size(820, 560));
@@ -65,6 +113,12 @@ public sealed class UiConstructionTests
             {
                 mainWindow?.Close();
                 window?.Close();
+                sensitiveContext?.Dispose();
+                invalidSensitiveContext?.Dispose();
+                sensitiveWindow?.Close();
+                invalidSensitiveWindow?.Close();
+                sensitiveStore?.Dispose();
+                if (approvedOcr is { Length: > 0 }) CryptographicOperations.ZeroMemory(approvedOcr);
                 diagnosticsWindow?.Close();
                 app?.Shutdown();
             }

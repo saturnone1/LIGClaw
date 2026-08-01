@@ -153,7 +153,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 상태: ADR 0033으로 개인정보·package identity 경계를 확정했고 preview 기반 구조를 구현한다.
 
-1. **민감 컨텍스트 수명 — 기반 구현 완료, preview UI 다음**: Desktop 메모리 전용 `PreparedSensitiveContext`가 4,096px/16MP/8MiB 이미지·32KiB OCR 상한, conversation/run/tool-call 결합, 2분 자동 만료, 교체·거부·완료·종료 zeroing을 보장한다. 다음은 이미지/OCR 실제 내용 preview와 마스킹 UI다.
+1. **민감 컨텍스트 수명·preview — 구현 완료**: Desktop 메모리 전용 `PreparedSensitiveContext`가 4,096px/16MP/8MiB 이미지·32KiB strict UTF-8 OCR 상한, conversation/run/tool-call 결합, 2분 자동 만료, 교체·거부·완료·종료 zeroing을 보장한다. 전용 preview 창은 이미지와 OCR을 함께 보여 주고 선택 마스킹·전체 삭제·32KiB 재검증을 제공하며 취소가 기본이다. 이미지가 표시되지 않으면 전송을 막고 확인한 OCR 글자만 결과로 내보낸다.
 2. Windows 시스템 picker로 사용자가 고른 창·디스플레이의 1회 캡처, preview 안의 선택 영역 crop
 3. package identity가 있는 Windows 로컬 OCR과 확인·마스킹된 텍스트만 Agent에 합류
 4. opt-in 누르고 말하기 STT와 응답별 TTS, 방해 금지 시간
@@ -188,4 +188,4 @@ C-0 기준선 복구
   └─ C-3 외부 OS·서명·UIA gate (환경 준비 시 병행)
 ```
 
-다음 실제 구현 진입점은 C-5 이미지/OCR 실제 내용 preview와 마스킹 UI다. C-1.4 UI smoke는 실행 중인 사용자 앱이 종료되면 재검증하고, Windows SDK가 있는 환경에서 unsigned MSIX와 release manifest를 생성한다. C-3 Windows 10 실기기·production 서명·실앱 UIA gate는 환경이 준비되는 대로 병행한다.
+다음 실제 구현 진입점은 C-5 Windows 시스템 picker 기반 1회 창·디스플레이 캡처 adapter다. C-1.4 UI smoke는 실행 중인 사용자 앱이 종료되면 재검증하고, Windows SDK가 있는 환경에서 unsigned MSIX와 release manifest를 생성한다. C-3 Windows 10 실기기·production 서명·실앱 UIA gate는 환경이 준비되는 대로 병행한다.

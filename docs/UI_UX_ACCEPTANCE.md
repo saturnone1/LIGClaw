@@ -1,6 +1,6 @@
 # LIGClaw UI/UX acceptance
 
-> 기준일: 2026-07-26  
+> 기준일: 2026-08-02
 > 상태: 완료 — 자동 검증과 현재 장비 실기 검증 통과
 
 ## 검증 결과
@@ -29,6 +29,7 @@
 | Precision Workspace 셸 | 통과 | 72/216px adaptive AppRail, command header의 대화 전환기, 단일 정상 상태 표시와 880px 읽기 폭을 정책·XAML·실기 smoke로 확인 |
 | 대화 작업 공간 | 통과 | 빈 대화의 hero composer와 안전한 예시, 대화 시작 후 docked composer, Action Card, 수동 스크롤 시 새 응답 indicator 동작 확인 |
 | 관리·승인 화면 | 통과 | 활동·기억·예약의 공용 command bar/data surface와 설정 섹션, 행동 우선 승인 요약 및 항상 허용 범위 표시 확인 |
+| 민감 화면 preview | 통과 | 전용 창에서 이미지·OCR 동시 검토, 선택 마스킹·전체 삭제, 취소 기본 포커스, 잘못된 이미지·32KiB 초과 차단, 닫기 시 원문 zeroing을 STA·policy 테스트로 확인 |
 | 직접 스타일 부채 | 통과 | view XAML의 직접 숫자 FontSize 0건, 문자 glyph 기능 아이콘 0건, 직접 HEX 0건을 회귀 검사로 고정 |
 | 요청 취소 안정성 | 통과 | 사용자 취소·Sidecar 단절·run 종료가 동일 run의 Desktop Tool cancellation token으로 전파되고 다른 run에는 누출되지 않는 회귀 테스트 |
 | Tool 동시성 | 통과 | Desktop Tool 승인과 실행을 직렬화해 병렬 요청의 modal 중첩과 Windows 효과 경합 방지 |
@@ -38,7 +39,7 @@
 ## 실행한 검증
 
 - `./scripts/smoke-ui.ps1`: 통합 관리 페이지 5개, top-level window 1개, 모든 페이지의 760×500 compact layout, field validation, 관리 화면 정렬, 명시적 새 대화, keyboard navigation, 포커스 복원, Precision Workspace hero 예시, Application 오류 0건 모두 통과
-- `./scripts/verify.ps1`: Sidecar 68, Contracts 7, Application 20, Desktop 227, Sidecar integration 1 테스트 통과; 빌드 경고 0, 오류 0
+- `./scripts/verify.ps1`: Sidecar 84, Contracts 7, Application 20, Desktop 330, Sidecar integration 1 테스트 통과; 빌드 경고 0, 오류 0
 - `dotnet format LIGClaw.slnx --no-restore`: 통과
 
 ## 디스플레이 검증 범위

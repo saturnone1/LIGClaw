@@ -126,6 +126,23 @@ public sealed partial class XamlResourceTests
     }
 
     [Fact]
+    public void Sensitive_screen_preview_defaults_to_cancel_and_never_offers_persistent_approval()
+    {
+        var previewXaml = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "LIGClaw.Desktop",
+            "SensitiveContextPreviewWindow.xaml"));
+
+        Assert.Contains("x:Name=\"PreviewImage\"", previewXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"OcrTextBox\"", previewXaml, StringComparison.Ordinal);
+        Assert.Matches("CancelButton[^>]*IsDefault=\"True\"", previewXaml);
+        Assert.DoesNotMatch("ApproveButton[^>]*IsDefault=\"True\"", previewXaml);
+        Assert.DoesNotContain("AllowAlways", previewXaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("AllowConversation", previewXaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ViewXamlUsesSemanticResourcesInsteadOfRawHexColors()
     {
         var desktop = Path.Combine(FindRepositoryRoot(), "src", "LIGClaw.Desktop");

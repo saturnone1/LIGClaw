@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using ThreadingTimer = System.Threading.Timer;
 
 namespace LIGClaw.Desktop.Infrastructure.Shell;
@@ -95,6 +96,7 @@ internal sealed class PreparedSensitiveContextStore : IDisposable
     internal const int MaximumEncodedImageBytes = 8 * 1024 * 1024;
     internal const int MaximumOcrTextBytes = 32 * 1024;
     internal static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(2);
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
     private readonly object _sync = new();
     private readonly Func<DateTimeOffset> _utcNow;
@@ -242,6 +244,14 @@ internal sealed class PreparedSensitiveContextStore : IDisposable
             return "화면 이미지 크기가 안전 한도를 넘었어요.";
         if (draft.OcrTextUtf8.Length > MaximumOcrTextBytes)
             return "화면 글자 인식 결과가 안전 한도를 넘었어요.";
+        try
+        {
+            _ = StrictUtf8.GetCharCount(draft.OcrTextUtf8);
+        }
+        catch (DecoderFallbackException)
+        {
+            return "화면 글자 인식 결과의 문자 형식이 올바르지 않아요.";
+        }
         if (draft.RedactionCount is < 0 or > 10_000)
             return "화면 마스킹 개수가 올바르지 않아요.";
         return null;
