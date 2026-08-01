@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $desktopPath = (Resolve-Path (Join-Path $repositoryRoot 'src/LIGClaw.Desktop/bin/Debug/net10.0-windows10.0.17763.0/LIGClaw.Desktop.exe')).Path
 if (Get-Process -Name 'LIGClaw.Desktop' -ErrorAction SilentlyContinue) {
-    throw 'Sidecar smoke 전에는 실행 중인 LIGClaw를 종료해 주세요. 기존 사용자 프로세스는 자동으로 종료하지 않습니다.'
+    throw 'Close the running LIGClaw instance before Sidecar smoke. The script will not terminate a user-owned process.'
 }
 $desktop = Start-Process -FilePath $desktopPath -WindowStyle Hidden -PassThru
 $observedSidecars = [System.Collections.Generic.List[int]]::new()

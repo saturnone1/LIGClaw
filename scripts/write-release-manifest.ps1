@@ -8,7 +8,8 @@ param(
     [Parameter(Mandatory = $true)][string]$Publisher,
     [Parameter(Mandatory = $true)][bool]$Signed,
     [ValidateSet('passed', 'not-recorded')][string]$VerificationStatus = 'not-recorded',
-    [string]$AppInstallerPath
+    [string]$AppInstallerPath,
+    [string]$EvidencePath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,9 +41,25 @@ $releaseManifest = [ordered]@{
         command = './scripts/verify.ps1'
     }
 }
+if ($EvidencePath) {
+    if (-not (Test-Path -LiteralPath $EvidencePath -PathType Leaf)) {
+        throw "Release evidence file is missing: $EvidencePath"
+    }
+    $evidence = Get-Content -Raw -LiteralPath $EvidencePath | ConvertFrom-Json
+    if ($evidence.automatedStatus -ne 'passed') {
+        throw 'Release evidence automated checks have not passed.'
+    }
+    $releaseManifest.releaseEvidence = [ordered]@{
+        file = Split-Path -Leaf $EvidencePath
+        sha256 = (Get-FileHash -LiteralPath $EvidencePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        automatedStatus = [string]$evidence.automatedStatus
+        hardwareSleepResume = [string]($evidence.checks | Where-Object { $_.name -eq 'hardware-sleep-resume' } | Select-Object -ExpandProperty status)
+    }
+}
 $releaseManifestPath = Join-Path $OutputRoot 'release-manifest.json'
 $releaseManifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $releaseManifestPath -Encoding utf8
 $checksumFiles = @($Package, $ContentsPath, $releaseManifestPath)
+if ($EvidencePath) { $checksumFiles += $EvidencePath }
 if ($AppInstallerPath -and (Test-Path -LiteralPath $AppInstallerPath -PathType Leaf)) {
     $checksumFiles += $AppInstallerPath
 }

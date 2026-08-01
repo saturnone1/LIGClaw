@@ -8,7 +8,15 @@ Install the Windows 10/11 SDK packaging tools (`MakeAppx.exe` and `SignTool.exe`
 ./scripts/build-release-candidate.ps1 -Version 1.0.0.0
 ```
 
-The output folder contains the MSIX, `package-contents.txt`, `release-manifest.json`, and `SHA256SUMS.txt`. The manifest records the package hash and size, bundled Node version, protocol version, Desktop database schema version, signing state, staged file count, and verification result. Failed builds remove their incomplete version output so the same command can be retried.
+The command first collects automated release evidence, then runs the full repository verification and packaging. Close any user-running LIGClaw instance before starting because the Desktop/Sidecar restart soak intentionally refuses to terminate it. The output folder contains the MSIX, `package-contents.txt`, `release-evidence.json`, `release-manifest.json`, and `SHA256SUMS.txt`. The manifest records the package hash and size, bundled Node version, protocol version, Desktop database schema version, signing state, staged file count, verification result, and the evidence hash. Failed builds remove their incomplete version output so the same command can be retried.
+
+The evidence pass can be run independently on a machine without the Windows SDK:
+
+```powershell
+./scripts/collect-release-evidence.ps1
+```
+
+It runs 20 MCP cycles, 10 Desktop-owned Sidecar restarts, deterministic database backup/restore and resume reconciliation tests, and diagnostic-bundle redaction tests. The JSON stores only bounded status, duration, iteration count, revision, and tracked-worktree state; it never embeds command output or user paths. Physical sleep/resume remains `manual-required` and must be recorded during the Windows 10/11 acceptance pass.
 
 Production packages require a trusted code-signing certificate whose subject exactly matches the manifest publisher. Build and sign with SHA-256 and a trusted timestamp:
 

@@ -38,6 +38,9 @@ Invoke-Checked -FilePath powershell.exe -ArgumentList @(
 Invoke-Checked -FilePath powershell.exe -ArgumentList @(
     '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
     (Join-Path $PSScriptRoot 'test-release-manifest.ps1'))
+Invoke-Checked -FilePath powershell.exe -ArgumentList @(
+    '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
+    (Join-Path $PSScriptRoot 'test-release-evidence.ps1'))
 
 Push-Location (Join-Path $repositoryRoot 'sidecar')
 try {

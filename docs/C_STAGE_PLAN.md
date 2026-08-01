@@ -109,6 +109,8 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 완료 조건: 새 checkout에서 한 문서의 명령만으로 동일한 unsigned release candidate와 검증 보고서를 생성한다.
 
+자동 release evidence 수집기는 MCP 20회 cycle, Desktop 소유 Sidecar 10회 재시작, DB backup/restore, 스케줄 resume reconciliation, 진단 번들 redaction을 실행한다. 결과에는 명령 출력이나 사용자 경로를 넣지 않으며, 실제 하드웨어 sleep/resume는 `manual-required` 외부 검증으로 분리한다. `build-release-candidate.ps1`은 자동 evidence가 통과한 경우에만 해당 JSON과 해시를 MSIX 산출물에 포함한다.
+
 ## C-3 — 외부 환경 release gate
 
 상태: 필요한 PC와 서명 체계가 준비되면 실행. 로컬 기능 개발과 별도 추적한다.

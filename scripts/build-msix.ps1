@@ -7,7 +7,8 @@ param(
     [string]$TimestampUrl,
     [uri]$DistributionBaseUri,
     [ValidateSet('passed', 'not-recorded')]
-    [string]$VerificationStatus = 'not-recorded'
+    [string]$VerificationStatus = 'not-recorded',
+    [string]$EvidencePath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,6 +33,19 @@ function Set-Utf8NoBom {
     param([string]$LiteralPath, [string]$Value)
     $encoding = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($LiteralPath, $Value, $encoding)
+}
+
+$packagedEvidencePath = $null
+if ($EvidencePath) {
+    if (-not (Test-Path -LiteralPath $EvidencePath -PathType Leaf)) {
+        throw "Release evidence file is missing: $EvidencePath"
+    }
+    $evidence = Get-Content -Raw -LiteralPath $EvidencePath | ConvertFrom-Json
+    if ($evidence.automatedStatus -ne 'passed') {
+        throw 'Release evidence automated checks have not passed.'
+    }
+    $packagedEvidencePath = Join-Path $outputRoot 'release-evidence.json'
+    Copy-Item -LiteralPath $EvidencePath -Destination $packagedEvidencePath
 }
 
 npm ci --prefix (Join-Path $repositoryRoot 'sidecar')
@@ -136,6 +150,7 @@ $releaseManifestPath = & (Join-Path $PSScriptRoot 'write-release-manifest.ps1') 
     -Publisher $Publisher `
     -Signed ([bool]$CertificateThumbprint) `
     -VerificationStatus $VerificationStatus `
+    -EvidencePath $packagedEvidencePath `
     -AppInstallerPath $appInstallerPath
 
 [pscustomobject]@{

@@ -12,17 +12,20 @@ try {
     [System.IO.File]::WriteAllBytes($package, [byte[]](1, 2, 3, 4))
     [System.IO.File]::WriteAllBytes((Join-Path $sidecar 'node.exe'), [byte[]](77, 90))
     Set-Content -LiteralPath $contents -Value "sidecar\node.exe`t2" -Encoding ascii
+    $evidencePath = Join-Path $temporaryRoot 'release-evidence.json'
+    [System.IO.File]::WriteAllText($evidencePath, '{"automatedStatus":"passed","checks":[{"name":"hardware-sleep-resume","status":"manual-required"}]}')
     $manifestPath = & (Join-Path $PSScriptRoot 'write-release-manifest.ps1') `
         -Package $package -Stage $stage -ContentsPath $contents -OutputRoot $temporaryRoot `
-        -Version '9.8.7.6' -Publisher 'CN=Test' -Signed $false -VerificationStatus passed
+        -Version '9.8.7.6' -Publisher 'CN=Test' -Signed $false -VerificationStatus passed -EvidencePath $evidencePath
     $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
     if ($manifest.version -ne '9.8.7.6' -or $manifest.protocolVersion -ne '1.13' -or
         $manifest.databaseSchemaVersion -ne 11 -or $manifest.packageBytes -ne 4 -or
-        $manifest.verification.status -ne 'passed') {
+        $manifest.verification.status -ne 'passed' -or $manifest.releaseEvidence.automatedStatus -ne 'passed' -or
+        $manifest.releaseEvidence.hardwareSleepResume -ne 'manual-required') {
         throw 'Release manifest fields did not match their authoritative inputs.'
     }
     $checksums = Get-Content -LiteralPath (Join-Path $temporaryRoot 'SHA256SUMS.txt')
-    if ($checksums.Count -ne 3) { throw 'Release checksum inventory is incomplete.' }
+    if ($checksums.Count -ne 4) { throw 'Release checksum inventory is incomplete.' }
     Write-Output 'Release manifest evidence test passed.'
 }
 finally {
