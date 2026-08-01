@@ -90,7 +90,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ### C-1.4 설정 화면 책임 분리
 
-상태: 진행 중. 첫 슬라이스에서 설정 저장·연결 테스트·진단·백업·복원·정리 작업의 단일 실행과 취소 수명을 `SettingsOperationGuard`로 옮기고 중복 시작·취소·재사용을 결정적 테스트로 고정했다. 두 번째 슬라이스에서 모델 프로필 load/validation/test-before-save/fallback routing/persistence를 `ModelProfileSectionController`로 옮겼다. 세 번째 슬라이스에서 MCP load/validation/secret reuse/save/Sidecar apply 순서를 `McpSettingsSectionController`로 옮겼고 sample RAG가 stale token을 제거하는 규칙을 테스트로 고정했다. UI는 필드·상태 표시만 담당한다. 다음은 의미 기억과 Web 검색 section controller를 분리한다.
+상태: 진행 중. 첫 슬라이스에서 설정 저장·연결 테스트·진단·백업·복원·정리 작업의 단일 실행과 취소 수명을 `SettingsOperationGuard`로 옮기고 중복 시작·취소·재사용을 결정적 테스트로 고정했다. 모델 프로필 load/validation/test-before-save/fallback routing/persistence는 `ModelProfileSectionController`로, MCP load/validation/secret reuse/save/Sidecar apply 순서는 `McpSettingsSectionController`로 옮겼다. 의미 기억의 정규화·secret reuse·save와 Web 검색 template validation·save/delete도 각각 section controller로 분리했다. UI는 필드·상태 표시만 담당한다. 다음은 시작프로그램·단축키 section controller와 Credential Manager rollback 검증을 닫는다.
 
 - 모델 프로필, MCP, 의미 기억, Web 검색, 시작프로그램·단축키 저장 흐름을 section controller로 분리한다.
 - 저장 전 연결 테스트, secret rollback, stale operation cancellation 규칙을 공통 operation guard로 유지한다.

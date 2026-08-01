@@ -11,8 +11,8 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private readonly StartupRegistrationService _startupRegistration = new();
     private readonly ModelProfileSectionController _modelProfiles = new(new ModelConnectionSettingsStore());
     private readonly McpSettingsSectionController _mcpSettings;
-    private readonly SemanticMemorySettingsStore _semanticMemorySettingsStore = new();
-    private readonly WebSearchSettingsStore _webSearchSettingsStore = new();
+    private readonly SemanticMemorySettingsSectionController _semanticMemorySettings = new(new SemanticMemorySettingsStore());
+    private readonly WebSearchSettingsSectionController _webSearchSettings = new(new WebSearchSettingsStore());
     private QuickAccessShortcut _initialShortcut;
     private bool _wasQuickAccessAvailable;
     private ModelConnectionSettings? _existingModelSettings;
@@ -100,7 +100,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
         try
         {
-            _existingSemanticMemorySettings = _semanticMemorySettingsStore.Load();
+            _existingSemanticMemorySettings = _semanticMemorySettings.Load();
             SemanticMemoryEnabledCheckBox.IsChecked = _existingSemanticMemorySettings.Enabled;
             SemanticMemoryBaseUrlTextBox.Text = _existingSemanticMemorySettings.BaseUrl;
             SemanticMemoryModelTextBox.Text = _existingSemanticMemorySettings.Model;
@@ -112,7 +112,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
         try
         {
-            WebSearchUrlTemplateTextBox.Text = _webSearchSettingsStore.Load()?.UrlTemplate ?? string.Empty;
+            WebSearchUrlTemplateTextBox.Text = _webSearchSettings.Load()?.UrlTemplate ?? string.Empty;
         }
         catch (Exception)
         {
@@ -159,11 +159,16 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
             try
             {
-                var semanticSettings = ReadSemanticMemorySettings();
-                _semanticMemorySettingsStore.Save(semanticSettings);
+                var semanticSettings = _semanticMemorySettings.Save(
+                    new SemanticMemorySettingsInput(
+                        SemanticMemoryEnabledCheckBox.IsChecked == true,
+                        SemanticMemoryBaseUrlTextBox.Text,
+                        SemanticMemoryModelTextBox.Text,
+                        SemanticMemoryApiKeyPasswordBox.Password),
+                    _existingSemanticMemorySettings);
                 _existingSemanticMemorySettings = semanticSettings;
             }
-            catch (ModelSettingsValidationException exception)
+            catch (SettingsSectionValidationException exception)
             {
                 failures.Add(exception.Message);
             }
@@ -174,12 +179,9 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
             try
             {
-                if (!WebSearchSettingsPolicy.TryValidate(
-                        WebSearchUrlTemplateTextBox.Text, out var webSearchSettings, out var webSearchError))
-                    throw new ModelSettingsValidationException(webSearchError);
-                _webSearchSettingsStore.Save(webSearchSettings);
+                _webSearchSettings.Save(WebSearchUrlTemplateTextBox.Text);
             }
-            catch (ModelSettingsValidationException exception)
+            catch (SettingsSectionValidationException exception)
             {
                 failures.Add(exception.Message);
             }
@@ -470,20 +472,6 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         finally { _loadingModelProfile = false; }
     }
 
-    private SemanticMemorySettings ReadSemanticMemorySettings()
-    {
-        var settings = new SemanticMemorySettings(
-            SemanticMemoryEnabledCheckBox.IsChecked == true,
-            SemanticMemoryBaseUrlTextBox.Text,
-            SemanticMemoryModelTextBox.Text,
-            string.IsNullOrWhiteSpace(SemanticMemoryApiKeyPasswordBox.Password)
-                ? _existingSemanticMemorySettings?.ApiKey
-                : SemanticMemoryApiKeyPasswordBox.Password);
-        if (!SemanticMemorySettingsPolicy.TryValidate(settings, out var normalized, out var error))
-            throw new ModelSettingsValidationException(error);
-        return normalized;
-    }
-
     private void ClearFieldErrors()
     {
         foreach (var error in new[] { BaseUrlErrorText, ModelErrorText, ApiKeyErrorText })
@@ -584,6 +572,4 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         }
         _host.NavigateHome();
     }
-
-    private sealed class ModelSettingsValidationException(string message) : Exception(message);
 }

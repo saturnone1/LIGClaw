@@ -2,7 +2,13 @@ using Microsoft.Win32;
 
 namespace LIGClaw.Desktop.Infrastructure.Shell;
 
-internal sealed class SemanticMemorySettingsStore
+internal interface ISemanticMemorySettingsStore
+{
+    SemanticMemorySettings Load();
+    void Save(SemanticMemorySettings settings);
+}
+
+internal sealed class SemanticMemorySettingsStore : ISemanticMemorySettingsStore
 {
     private const string SettingsKeyPath = @"Software\LIGClaw\SemanticMemory";
     private const string CredentialTarget = "LIGClaw/SemanticMemoryApiKey";

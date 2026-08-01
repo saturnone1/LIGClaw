@@ -40,7 +40,13 @@ internal static class WebSearchSettingsPolicy
     }
 }
 
-internal sealed class WebSearchSettingsStore
+internal interface IWebSearchSettingsStore
+{
+    WebSearchSettings? Load();
+    void Save(WebSearchSettings? settings);
+}
+
+internal sealed class WebSearchSettingsStore : IWebSearchSettingsStore
 {
     private const string SettingsKeyPath = @"Software\LIGClaw\WebSearch";
 
