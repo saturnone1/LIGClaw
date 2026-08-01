@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Debug"
 )
@@ -101,8 +101,13 @@ try {
     $baseUrlInput.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue("not-a-url")
     $connectionTestButton = Find-ByName "모델 연결 테스트"
     $connectionTestButton.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-    Start-Sleep -Milliseconds 300
-    $baseUrlError = Find-ByName "http:// 또는 https://로 시작하는 주소를 입력해 주세요."
+    $baseUrlError = $null
+    $validationDeadline = (Get-Date).AddSeconds(5)
+    do {
+        Start-Sleep -Milliseconds 100
+        $baseUrlError = Find-ByName "http:// 또는 https://로 시작하는 주소를 입력해 주세요."
+    } while ((-not $baseUrlError -or $baseUrlError.Current.IsOffscreen) -and
+             (Get-Date) -lt $validationDeadline)
     if (-not $baseUrlError -or $baseUrlError.Current.IsOffscreen) {
         throw "설정의 Base URL 필드 오류가 입력 위치에 표시되지 않았습니다."
     }

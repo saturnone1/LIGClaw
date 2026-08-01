@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$InitialPackage,
     [Parameter(Mandatory)][string]$UpdatePackage

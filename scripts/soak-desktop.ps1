@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([ValidateRange(1, 100)][int]$Restarts = 10)
 
 $ErrorActionPreference = 'Stop'
