@@ -26,3 +26,12 @@ internal interface IConversationRunStore
         DateTimeOffset updatedAtUtc,
         CancellationToken cancellationToken = default);
 }
+
+internal interface IConversationRepository : IConversationRunStore
+{
+    Task MarkRunningConversationsInterruptedAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ConversationSummary>> GetRecentConversationsAsync(int limit = 12, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ConversationSummary>> SearchConversationsAsync(string query, int limit = 50, CancellationToken cancellationToken = default);
+    Task<string> GetTranscriptAsync(string conversationId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ConversationTurn>> GetConversationTurnsAsync(string conversationId, CancellationToken cancellationToken = default);
+}

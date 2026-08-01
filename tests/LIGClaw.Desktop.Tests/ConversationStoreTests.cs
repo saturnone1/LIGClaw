@@ -231,6 +231,25 @@ public sealed class ConversationStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task ConversationRepositoryReplaysRunsThroughTheSharedDatabaseBoundary()
+    {
+        var path = Path.Combine(_directory, "repository.db");
+        using var database = new ConversationDatabase(path);
+        await database.InitializeAsync();
+        IConversationRepository repository = new ConversationRepository(database);
+        var now = DateTimeOffset.Parse("2026-08-01T00:00:00Z");
+
+        await repository.StartRunAsync("conversation", "run", "질문", now);
+        await repository.AppendEventAsync(new AgentEvent(
+            "conversation", "run", 0, "text_delta", now.AddSeconds(1), "답변", null));
+        await repository.AppendEventAsync(new AgentEvent(
+            "conversation", "run", 1, "run_completed", now.AddSeconds(2), null, null));
+
+        Assert.Contains("답변", await repository.GetTranscriptAsync("conversation"), StringComparison.Ordinal);
+        Assert.Equal("completed", Assert.Single(await repository.GetRecentConversationsAsync()).Status);
+    }
+
+    [Fact]
     public async Task RejectsAFutureSchemaVersionWithoutKeepingTheDatabaseLocked()
     {
         var path = Path.Combine(_directory, "future.db");

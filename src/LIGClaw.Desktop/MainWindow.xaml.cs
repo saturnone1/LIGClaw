@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private readonly DiagnosticBundleService _diagnosticBundleService = new();
     private readonly ObservableCollection<string> _diagnostics = [];
     private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
+    private readonly IConversationRepository _conversationRepository;
     private readonly SemanticMemoryRepository _memories;
     private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
     private readonly ConversationRunController _conversationRun;
@@ -70,11 +71,12 @@ public partial class MainWindow : Window
     internal MainWindow(IUserNotificationService notifications)
     {
         _notifications = notifications;
+        _conversationRepository = _conversationStore.Conversations;
         _conversationRun = new ConversationRunController(_toolInvocationPolicy);
         _conversationOrchestration = new ConversationOrchestrationController(
             _conversationRun,
             _sidecar,
-            _conversationStore,
+            _conversationRepository,
             () => _modelSettingsStore.LoadRouting() is { } routing
                 ? ModelRoutingPayload.Create(routing)
                 : null);
@@ -179,7 +181,7 @@ public partial class MainWindow : Window
         try
         {
             await _conversationStore.InitializeAsync();
-            await _conversationStore.MarkRunningConversationsInterruptedAsync();
+            await _conversationRepository.MarkRunningConversationsInterruptedAsync();
             await _conversationStore.ReconcileSubagentTasksOnStartupAsync(DateTimeOffset.UtcNow, CancellationToken.None);
             _persistenceAvailable = true;
             try
@@ -1121,8 +1123,8 @@ public partial class MainWindow : Window
             var selectedId = _conversationRun.CurrentConversationId;
             var normalizedQuery = query?.Trim() ?? string.Empty;
             var conversations = normalizedQuery.Length == 0
-                ? await _conversationStore.GetRecentConversationsAsync(cancellationToken: request.CancellationToken)
-                : await _conversationStore.SearchConversationsAsync(
+                ? await _conversationRepository.GetRecentConversationsAsync(cancellationToken: request.CancellationToken)
+                : await _conversationRepository.SearchConversationsAsync(
                     normalizedQuery,
                     cancellationToken: request.CancellationToken);
             if (!request.IsCurrent) return;
@@ -1169,7 +1171,7 @@ public partial class MainWindow : Window
             if (!_conversationRun.SelectConversation(conversation.Id)) return;
             UserMessageBubble.Visibility = Visibility.Collapsed;
             ConversationSubtitle.Text = $"{conversation.TurnCount}턴 대화를 이어서 진행합니다.";
-            SetTranscriptMarkdown(await _conversationStore.GetTranscriptAsync(conversation.Id), scrollToEnd: true);
+            SetTranscriptMarkdown(await _conversationRepository.GetTranscriptAsync(conversation.Id), scrollToEnd: true);
             TranscriptPlaceholder.Visibility = _transcriptMarkdown.Length == 0
                 ? Visibility.Visible
                 : Visibility.Collapsed;

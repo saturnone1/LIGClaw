@@ -556,7 +556,7 @@ internal sealed class ConversationDatabase(string databasePath) : IDisposable
         return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false), CultureInfo.InvariantCulture);
     }
 
-    private static async Task<int> ExecuteAsync(
+    internal static async Task<int> ExecuteAsync(
         SqliteConnection connection,
         string commandText,
         CancellationToken cancellationToken,
