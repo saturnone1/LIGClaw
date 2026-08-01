@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private readonly SemanticMemoryRepository _memories;
     private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
     private readonly ConversationRunController _conversationRun;
+    private readonly ConversationOrchestrationController _conversationOrchestration;
     private readonly ConversationToolInvocationController _conversationTools;
     private readonly IUserNotificationService _notifications;
     private QuickAccessShortcut _configuredQuickAccessShortcut = QuickAccessShortcutCatalog.Default;
@@ -70,6 +71,13 @@ public partial class MainWindow : Window
     {
         _notifications = notifications;
         _conversationRun = new ConversationRunController(_toolInvocationPolicy);
+        _conversationOrchestration = new ConversationOrchestrationController(
+            _conversationRun,
+            _sidecar,
+            _conversationStore,
+            () => _modelSettingsStore.LoadRouting() is { } routing
+                ? ModelRoutingPayload.Create(routing)
+                : null);
         _conversationTools = new ConversationToolInvocationController(_conversationRun);
         var semanticSearch = new SemanticMemorySearchService(
             _conversationStore,
@@ -709,7 +717,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var identity = _conversationRun.BeginRun();
+        var identity = _conversationOrchestration.BeginRun();
         var conversationId = identity.ConversationId;
         var runId = identity.RunId;
         RecentConversationsList.IsEnabled = false;
@@ -728,19 +736,10 @@ public partial class MainWindow : Window
         UpdateCommandState();
         try
         {
-            var history = await PersistConversationRunStartAsync(conversationId, runId, input);
-            var started = await _sidecar.StartConversationAsync(
-                conversationId,
-                runId,
-                input,
-                "cline",
-                history,
-                identity.CancellationToken,
-                _modelSettingsStore.LoadRouting() is { } routing
-                    ? ModelRoutingPayload.Create(routing)
-                    : null);
-            if (!started.Accepted || !StringComparer.Ordinal.Equals(started.RunId, runId))
-                throw new InvalidDataException("Sidecar가 요청 실행 ID를 확인하지 못했습니다.");
+            await _persistenceInitialization;
+            var outcome = await _conversationOrchestration.StartAsync(identity, input, _persistenceAvailable);
+            if (outcome.Diagnostic is not null) AddDiagnostic(outcome.Diagnostic);
+            if (outcome.RefreshConversations) await RefreshRecentConversationsAsync();
             if (_conversationRun.IsRunning && StringComparer.Ordinal.Equals(_conversationRun.ActiveConversationId, conversationId))
             {
                 SetRunStatus("답변을 준비하고 있어요…");
@@ -749,6 +748,9 @@ public partial class MainWindow : Window
         catch (OperationCanceledException) when (identity.CancellationToken.IsCancellationRequested)
         {
             AddDiagnostic("요청 시작을 사용자 취소 또는 연결 종료에 따라 중단했습니다.");
+            AppendTranscriptStatus("요청을 중단했습니다.");
+            CompleteRun("요청을 중단했어요.");
+            _ = MarkRunAndRefreshAsync(conversationId, runId, "cancelled");
         }
         catch (Exception exception)
         {
@@ -759,22 +761,14 @@ public partial class MainWindow : Window
 
     private async void Cancel_Click(object sender, RoutedEventArgs e)
     {
-        if (!_conversationRun.TryRequestCancellation(out var activeRun) || activeRun is null) return;
-        var conversationId = activeRun.ConversationId;
+        if (!_conversationOrchestration.TryRequestCancellation(out var activeRun) || activeRun is null) return;
         SetRunStatus("요청을 중단하고 있어요…");
         UpdateCommandState();
-        try
+        var outcome = await _conversationOrchestration.CancelAsync(activeRun);
+        if (outcome.Diagnostic is not null) AddDiagnostic(outcome.Diagnostic);
+        if (_conversationRun.IsRunning)
         {
-            var result = await _sidecar.CancelConversationAsync(conversationId);
-            if (_conversationRun.IsRunning && StringComparer.Ordinal.Equals(_conversationRun.ActiveConversationId, conversationId))
-            {
-                SetRunStatus(result.Cancelled ? "요청을 중단하고 있어요…" : "이미 처리가 끝났어요.");
-            }
-        }
-        catch (Exception exception)
-        {
-            AddDiagnostic($"요청 중단 실패: {exception.Message}");
-            SetRunStatus("중단 요청을 전달하지 못했어요. 현재 요청 상태를 확인하고 있어요…");
+            SetRunStatus(outcome.Status);
         }
     }
 
@@ -823,7 +817,11 @@ public partial class MainWindow : Window
                 ShowRunFailure(decision.RunStatus!);
                 break;
         }
-        await PersistAgentEventAsync(agentEvent);
+        await _persistenceInitialization;
+        var persistenceDiagnostic = await _conversationOrchestration.PersistEventAsync(
+            agentEvent,
+            _persistenceAvailable);
+        if (persistenceDiagnostic is not null) AddDiagnostic(persistenceDiagnostic);
         if (decision.IsTerminal)
             await RefreshRecentConversationsAsync();
     }
@@ -997,7 +995,7 @@ public partial class MainWindow : Window
         TranscriptPlaceholder.Visibility = Visibility.Collapsed;
         CompleteRun(message);
         if (failedConversationId is not null && failedRunId is not null)
-            _ = MarkRunAsync(failedConversationId, failedRunId, "failed");
+            _ = MarkRunAndRefreshAsync(failedConversationId, failedRunId, "failed");
     }
 
     private void AppendTranscriptStatus(string message)
@@ -1095,60 +1093,16 @@ public partial class MainWindow : Window
             : Visibility.Collapsed;
     }
 
-    private async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>?> PersistConversationRunStartAsync(
-        string conversationId,
-        string runId,
-        string input)
+    private async Task MarkRunAndRefreshAsync(string conversationId, string runId, string status)
     {
         await _persistenceInitialization;
-        if (!_persistenceAvailable) return null;
-        try
-        {
-            await _conversationStore.StartRunAsync(conversationId, runId, input, DateTimeOffset.UtcNow);
-            var context = await _conversationStore.GetConversationContextAsync(conversationId);
-            await RefreshRecentConversationsAsync();
-            return context
-                .Select(message => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
-                {
-                    ["role"] = message.Role,
-                    ["content"] = message.Content,
-                })
-                .ToArray();
-        }
-        catch (Exception exception)
-        {
-            AddDiagnostic($"대화 시작 기록 실패: {exception.Message}");
-            return null;
-        }
-    }
-
-    private async Task PersistAgentEventAsync(AgentEvent agentEvent)
-    {
-        await _persistenceInitialization;
-        if (!_persistenceAvailable) return;
-        try
-        {
-            await _conversationStore.AppendEventAsync(agentEvent);
-        }
-        catch (Exception exception)
-        {
-            AddDiagnostic($"대화 이벤트 기록 실패: {exception.Message}");
-        }
-    }
-
-    private async Task MarkRunAsync(string conversationId, string runId, string status)
-    {
-        await _persistenceInitialization;
-        if (!_persistenceAvailable) return;
-        try
-        {
-            await _conversationStore.MarkRunAsync(conversationId, runId, status, DateTimeOffset.UtcNow);
-            await RefreshRecentConversationsAsync();
-        }
-        catch (Exception exception)
-        {
-            AddDiagnostic($"대화 상태 기록 실패: {exception.Message}");
-        }
+        var diagnostic = await _conversationOrchestration.MarkRunAsync(
+            conversationId,
+            runId,
+            status,
+            _persistenceAvailable);
+        if (diagnostic is not null) AddDiagnostic(diagnostic);
+        else if (_persistenceAvailable) await RefreshRecentConversationsAsync();
     }
 
     private async Task RefreshRecentConversationsAsync()

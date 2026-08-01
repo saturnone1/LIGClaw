@@ -34,7 +34,7 @@ internal sealed record ConversationTurn(
     string Status,
     DateTimeOffset CreatedAtUtc);
 
-internal sealed partial class ConversationStore(string databasePath) : IToolAuditSink, ICapabilityGrantStore, IUndoJournal, IMemoryRepository, IScheduleRepository, IAgentJobRepository, ILocalSubagentRepository, IDisposable
+internal sealed partial class ConversationStore(string databasePath) : IConversationRunStore, IToolAuditSink, ICapabilityGrantStore, IUndoJournal, IMemoryRepository, IScheduleRepository, IAgentJobRepository, ILocalSubagentRepository, IDisposable
 {
     private const int CurrentSchemaVersion = 11;
     private const int MaximumConversationSearchLength = 200;

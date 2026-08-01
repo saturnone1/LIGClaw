@@ -66,12 +66,14 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ### C-1.2 Desktop 대화 orchestration 분리
 
-상태: 진행 중. 1차 수직 슬라이스에서 conversation/run ID, 취소 토큰, Tool 정책 begin/end와 실행·취소 표시 상태를 `ConversationRunController`로 이동했다. 2차 슬라이스에서 Agent event 표시 정책, Tool 실행 직렬화·취소·진행 상태, 최근 대화 검색의 최신 요청 취소를 각각 독립 controller/policy와 결정적 테스트로 분리했다. 다음은 Sidecar 시작·취소와 대화 persistence orchestration을 code-behind 밖으로 이동한다.
+상태: 완료 (2026-08-01).
 
 - `MainWindow`에서 conversation/run 수명, 취소, Sidecar event 처리, Tool 진행 상태를 controller로 이동한다.
 - WPF control 조작과 화면 전환만 code-behind에 남긴다.
 - transcript rendering, recent conversation refresh, stale search cancellation을 독립적으로 테스트한다.
 - 조립은 composition root에서 명시하며 service locator나 숨은 singleton을 추가하지 않는다.
+
+구현 결과: conversation/run 수명과 취소, Agent event 표시 정책, Tool 실행 직렬화·진행 상태, 최근 검색의 최신 요청 취소, Sidecar 시작·취소와 대화 run persistence 순서를 독립 controller/interface로 분리했다. 취소가 persistence 처리 중 발생해 UI run이 남던 경합도 terminal 상태와 `cancelled` 기록으로 닫았으며, code-behind에는 WPF 표시·전환과 명시적 조립만 남겼다.
 
 완료 조건: 기존 대화 연속성·취소·Tool 직렬화·스크롤 회귀 테스트와 UI smoke가 동작 변경 없이 통과한다.
 
@@ -179,4 +181,4 @@ C-0 기준선 복구
   └─ C-3 외부 OS·서명·UIA gate (환경 준비 시 병행)
 ```
 
-다음 실제 구현 진입점은 C-1.2 Desktop 대화 orchestration 분리다. 먼저 `MainWindow`의 run lifecycle·취소·승인 표시 상태를 전용 controller로 옮기고 기존 UI smoke와 protocol replay를 유지한다.
+다음 실제 구현 진입점은 C-1.3 SQLite repository 분리다. 먼저 schema migration·connection lifetime을 보존한 채 conversation run/query repository를 monolith에서 분리하고 동일 DB reopen·replay 테스트로 고정한다.

@@ -180,7 +180,8 @@ public sealed partial class XamlResourceTests
         Assert.Contains("AutomationProperties.Name=\"새 대화 시작\"", mainXaml, StringComparison.Ordinal);
         Assert.Contains("TurnCountDisplay", mainXaml, StringComparison.Ordinal);
         Assert.Contains("ConversationRunController", mainCode, StringComparison.Ordinal);
-        Assert.Contains("PersistConversationRunStartAsync", mainCode, StringComparison.Ordinal);
+        Assert.Contains("ConversationOrchestrationController", mainCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("PersistConversationRunStartAsync", mainCode, StringComparison.Ordinal);
         Assert.DoesNotContain("_activeConversationId = Guid.NewGuid", mainCode, StringComparison.Ordinal);
         Assert.Contains("DispatcherTimer", mainCode, StringComparison.Ordinal);
         Assert.Contains("RenderPendingTranscript", mainCode, StringComparison.Ordinal);

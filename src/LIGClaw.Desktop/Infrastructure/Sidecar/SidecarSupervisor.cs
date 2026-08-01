@@ -10,7 +10,7 @@ using LIGClaw.Contracts.Protocol;
 
 namespace LIGClaw.Desktop.Infrastructure.Sidecar;
 
-public sealed class SidecarSupervisor : IAsyncDisposable
+public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
 {
     private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(2);
