@@ -24,6 +24,7 @@
 | 파일 | 완료 | 검색·메타데이터·제한 텍스트 읽기·열기·복사·이동·이름 변경·휴지통·undo, 폴더 생성, bounded UTF-8 작성, ZIP 생성·안전 해제 | 덮어쓰기와 임의 archive 형식은 의도적으로 미제공 |
 | 클립보드 | 완료 | 승인 기반 텍스트 읽기·쓰기 | 이미지/파일 형식과 변화 감지(후속) |
 | 알림·예약 | 완료 | 즉시 알림, durable 단발·매일·매주 반복, lease/run 이력, 재시작 복구, DST·`skip`/`run_once_on_resume`/`ask`, 관리 화면 조회·수정·삭제 | 로그인 전·앱 미실행 실행이 필요하면 Task Scheduler adapter를 후속 검토 |
+| 반복 작업 제안 | 완료 | 기본 꺼짐, 최근 완료 요청의 exact-normalized 일간·주간 패턴만 로컬 제안, 민감·첨부 문맥 제외, cooldown·항목별 무시·초기화, Agent 작업 편집기 확인 후 예약 | 의미상 유사·월간·불규칙 패턴은 개인정보·오탐 평가 전까지 의도적으로 미제공 |
 | 기억·선호 | 완료 | 승인 기반 명시적 remember/list/forget, 관리 화면 CRUD·JSON 내보내기, 출처·민감도·만료, 제한 Tool 인자의 별칭·선호 해석 | 암호화 내보내기와 만료 항목 영구 정리는 후속 |
 | UI Automation | 부분 | 승인 기반 bounded inspect/find, Desktop 발급 element handle, identity/focus guard가 적용된 invoke/set-value/plain-text 입력, 비밀번호·사용자 입력 감지 차단 | 실제 다중 모니터·DPI와 앱별 provider 호환성 확대, 좌표 fallback은 별도 capability/승인 후속 |
 | 프로세스·서비스 | 부분 | PID·경로·사용자명 없는 bounded 프로세스 이름별 CPU·메모리 관측(R1), 창 단위 정상 닫기 | 서비스 상태, 강제 종료/서비스 변경은 별도 R2~R4 분리 |

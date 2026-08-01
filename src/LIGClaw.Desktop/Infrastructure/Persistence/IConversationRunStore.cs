@@ -34,4 +34,10 @@ internal interface IConversationRepository : IConversationRunStore
     Task<IReadOnlyList<ConversationSummary>> SearchConversationsAsync(string query, int limit = 50, CancellationToken cancellationToken = default);
     Task<string> GetTranscriptAsync(string conversationId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ConversationTurn>> GetConversationTurnsAsync(string conversationId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CompletedUserInput>> GetRecentCompletedUserInputsAsync(
+        DateTimeOffset sinceUtc,
+        int limit = 200,
+        CancellationToken cancellationToken = default);
 }
+
+internal sealed record CompletedUserInput(string RunId, string UserInput, DateTimeOffset CreatedAtUtc);

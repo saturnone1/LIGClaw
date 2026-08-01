@@ -339,6 +339,38 @@ internal sealed class ConversationRepository(ConversationDatabase database) : IC
         return turns;
     }
 
+    public async Task<IReadOnlyList<CompletedUserInput>> GetRecentCompletedUserInputsAsync(
+        DateTimeOffset sinceUtc,
+        int limit = 200,
+        CancellationToken cancellationToken = default)
+    {
+        if (limit is < 1 or > 200) throw new ArgumentOutOfRangeException(nameof(limit));
+        var results = new List<CompletedUserInput>();
+        await WithConnectionAsync(async connection =>
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                """
+                SELECT run_id, user_input, created_at_utc
+                FROM conversation_runs
+                WHERE status = 'completed' AND created_at_utc >= $sinceUtc
+                ORDER BY created_at_utc DESC, run_id DESC
+                LIMIT $limit;
+                """;
+            command.Parameters.AddWithValue("$sinceUtc", sinceUtc.ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$limit", limit);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                results.Add(new CompletedUserInput(
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    DateTimeOffset.Parse(reader.GetString(2), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)));
+            }
+        }, cancellationToken).ConfigureAwait(false);
+        return results;
+    }
+
     public async Task<IReadOnlyList<ConversationContextMessage>> GetConversationContextAsync(
         string conversationId,
         int maximumMessages = 40,

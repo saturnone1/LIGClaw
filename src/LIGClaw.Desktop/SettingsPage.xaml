@@ -88,6 +88,28 @@
                                   AutomationProperties.Name="새 답변 자동 읽기 사용"
                                   Style="{StaticResource ToggleSwitchStyle}" VerticalAlignment="Center" />
                     </Grid>
+                    <Border Margin="0,18,0,18" Height="1" Background="{DynamicResource DividerBrush}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="ASSIST / ROUTINE" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="반복 작업 제안" />
+                            <TextBlock Margin="0,5,18,0" Style="{StaticResource CaptionTextStyle}" TextWrapping="Wrap"
+                                       Text="기본은 꺼짐입니다. 켜면 이 PC의 완료된 요청 중 날짜를 달리해 같은 요청을 3회 이상 반복한 경우에만 예약을 제안합니다. 자동으로 실행하거나 예약하지 않습니다." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <CheckBox x:Name="RoutineSuggestionsEnabledCheckBox"
+                                      AutomationProperties.Name="반복 작업 제안 사용"
+                                      Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right" />
+                            <Button x:Name="ClearRoutineSuggestionHistoryButton" Margin="0,10,0,0"
+                                    Style="{StaticResource CompactButtonStyle}"
+                                    AutomationProperties.Name="무시한 반복 작업 제안 초기화"
+                                    Click="ClearRoutineSuggestionHistory_Click" Content="무시 목록 초기화" />
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Border>
 

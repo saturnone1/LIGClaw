@@ -390,7 +390,7 @@ Phase 5 착수 전 제품 작업인 **UI/UX 전면 개선 목표**는 완료했�
 
 ### Phase 8 — C단계 출시 후보 안정화와 유지보수성
 
-**상태: 진행 중 (2026-08-02).** 상세 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 따른다. Windows PowerShell 5.1·PowerShell 7 검증 기준선, Sidecar Tool catalog, Desktop 대화 orchestration, SQLite repository와 설정 section 책임 분리를 완료했다. bounded release evidence 자동화를 추가했고 외부 Windows 10 22H2·서명 설치·실앱 UIA gate는 별도 추적한다. C-4는 Protocol 1.14 R0 전원, Protocol 1.15 R1 bounded 상위 앱 리소스, Protocol 1.16 R1 현재 네트워크 상세, Protocol 1.17 R0 비식별 장치 상태 진단까지 구현했다. C-5는 이미지/OCR preview·crop·로컬 OCR, 기본 꺼짐 누르고 말하기 STT, 선택 답변 TTS, 자동 읽기와 방해 금지 시간까지 구현했다. Explorer 선택 항목은 최대 20개·32KiB의 기존 경로만 초기 실행/current-user Named Pipe로 전달해 composer preview에 추가하는 activation 기반을 구현했고, 공식 native `IExplorerCommand`와 MSIX 등록은 SDK 환경 gate다. 다음은 opt-in 반복 작업 제안과 설치 실행·Windows 10/11 실기 acceptance다.
+**상태: 진행 중 (2026-08-02).** 상세 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 따른다. Windows PowerShell 5.1·PowerShell 7 검증 기준선, Sidecar Tool catalog, Desktop 대화 orchestration, SQLite repository와 설정 section 책임 분리를 완료했다. bounded release evidence 자동화를 추가했고 외부 Windows 10 22H2·서명 설치·실앱 UIA gate는 별도 추적한다. C-4는 Protocol 1.14 R0 전원, Protocol 1.15 R1 bounded 상위 앱 리소스, Protocol 1.16 R1 현재 네트워크 상세, Protocol 1.17 R0 비식별 장치 상태 진단까지 구현했다. C-5는 이미지/OCR preview·crop·로컬 OCR, 기본 꺼짐 누르고 말하기 STT, 선택 답변 TTS, 자동 읽기와 방해 금지 시간을 구현했다. Explorer 선택 항목은 최대 20개·32KiB의 기존 경로만 초기 실행/current-user Named Pipe로 전달해 composer preview에 추가하는 activation 기반을 구현했고, 공식 native `IExplorerCommand`와 MSIX 등록은 SDK 환경 gate다. ADR 0035의 기본 꺼짐 로컬 반복 작업 제안은 동일 완료 요청의 일간/주간 패턴만 제안하고 사용자가 기존 Agent 작업 편집기에서 확인해야 예약한다. 다음은 설치 실행·Windows 10/11 실기 acceptance와 외부 배포 gate다.
 
 - C-0: 검증 기준선과 문서 일치
 - C-1: AI 에이전트가 국소적으로 수정 가능한 책임 분리

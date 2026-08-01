@@ -66,6 +66,33 @@ public sealed class ConversationStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task ListsOnlyBoundedRecentCompletedUserInputsForLocalRoutineDetection()
+    {
+        using var store = CreateStore();
+        await store.InitializeAsync();
+        var now = DateTimeOffset.Parse("2026-08-02T09:00:00Z");
+        for (var index = 0; index < 3; index++)
+        {
+            var runId = $"completed-{index}";
+            await store.StartRunAsync("routine-thread", runId, $"완료 요청 {index}", now.AddDays(-index));
+            await store.AppendEventAsync(new AgentEvent(
+                "routine-thread", runId, 0, "text_delta", now.AddDays(-index), "완료", null));
+            await store.AppendEventAsync(new AgentEvent(
+                "routine-thread", runId, 1, "run_completed", now.AddDays(-index), null, null));
+        }
+        await store.StartRunAsync("routine-thread", "failed", "실패 요청", now.AddMinutes(1));
+        await store.AppendEventAsync(new AgentEvent(
+            "routine-thread", "failed", 0, "run_failed", now.AddMinutes(2), null, "runtime.provider"));
+
+        var recent = await store.GetRecentCompletedUserInputsAsync(now.AddDays(-1), limit: 2);
+
+        Assert.Equal(["completed-0", "completed-1"], recent.Select(item => item.RunId));
+        Assert.DoesNotContain(recent, item => item.UserInput == "실패 요청");
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            store.GetRecentCompletedUserInputsAsync(now.AddDays(-45), limit: 201));
+    }
+
+    [Fact]
     public async Task FullTextSearchFindsUserAndAssistantTextAfterIncrementalUpdates()
     {
         using var store = CreateStore();

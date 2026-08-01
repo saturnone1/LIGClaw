@@ -138,6 +138,9 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
     public Task<IReadOnlyList<ConversationTurn>> GetConversationTurnsAsync(string conversationId, CancellationToken cancellationToken = default) =>
         _conversations.GetConversationTurnsAsync(conversationId, cancellationToken);
 
+    public Task<IReadOnlyList<CompletedUserInput>> GetRecentCompletedUserInputsAsync(DateTimeOffset sinceUtc, int limit = 200, CancellationToken cancellationToken = default) =>
+        _conversations.GetRecentCompletedUserInputsAsync(sinceUtc, limit, cancellationToken);
+
     public Task<IReadOnlyList<ConversationContextMessage>> GetConversationContextAsync(string conversationId, int maximumMessages = 40, int maximumCharacters = 64_000, CancellationToken cancellationToken = default) =>
         _conversations.GetConversationContextAsync(conversationId, maximumMessages, maximumCharacters, cancellationToken);
 

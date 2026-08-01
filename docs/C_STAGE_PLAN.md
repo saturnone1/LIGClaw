@@ -159,7 +159,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 4. **누르고 말하기 STT — 구현 완료, 설치 실행 acceptance 대기**: 설정 기본값은 꺼짐이며 사용자가 켠 경우에만 composer에서 마우스 또는 Space/Enter를 누르는 동안 Windows 연속 받아쓰기를 사용한다. release·capture 상실·취소·60초 timeout에 종료하고 최종 인식 텍스트만 16,000자로 제한해 요청에 추가한다. package identity·마이크 권한·언어·네트워크 실패를 구분하며 PCM과 중간 결과는 저장하거나 Sidecar에 전달하지 않는다.
 5. **선택 응답 TTS·자동 읽기 — 구현 완료, 실기 acceptance 대기**: 사용자가 transcript에서 읽을 답변 글을 직접 선택하면 Windows 로컬 음성 합성으로 읽는다. 같은 버튼이 즉시 중지로 바뀌며 합성 준비 중 중지·자연 종료·실패·창 종료의 수명을 분리한다. 자동 읽기는 별도 기본 꺼짐 opt-in이며 앱이 활성화되고 STT/TTS가 유휴 상태이며 방해 금지 시간 밖일 때 완성된 새 답변만 읽는다. 기본 방해 금지는 22:00–07:00이고 30분 단위로 변경한다.
 6. **Explorer 우클릭 진입점 — activation 기반 완료, native handler 대기**: ADR 0034에 따라 최대 20개·32KiB의 기존 경로만 정규화해 초기 실행 또는 current-user Named Pipe로 전달하고 파일 내용 없이 composer preview에 추가한다. Windows 10/11 공식 `IExplorerCommand` native DLL과 MSIX COM/context-menu manifest 연결은 Visual C++ workload·Windows SDK 환경에서 빌드·실기 검증한다.
-7. opt-in 반복 작업 제안
+7. **opt-in 반복 작업 제안 — 구현 완료**: ADR 0035에 따라 기본 꺼짐이며 최근 45일 완료 요청 최대 200개를 로컬 exact-normalized 비교한다. 서로 다른 날짜 3회와 일간/주간 간격이 분명할 때만 제안하고 화면·Explorer 문맥, 민감 문구, 명시적 예약 요청은 제외한다. 원문을 복제하지 않고 fingerprint·최근 제안 시각·무시 목록만 HKCU에 최대 100개 저장하며 14일 cooldown을 적용한다. 제안 카드는 자동 실행·예약하지 않고 기존 Agent 작업 편집기를 prefill해 사용자가 최종 검토·저장한다.
 
 화면·OCR·음성 원문은 SQLite·진단·감사에 저장하지 않는다. 모델이 고른 좌표·HWND 캡처, 인증 입력, 백그라운드 상시 캡처는 추가하지 않는다. OCR package identity가 없으면 구조화된 제한으로 알리고 cloud OCR이나 임의 executable로 우회하지 않는다.
 
@@ -189,4 +189,4 @@ C-0 기준선 복구
   └─ C-3 외부 OS·서명·UIA gate (환경 준비 시 병행)
 ```
 
-다음 실제 구현 진입점은 C-5 opt-in 반복 작업 제안이다. Explorer native `IExplorerCommand`와 MSIX manifest는 Visual C++ workload·Windows SDK가 있는 환경에서 이어서 빌드·실기 검증한다. 현재 실행 중인 사용자 앱이 종료되면 picker·crop·STT·TTS·자동 읽기 설정의 UI smoke를 재검증한다. C-3 Windows 10 실기기·production 서명·실앱 UIA와 설치 상태 OCR/STT/TTS gate는 환경이 준비되는 대로 병행한다.
+C-5의 현재 PC에서 구현 가능한 항목은 완료했다. 다음은 실행 중인 사용자 앱이 종료된 뒤 picker·crop·STT·TTS·자동 읽기·반복 제안 설정의 UI smoke를 재검증하는 것이다. Explorer native `IExplorerCommand`와 MSIX manifest는 Visual C++ workload·Windows SDK 환경에서 빌드·실기 검증한다. C-3 Windows 10 실기기·production 서명·실앱 UIA와 설치 상태 OCR/STT/TTS gate는 환경이 준비되는 대로 병행한다.

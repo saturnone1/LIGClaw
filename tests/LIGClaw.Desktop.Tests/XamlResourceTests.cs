@@ -181,6 +181,25 @@ public sealed partial class XamlResourceTests
     }
 
     [Fact]
+    public void RoutineSuggestionsAreOptInDismissibleAndRequireEditorConfirmation()
+    {
+        var desktop = Path.Combine(FindRepositoryRoot(), "src", "LIGClaw.Desktop");
+        var mainXaml = File.ReadAllText(Path.Combine(desktop, "MainWindow.xaml"));
+        var mainCode = File.ReadAllText(Path.Combine(desktop, "MainWindow.xaml.cs"));
+        var settingsXaml = File.ReadAllText(Path.Combine(desktop, "SettingsPage.xaml"));
+        var editorCode = File.ReadAllText(Path.Combine(desktop, "AgentJobEditorWindow.xaml.cs"));
+
+        Assert.Contains("x:Name=\"RoutineSuggestionsEnabledCheckBox\"", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("기본은 꺼짐입니다. 켜면 이 PC의 완료된 요청", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RoutineSuggestionCard\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("이번에는 닫기", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("다시 제안하지 않기", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("candidate is null || _conversationRun.IsRunning", mainCode, StringComparison.Ordinal);
+        Assert.Contains("new AgentJobEditorWindow(_agentJobRepository, candidate)", mainCode, StringComparison.Ordinal);
+        Assert.Contains("\"routine-suggestion\"", editorCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TranscriptExposesAccessibleSelectionReadingAndImmediateStop()
     {
         var desktop = Path.Combine(FindRepositoryRoot(), "src", "LIGClaw.Desktop");
@@ -320,6 +339,7 @@ public sealed partial class XamlResourceTests
         Assert.Contains("MCP 지식 연결", settings, StringComparison.Ordinal);
         Assert.Contains("McpConnectionPolicy.TryValidate", mcpSection, StringComparison.Ordinal);
         Assert.Contains("SetControlsEnabled(!_operationGuard.IsBusy)", settingsCode, StringComparison.Ordinal);
+        Assert.Contains("ClearRoutineSuggestionHistory_Click", settingsCode, StringComparison.Ordinal);
         Assert.Contains("if (_activeOperation is not null) return false", operationGuard, StringComparison.Ordinal);
         Assert.Contains("_activeOperation?.Cancel()", operationGuard, StringComparison.Ordinal);
     }

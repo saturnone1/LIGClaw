@@ -21,6 +21,7 @@ using LIGClaw.Desktop.Infrastructure.Scheduling;
 using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Sidecar;
 using LIGClaw.Desktop.Infrastructure.Tools;
+using LIGClaw.Domain;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
 using Button = System.Windows.Controls.Button;
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
     private readonly IScreenTextRecognizer _screenTextRecognizer = new WindowsOcrScreenTextRecognizer();
     private readonly PreparedSensitiveContextStore _sensitiveContextStore = new();
     private readonly IVoiceSettingsStore _voiceSettingsStore = new VoiceSettingsStore();
+    private readonly IRoutineSuggestionSettingsStore _routineSuggestionSettingsStore = new RoutineSuggestionSettingsStore();
     private readonly IPushToTalkRecognizer _pushToTalkRecognizer = new WindowsPushToTalkRecognizer();
     private readonly PushToTalkInteractionController _pushToTalk;
     private readonly ITextToSpeechPlayer _textToSpeech = new WindowsTextToSpeechPlayer();
@@ -91,6 +93,7 @@ public partial class MainWindow : Window
     private AgentJobsPage? _agentJobsPage;
     private SettingsPage? _settingsPage;
     private DiagnosticsWindow? _diagnosticsWindow;
+    private RoutineSuggestionCandidate? _routineSuggestionCandidate;
 
     internal MainWindow(IUserNotificationService notifications)
     {
@@ -910,6 +913,7 @@ public partial class MainWindow : Window
     {
         var input = ConversationInput.Text.Trim();
         _currentAssistantResponse.Clear();
+        HideRoutineSuggestion();
         if (input.Length == 0) return;
         if (!_isConnected)
         {
@@ -1306,6 +1310,74 @@ public partial class MainWindow : Window
         if (persistenceDiagnostic is not null) AddDiagnostic(persistenceDiagnostic);
         if (decision.IsTerminal)
             await RefreshRecentConversationsAsync();
+        if (decision.Action == ConversationAgentEventAction.Complete)
+            await TryShowRoutineSuggestionAsync(agentEvent.RunId);
+    }
+
+    private async Task TryShowRoutineSuggestionAsync(string runId)
+    {
+        if (!_persistenceAvailable || _conversationRun.IsRunning) return;
+        try
+        {
+            var preferences = _routineSuggestionSettingsStore.Load();
+            if (!preferences.Enabled) return;
+            var nowUtc = DateTimeOffset.UtcNow;
+            var history = await _conversationRepository.GetRecentCompletedUserInputsAsync(
+                nowUtc - RoutineSuggestionPolicy.HistoryWindow,
+                RoutineSuggestionPolicy.MaximumHistoryItems);
+            var candidate = RoutineSuggestionPolicy.Evaluate(
+                preferences,
+                runId,
+                history,
+                nowUtc,
+                TimeZoneInfo.Local);
+            if (candidate is null || _conversationRun.IsRunning) return;
+            _routineSuggestionSettingsStore.RecordOffer(candidate.Fingerprint, nowUtc);
+            _routineSuggestionCandidate = candidate;
+            RoutineSuggestionText.Text =
+                $"서로 다른 날짜에 같은 요청을 {candidate.OccurrenceCount}번 완료했습니다. " +
+                $"{(candidate.Recurrence == ScheduleValues.Daily ? "매일" : "매주")} 실행하도록 미리 채워 드릴게요. 시간과 권한은 저장 전에 확인할 수 있습니다.";
+            RoutineSuggestionCard.Visibility = Visibility.Visible;
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"반복 작업 제안 준비 실패: {exception.GetType().Name}");
+        }
+    }
+
+    private void AcceptRoutineSuggestion_Click(object sender, RoutedEventArgs e)
+    {
+        var candidate = _routineSuggestionCandidate;
+        HideRoutineSuggestion();
+        if (candidate is null || !_persistenceAvailable) return;
+        var editor = new AgentJobEditorWindow(_agentJobRepository, candidate) { Owner = this };
+        if (editor.ShowDialog() == true)
+            SetRunStatus("반복 Agent 작업을 예약했어요. Agent 작업에서 확인할 수 있습니다.");
+    }
+
+    private void DismissRoutineSuggestion_Click(object sender, RoutedEventArgs e) => HideRoutineSuggestion();
+
+    private void IgnoreRoutineSuggestion_Click(object sender, RoutedEventArgs e)
+    {
+        var candidate = _routineSuggestionCandidate;
+        HideRoutineSuggestion();
+        if (candidate is null) return;
+        try
+        {
+            _routineSuggestionSettingsStore.Ignore(candidate.Fingerprint);
+            SetRunStatus("이 요청은 반복 작업으로 다시 제안하지 않을게요.");
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"반복 작업 제안 무시 저장 실패: {exception.GetType().Name}");
+            SetRunStatus("제안 숨김 설정을 저장하지 못했어요.");
+        }
+    }
+
+    private void HideRoutineSuggestion()
+    {
+        _routineSuggestionCandidate = null;
+        if (IsInitialized) RoutineSuggestionCard.Visibility = Visibility.Collapsed;
     }
 
     private async void Sidecar_ToolInvocationReceived(object? sender, ToolInvokeParams invocation)

@@ -14,6 +14,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private readonly SemanticMemorySettingsSectionController _semanticMemorySettings = new(new SemanticMemorySettingsStore());
     private readonly WebSearchSettingsSectionController _webSearchSettings = new(new WebSearchSettingsStore());
     private readonly IVoiceSettingsStore _voiceSettings = new VoiceSettingsStore();
+    private readonly IRoutineSuggestionSettingsStore _routineSuggestionSettings = new RoutineSuggestionSettingsStore();
     private QuickAccessShortcut _initialShortcut;
     private bool _wasQuickAccessAvailable;
     private ModelConnectionSettings? _existingModelSettings;
@@ -83,6 +84,16 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             QuietStartComboBox.SelectedValue = 22 * 60;
             QuietEndComboBox.SelectedValue = 7 * 60;
             SetStatus("음성 입력 설정을 불러오지 못해 꺼진 상태로 시작합니다.", "DangerBrush");
+        }
+
+        try
+        {
+            RoutineSuggestionsEnabledCheckBox.IsChecked = _routineSuggestionSettings.Load().Enabled;
+        }
+        catch (Exception)
+        {
+            RoutineSuggestionsEnabledCheckBox.IsChecked = false;
+            SetStatus("반복 작업 제안 설정을 불러오지 못해 꺼진 상태로 시작합니다.", "DangerBrush");
         }
 
         await RefreshCapabilityGrantsAsync();
@@ -173,6 +184,15 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             catch (Exception)
             {
                 failures.Add("음성 입력 설정을 저장하지 못했어요.");
+            }
+
+            try
+            {
+                _routineSuggestionSettings.SetEnabled(RoutineSuggestionsEnabledCheckBox.IsChecked == true);
+            }
+            catch (Exception)
+            {
+                failures.Add("반복 작업 제안 설정을 저장하지 못했어요.");
             }
 
             try
@@ -531,6 +551,8 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         AutoReadEnabledCheckBox.IsEnabled = enabled;
         QuietStartComboBox.IsEnabled = enabled;
         QuietEndComboBox.IsEnabled = enabled;
+        RoutineSuggestionsEnabledCheckBox.IsEnabled = enabled;
+        ClearRoutineSuggestionHistoryButton.IsEnabled = enabled;
         BaseUrlTextBox.IsEnabled = enabled;
         ModelProfileComboBox.IsEnabled = enabled;
         ModelProfileIdTextBox.IsEnabled = enabled;
@@ -555,6 +577,19 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         SaveDiagnosticsButton.IsEnabled = enabled;
         CapabilityGrantList.IsEnabled = enabled;
         RevokeGrantButton.IsEnabled = enabled;
+    }
+
+    private void ClearRoutineSuggestionHistory_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _routineSuggestionSettings.ClearHistory();
+            SetStatus("무시한 반복 작업과 최근 제안 기록을 초기화했어요.", "SuccessBrush");
+        }
+        catch (Exception)
+        {
+            SetStatus("반복 작업 제안 기록을 초기화하지 못했어요.", "DangerBrush");
+        }
     }
 
     private void SetStatus(string message, string brushResource)

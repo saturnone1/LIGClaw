@@ -35,6 +35,7 @@
 | 선택 답변 읽기 | 자동 통과·실기 대기 | transcript 선택이 있을 때만 활성화되는 접근 가능한 버튼, 합성 준비·재생 중 `읽기 중지` 전환, 즉시 stop, 공백·20,000자 경계를 정책·XAML 테스트로 확인. Windows 10/11 실제 voice·오디오 장치 재생은 외부 gate |
 | 자동 읽기·방해 금지 | 자동 통과·실기 대기 | 설정 기본 꺼짐, 활성 앱에서만 완성된 새 답변 재생, STT/TTS 충돌 방지, 기본 22:00–07:00과 30분 단위 선택, 자정 교차·경계 시각을 정책·XAML 테스트로 확인 |
 | Explorer 선택 전달 | 자동 통과·네이티브 등록 대기 | 시작 인자와 실행 중 인스턴스 모두 기존 파일·폴더 최대 20개와 JSON 32KiB 경계 안에서 순서 유지·중복 제거 후 composer에 미리보기. 파일 내용은 읽지 않고 자동 전송하지 않으며, Windows 11 상위 메뉴용 native `IExplorerCommand`·MSIX 등록은 SDK 환경 gate |
+| 반복 작업 제안 | 자동 통과·UI smoke 대기 | 설정 기본 꺼짐, 동일 완료 요청의 서로 다른 날짜 3회와 일간/주간 간격만 제안, 민감·첨부·명시적 예약 문구 제외, 14일 cooldown과 이번에 닫기·다시 제안하지 않기·무시 목록 초기화 제공. 제안은 기존 Agent 작업 편집기만 미리 채우고 자동 실행·예약하지 않음 |
 | 직접 스타일 부채 | 통과 | view XAML의 직접 숫자 FontSize 0건, 문자 glyph 기능 아이콘 0건, 직접 HEX 0건을 회귀 검사로 고정 |
 | 요청 취소 안정성 | 통과 | 사용자 취소·Sidecar 단절·run 종료가 동일 run의 Desktop Tool cancellation token으로 전파되고 다른 run에는 누출되지 않는 회귀 테스트 |
 | Tool 동시성 | 통과 | Desktop Tool 승인과 실행을 직렬화해 병렬 요청의 modal 중첩과 Windows 효과 경합 방지 |
@@ -44,7 +45,7 @@
 ## 실행한 검증
 
 - `./scripts/smoke-ui.ps1`: 통합 관리 페이지 5개, top-level window 1개, 모든 페이지의 760×500 compact layout, field validation, 관리 화면 정렬, 명시적 새 대화, keyboard navigation, 포커스 복원, Precision Workspace hero 예시, Application 오류 0건 모두 통과
-- `./scripts/verify.ps1`: Sidecar 84, Contracts 7, Application 20, Desktop 378, Sidecar integration 1 테스트 통과; 빌드 경고 0, 오류 0
+- `./scripts/verify.ps1`: Sidecar 84, Contracts 7, Application 20, Desktop 389, Sidecar integration 1 테스트 통과; 빌드 경고 0, 오류 0
 - 화면 가져오기 집중 검증: 화면·OCR·crop·전달 후 만료·민감 컨텍스트·XAML 46개 통과. 실행 중 사용자 앱을 유지한 격리 출력 전체 verify도 통과
 - `dotnet format LIGClaw.slnx --no-restore`: 통과
 
