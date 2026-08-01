@@ -99,7 +99,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ## C-2 — 로컬 출시 후보 자동화
 
-상태: 진행 중. CI에 Windows PowerShell 5.1 parser gate를 추가했고 `verify.ps1`도 parser와 release manifest fixture를 실행한다. `build-release-candidate.ps1` 한 명령이 전체 verify 후 self-contained x64 MSIX를 만들며, package 필수 파일·Appx identity를 검사하고 파일 목록·SHA-256·version·protocol 1.13·schema 11·Node·검증 상태를 release manifest에 기록한다. Windows PowerShell 5.1의 `utf8NoBOM` 실행 비호환도 .NET writer로 수정했다. 현재 PC에는 Windows SDK MakeAppx가 없어 실제 MSIX 생성은 SDK가 있는 CI/개발 환경에서 다시 실행해야 한다.
+상태: 진행 중. CI에 Windows PowerShell 5.1 parser gate를 추가했고 `verify.ps1`도 parser와 release manifest fixture를 실행한다. 실행 중인 앱이 기본 build DLL을 잠그지 않도록 verify output을 `artifacts/verify`로 격리했다. `build-release-candidate.ps1` 한 명령이 전체 verify 후 self-contained x64 MSIX를 만들며, package 필수 파일·Appx identity를 검사하고 파일 목록·SHA-256·version·protocol 1.13·schema 11·Node·검증 상태를 release manifest에 기록한다. Windows PowerShell 5.1의 `utf8NoBOM` 실행 비호환도 .NET writer로 수정했다. 현재 PC에는 Windows SDK MakeAppx가 없어 실제 MSIX 생성은 SDK가 있는 CI/개발 환경에서 다시 실행해야 한다. Sidecar/UI/Desktop smoke는 실행 중인 사용자 앱을 종료하거나 두 번째 instance timeout으로 오인하지 않고 명확히 대기한다.
 
 1. CI에서 `verify.ps1` 외에 Windows PowerShell 5.1 script parse 검사를 실행한다.
 2. self-contained x64 MSIX를 무서명 상태까지 재현 가능하게 만들고 파일 목록·Node 번들·manifest를 검사한다.
@@ -159,20 +159,6 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 화면·음성 원문은 기본적으로 SQLite·진단·감사에 저장하지 않는다. 좌표 fallback, 인증 입력, 백그라운드 상시 캡처는 별도 승인 설계 없이는 추가하지 않는다.
 
-## C-6 — 대화형 기능 추가 스튜디오
-
-상태: `TODO.md`의 이메일 예시를 요구 원본으로 유지한다. C-2 release gate와 첫 C-4 수직 기능 이후 별도 ADR·위협 모델부터 작성한다.
-
-1. 일반 사용자가 **기능 추가**를 누르면 목적과 필요한 작업을 자연어로 설명하고, Agent가 누락된 endpoint·인증 방식·필수 입력을 한 항목씩 질문한다.
-2. 수집 결과는 실행 prompt가 아니라 versioned declarative connector manifest 초안으로 만든다. 첫 지원 범위는 HTTPS API connector이며 임의 PowerShell/cmd, 다운로드한 실행 파일, 동적 코드·script는 허용하지 않는다.
-3. API key·token·비밀번호는 대화·manifest·SQLite에 넣지 않고 Desktop이 이름 있는 secret slot으로 요청해 Credential Manager에 저장한다. Agent와 Sidecar에는 실제 secret 대신 slot 존재 여부만 보인다.
-4. connector action마다 JSON input schema, 고정 endpoint/method 범위, canonical 위험도, timeout·요청/응답 크기, 민감 필드, 사용자 preview 템플릿을 선언한다. 외부 전송은 최소 R3 승인과 감사 pipeline을 매번 통과한다.
-5. draft → 연결 테스트 → 제한된 dry-run → enable 순서로만 활성화한다. 수정은 새 버전으로 저장하고 이전 정상 버전 rollback, disable, secret 교체, 완전 삭제를 제공한다.
-6. 모델이 “현재 정보로 실행할 수 없음”을 반환할 때는 manifest의 missing-requirements 규칙에 따라 사용자에게 필요한 필드를 구체적으로 안내한다. 자유형 모델 문구만으로 자격 증명을 요구하거나 실행 가능 판정을 내리지 않는다.
-7. 첫 reference connector는 이메일 API로 구현한다. 수신자·제목·본문·첨부 파일을 전송 직전 표시하고, 주소 범위·첨부 크기를 제한하며 본문·첨부 원문은 기억·진단·일반 감사에 보존하지 않는다.
-
-완료 조건: extension schema와 Desktop registry, secret slot 격리, draft/version/rollback, email reference connector, 누락 정보 반복 질문, R3 preview/approval, Windows 10/11 UI와 deterministic replay·실패 주입 테스트가 통과한다.
-
 ## 의도적으로 보류하는 기능
 
 - 임의 PowerShell·cmd·사용자 생성 script 실행
@@ -195,8 +181,8 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 
 ```text
 C-0 기준선 복구
-  ├─ C-1 책임 분리 ── C-2 로컬 출시 자동화 ── C-4 사용자 가치 기능 ── C-5 문맥·입출력 ── C-6 기능 추가 스튜디오
+  ├─ C-1 책임 분리 ── C-2 로컬 출시 자동화 ── C-4 사용자 가치 기능 ── C-5 문맥·입출력
   └─ C-3 외부 OS·서명·UIA gate (환경 준비 시 병행)
 ```
 
-다음 실제 구현 진입점은 C-2 release evidence 자동화의 남은 soak·진단 비밀 검사다. C-1.4 UI smoke는 실행 중인 사용자 앱이 종료되면 재검증하고, Windows SDK가 있는 환경에서 unsigned MSIX와 release manifest를 생성한다. 이후 첫 C-4 전원 진단 수직 슬라이스를 구현하며 C-6은 별도 위협 모델 승인 후 진입한다.
+다음 실제 구현 진입점은 C-2 release evidence 자동화의 남은 soak·진단 비밀 검사다. C-1.4 UI smoke는 실행 중인 사용자 앱이 종료되면 재검증하고, Windows SDK가 있는 환경에서 unsigned MSIX와 release manifest를 생성한다. 이후 첫 C-4 전원 진단 수직 슬라이스를 구현한다.
