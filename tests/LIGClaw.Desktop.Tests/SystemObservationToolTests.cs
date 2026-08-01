@@ -26,6 +26,125 @@ public sealed class SystemObservationToolTests
     }
 
     [Fact]
+    public async Task Default_process_reader_returns_a_bounded_live_snapshot()
+    {
+        var reader = new WindowsProcessResourceStatusReader();
+
+        var result = await reader.ReadAsync(3, CancellationToken.None);
+
+        Assert.Equal("available", result.ProviderStatus);
+        Assert.InRange(result.SampleDurationMilliseconds, 1, 5_000);
+        Assert.InRange(result.TopCpuProcesses.Count, 0, 3);
+        Assert.InRange(result.TopMemoryProcesses.Count, 0, 3);
+        Assert.All(result.TopCpuProcesses, item => Assert.InRange(item.CpuUsagePercent, 0, 100));
+    }
+
+    [Fact]
+    public async Task Process_resource_status_requires_a_clear_one_time_context_approval()
+    {
+        var snapshot = new ProcessResourceStatusSnapshot(
+            "available", 500, 2, 1,
+            [new("browser", 2, 25, 1_000)],
+            [new("browser", 2, 25, 1_000)],
+            false);
+        var reader = new FakeProcessResourceStatusReader(snapshot);
+        var host = Host(new SystemGetProcessResourceStatusTool(reader));
+        var invocation = ProcessInvocation(5, "PC가 느린 원인을 확인하기 위해");
+
+        var approval = host.CreateApprovalPrompt(invocation);
+        var result = await host.ExecuteAsync(invocation);
+
+        Assert.True(approval.Success, approval.Error);
+        var prompt = Assert.IsType<WindowsToolApprovalPrompt>(approval.Prompt);
+        Assert.Equal("R1", prompt.Risk);
+        Assert.Null(prompt.GrantScope);
+        Assert.Contains("프로세스 이름", prompt.Details, StringComparison.Ordinal);
+        Assert.Contains("PID", prompt.Details, StringComparison.Ordinal);
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(5, reader.MaximumResults);
+        var cpu = Assert.Single(Assert.IsAssignableFrom<IEnumerable<IReadOnlyDictionary<string, object?>>>(result.Output["topCpuProcesses"]));
+        Assert.Equal("browser", cpu["processName"]);
+        Assert.DoesNotContain("processId", cpu.Keys);
+        Assert.DoesNotContain("executablePath", cpu.Keys);
+        Assert.DoesNotContain("windowTitle", cpu.Keys);
+        Assert.DoesNotContain("userName", cpu.Keys);
+    }
+
+    [Fact]
+    public void Process_resource_snapshot_aggregates_names_ranks_both_resources_and_ignores_reused_process_ids()
+    {
+        var first = new RawProcessResourceSample[]
+        {
+            new(1, 100, "browser", 0, 100),
+            new(2, 200, "Browser", 0, 200),
+            new(3, 300, "editor", 0, 500),
+            new(4, 400, "old", 0, 900),
+        };
+        var second = new RawProcessResourceSample[]
+        {
+            new(1, 100, "browser", TimeSpan.FromSeconds(1).Ticks, 100),
+            new(2, 200, "Browser", TimeSpan.FromMilliseconds(500).Ticks, 200),
+            new(3, 300, "editor", TimeSpan.FromMilliseconds(200).Ticks, 500),
+            new(4, 401, "replacement", TimeSpan.FromSeconds(1).Ticks, 900),
+        };
+
+        var result = WindowsProcessResourceStatusReader.CreateSnapshot(first, second, TimeSpan.FromSeconds(1), 2, 1);
+
+        Assert.Equal(3, result.ObservedProcessCount);
+        Assert.Equal(2, result.ObservedGroupCount);
+        Assert.True(result.Truncated);
+        var cpu = Assert.Single(result.TopCpuProcesses);
+        Assert.Equal("browser", cpu.ProcessName);
+        Assert.Equal(2, cpu.InstanceCount);
+        Assert.Equal(75, cpu.CpuUsagePercent);
+        Assert.Equal("editor", Assert.Single(result.TopMemoryProcesses).ProcessName);
+        Assert.DoesNotContain(result.TopCpuProcesses, item => item.ProcessName == "replacement");
+    }
+
+    [Fact]
+    public void Process_resource_snapshot_rejects_a_stale_sample_after_sleep_or_stall()
+    {
+        var samples = new[] { new RawProcessResourceSample(1, 100, "app", 0, 100) };
+
+        var result = WindowsProcessResourceStatusReader.CreateSnapshot(
+            samples, samples, TimeSpan.FromSeconds(6), 4, 5);
+
+        Assert.Equal("unavailable", result.ProviderStatus);
+        Assert.Empty(result.TopCpuProcesses);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(11)]
+    public async Task Process_resource_status_rejects_unbounded_result_requests(int maximumResults)
+    {
+        var reader = new FakeProcessResourceStatusReader(new ProcessResourceStatusSnapshot(
+            "available", 500, 0, 0, [], [], false));
+        var host = Host(new SystemGetProcessResourceStatusTool(reader));
+        var invocation = ProcessInvocation(maximumResults, "확인 이유");
+
+        Assert.False(host.CreateApprovalPrompt(invocation).Success);
+        Assert.False((await host.ExecuteAsync(invocation)).Success);
+        Assert.Null(reader.MaximumResults);
+    }
+
+    [Theory]
+    [InlineData(19_045)]
+    [InlineData(22_631)]
+    public async Task Process_resource_status_uses_the_common_adapter_on_Windows_10_and_11(int build)
+    {
+        var profile = WindowsPlatformProfile.Classify(10, 0, build, isWorkstation: true);
+        var snapshot = new ProcessResourceStatusSnapshot("unavailable", 0, 0, 0, [], [], false);
+        var host = new WindowsToolHost(profile, [new SystemGetProcessResourceStatusTool(new FakeProcessResourceStatusReader(snapshot))]);
+
+        var result = await host.ExecuteAsync(ProcessInvocation(3, "느린 원인 확인"));
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("unavailable", result.Output["providerStatus"]);
+        Assert.Empty(Assert.IsAssignableFrom<IEnumerable<IReadOnlyDictionary<string, object?>>>(result.Output["topCpuProcesses"]));
+    }
+
+    [Fact]
     public async Task Power_status_returns_bounded_battery_details_without_identifiers()
     {
         var snapshot = new PowerStatusSnapshot(
@@ -239,6 +358,14 @@ public sealed class SystemObservationToolTests
         "R0",
         new Dictionary<string, object?>());
 
+    private static LIGClaw.Contracts.Generated.ToolInvokeParams ProcessInvocation(int maximumResults, string reason) => new(
+        "tool-call",
+        "conversation",
+        "run",
+        "system.get_process_resource_status.v1",
+        "R1",
+        new Dictionary<string, object?> { ["maxResults"] = maximumResults, ["reason"] = reason });
+
     private sealed class FakeStorageReader : IStorageStatusReader
     {
         public IReadOnlyList<StorageVolumeSnapshot> Read() =>
@@ -254,6 +381,17 @@ public sealed class SystemObservationToolTests
     {
         public Task<ResourceStatusSnapshot> ReadAsync(CancellationToken cancellationToken) => Task.FromResult(
             new ResourceStatusSnapshot(7_200, 12, 37.5, 16_000, 4_000, 75));
+    }
+
+    private sealed class FakeProcessResourceStatusReader(ProcessResourceStatusSnapshot snapshot) : IProcessResourceStatusReader
+    {
+        public int? MaximumResults { get; private set; }
+
+        public Task<ProcessResourceStatusSnapshot> ReadAsync(int maximumResults, CancellationToken cancellationToken)
+        {
+            MaximumResults = maximumResults;
+            return Task.FromResult(snapshot);
+        }
     }
 
     private sealed class FakeNetworkReader : INetworkStatusReader

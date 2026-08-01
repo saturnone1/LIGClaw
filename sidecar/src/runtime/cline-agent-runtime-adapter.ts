@@ -605,6 +605,26 @@ export function createDeterministicSpikeModel(): AgentModel {
         yield { type: "finish", reason: "stop" };
         return;
       }
+      if (userText === "__test_process_resource_status__") {
+        const toolResult = request.messages
+          .flatMap((message: AgentMessage) => message.content)
+          .find((part: AgentMessage["content"][number]) =>
+            part.type === "tool-result" && part.toolName === "system_get_process_resource_status"
+          );
+        if (!toolResult || toolResult.type !== "tool-result") {
+          yield {
+            type: "tool-call-delta",
+            toolCallId: "deterministic-process-resource-call",
+            toolName: "system_get_process_resource_status",
+            input: { maxResults: 5, reason: "느린 PC 원인을 확인하기 위해" },
+          };
+          yield { type: "finish", reason: "tool-calls" };
+          return;
+        }
+        yield { type: "text-delta", text: "CPU와 메모리를 많이 쓰는 앱을 확인했습니다." };
+        yield { type: "finish", reason: "stop" };
+        return;
+      }
       if (userText === "__test_list_windows__") {
         const toolResult = request.messages
           .flatMap((message: AgentMessage) => message.content)

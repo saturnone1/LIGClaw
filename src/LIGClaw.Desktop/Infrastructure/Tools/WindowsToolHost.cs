@@ -118,6 +118,7 @@ internal sealed class WindowsToolHost
             new SystemGetDiskHealthTool(),
             new SystemGetSecurityStatusTool(),
             new SystemGetResourceStatusTool(),
+            new SystemGetProcessResourceStatusTool(),
             new SystemGetNetworkStatusTool(),
             new AppListWindowsTool(windowCatalog),
             new AppSearchInstalledTool(appCatalog),

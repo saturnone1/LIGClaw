@@ -390,7 +390,7 @@ Phase 5 착수 전 제품 작업인 **UI/UX 전면 개선 목표**는 완료했�
 
 ### Phase 8 — C단계 출시 후보 안정화와 유지보수성
 
-**상태: 진행 중 (2026-08-01).** 상세 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 따른다. Windows PowerShell 5.1·PowerShell 7 검증 기준선, Sidecar Tool catalog, Desktop 대화 orchestration, SQLite repository와 설정 section 책임 분리를 완료했다. bounded release evidence 자동화를 추가했고 외부 Windows 10 22H2·서명 설치·실앱 UIA gate는 별도 추적한다. C-4는 Protocol 1.14의 Windows 10/11 공통 R0 전원 진단부터 시작했으며 이후 프로세스·네트워크·장치 진단 순으로 추가한다.
+**상태: 진행 중 (2026-08-01).** 상세 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 따른다. Windows PowerShell 5.1·PowerShell 7 검증 기준선, Sidecar Tool catalog, Desktop 대화 orchestration, SQLite repository와 설정 section 책임 분리를 완료했다. bounded release evidence 자동화를 추가했고 외부 Windows 10 22H2·서명 설치·실앱 UIA gate는 별도 추적한다. C-4는 Protocol 1.14 R0 전원 진단과 Protocol 1.15 R1 bounded 상위 앱 리소스 진단을 완료했으며 이후 네트워크·장치 진단 순으로 추가한다.
 
 - C-0: 검증 기준선과 문서 일치
 - C-1: AI 에이전트가 국소적으로 수정 가능한 책임 분리

@@ -624,6 +624,13 @@ for (const observation of [
     canonicalName: "system.get_network_status.v1",
     output: { networkAvailable: true, adapters: [] },
   },
+  {
+    input: "__test_process_resource_status__",
+    canonicalName: "system.get_process_resource_status.v1",
+    output: { providerStatus: "available", sampleDurationMilliseconds: 500, observedProcessCount: 1, observedGroupCount: 1, topCpuProcesses: [], topMemoryProcesses: [], truncated: false },
+    expectedInput: { maxResults: 5, reason: "느린 PC 원인을 확인하기 위해" },
+    expectedRisk: "R1",
+  },
 ]) {
   test(`Cline routes ${observation.canonicalName} through the Desktop bridge`, async () => {
     const invocations = [];
@@ -648,7 +655,8 @@ for (const observation of [
     assert.equal(invocations.length, 1);
     assert.equal(invocations[0].method, "tool.invoke");
     assert.equal(invocations[0].parameters.name, observation.canonicalName);
-    assert.equal(invocations[0].parameters.risk, "R0");
+    assert.deepEqual(invocations[0].parameters.input, observation.expectedInput ?? {});
+    assert.equal(invocations[0].parameters.risk, observation.expectedRisk ?? "R0");
     assert.equal(events.at(-1).type, "run_completed");
   });
 }

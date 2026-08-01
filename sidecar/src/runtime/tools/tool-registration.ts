@@ -10,6 +10,7 @@ export const BUILT_IN_TOOL_REGISTRATIONS = {
   system_get_disk_health: { desktopName: "system.get_disk_health.v1" },
   system_get_security_status: { desktopName: "system.get_security_status.v1" },
   system_get_resource_status: { desktopName: "system.get_resource_status.v1" },
+  system_get_process_resource_status: { desktopName: "system.get_process_resource_status.v1" },
   system_get_network_status: { desktopName: "system.get_network_status.v1" },
   system_show_notification: { desktopName: "system.show_notification.v1" },
   system_open_settings: { desktopName: "system.open_settings.v1" },

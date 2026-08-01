@@ -16,7 +16,7 @@
 |---|---|---|---|
 | 시스템 기본 상태 | 완료 | Windows 릴리스·빌드·아키텍처·시간대·전원 | Protocol 1.14 배터리 잔량·충전·저전력/위험·에너지 절약 상태(R0), 실기기 matrix 대기 |
 | 저장소 | 완료 | 논리 볼륨 용량·사용률, 물리 디스크 media/health, BitLocker 보호·암호화 상태. provider별 실패는 `unavailable`로 격리 | 제조사별 SMART 원시 속성은 후속 |
-| CPU·메모리 | 완료 | CPU 사용률·논리 프로세서·메모리 전체/여유/사용률·업타임 | GPU/NPU·온도·프로세스별 사용량(R0) |
+| CPU·메모리 | 완료 | CPU 사용률·논리 프로세서·메모리 전체/여유/사용률·업타임, Protocol 1.15 CPU·메모리 상위 앱 그룹(R1 매회 승인) | GPU/NPU·온도 |
 | 네트워크 | 부분 | 네트워크 사용 가능 여부·어댑터 종류/상태/링크 속도, 주소 원문 제외 | IP/DNS/게이트웨이(R1), Wi-Fi SSID(R1), 연결 변경(R2) |
 | 앱·창 | 부분 | 보이는 창 목록·설치 앱 검색·등록 앱 실행·창 활성화·정상 닫기·최소화·최대화·복원 | 가상 데스크톱은 후속(R2) |
 | Explorer 문맥 | 완료 | 가장 최근 활성 Explorer의 현재 폴더·선택 항목을 승인 후 최대 20개 조회 | 탭별 문맥과 선택 변경 감지는 후속 |
@@ -25,7 +25,7 @@
 | 알림·예약 | 완료 | 즉시 알림, durable 단발·매일·매주 반복, lease/run 이력, 재시작 복구, DST·`skip`/`run_once_on_resume`/`ask`, 관리 화면 조회·수정·삭제 | 로그인 전·앱 미실행 실행이 필요하면 Task Scheduler adapter를 후속 검토 |
 | 기억·선호 | 완료 | 승인 기반 명시적 remember/list/forget, 관리 화면 CRUD·JSON 내보내기, 출처·민감도·만료, 제한 Tool 인자의 별칭·선호 해석 | 암호화 내보내기와 만료 항목 영구 정리는 후속 |
 | UI Automation | 부분 | 승인 기반 bounded inspect/find, Desktop 발급 element handle, identity/focus guard가 적용된 invoke/set-value/plain-text 입력, 비밀번호·사용자 입력 감지 차단 | 실제 다중 모니터·DPI와 앱별 provider 호환성 확대, 좌표 fallback은 별도 capability/승인 후속 |
-| 프로세스·서비스 | 후속 | 창 단위 정상 닫기만 제공 | 프로세스 조회, 서비스 상태, 강제 종료/서비스 변경은 R2~R4 분리 |
+| 프로세스·서비스 | 부분 | PID·경로·사용자명 없는 bounded 프로세스 이름별 CPU·메모리 관측(R1), 창 단위 정상 닫기 | 서비스 상태, 강제 종료/서비스 변경은 별도 R2~R4 분리 |
 | Windows 설정·세션 | 부분 | allowlist Windows 설정 페이지 열기(R1), 잠금·절전(R2) | 로그아웃·재시작·종료는 별도 R3 설계 전까지 미제공 |
 | 보안·업데이트 | 완료 | Defender 실시간 보호·서명 나이, 방화벽 profile, Windows Update 최근 성공, BitLocker 읽기(R0) | 보안 설정 변경은 별도 R3 후속 |
 | 장치 | 후속 | 없음 | 디스플레이·오디오·프린터·Bluetooth·카메라 상태와 제한 조작(R0~R2) |

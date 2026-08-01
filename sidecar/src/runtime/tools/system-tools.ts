@@ -4,6 +4,11 @@ import { desktopToolName } from "./tool-registration.js";
 import type { DesktopToolContext, DesktopToolInvoker, NotificationInput, SystemOpenSettingsInput, SystemSessionActionInput } from "./tool-shared.js";
 import { reasonSchema } from "./tool-shared.js";
 
+interface ProcessResourceInput {
+  readonly maxResults: number;
+  readonly reason: string;
+}
+
 export function createSystemTools(
   bridge: DesktopToolInvoker,
   conversationId: string,
@@ -119,6 +124,31 @@ export function createSystemTools(
       }, context.signal);
     },
   };
+  const systemGetProcessResourceStatus: AgentTool<ProcessResourceInput, Readonly<Record<string, unknown>>> = {
+    name: "system_get_process_resource_status",
+    description: "사용자 승인 후 현재 CPU와 메모리를 많이 쓰는 프로세스 이름을 앱 단위로 합산해 확인합니다. PID, 실행 경로, 창 제목과 사용자 이름은 반환하지 않습니다.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["maxResults", "reason"],
+      properties: {
+        maxResults: { type: "integer", minimum: 1, maximum: 10 },
+        reason: reasonSchema,
+      },
+    },
+    timeoutMs: DESKTOP_TOOL_RESPONSE_TIMEOUT_MS,
+    retryable: false,
+    async execute(input: ProcessResourceInput, context: DesktopToolContext) {
+      return await bridge.invoke({
+        ...(context.toolCallId ? { toolCallId: context.toolCallId } : {}),
+        conversationId,
+        runId,
+        name: desktopToolName("system_get_process_resource_status"),
+        risk: "R1",
+        input: { maxResults: input.maxResults, reason: input.reason },
+      }, context.signal);
+    },
+  };
   const systemGetNetworkStatus: AgentTool<Record<string, never>, Readonly<Record<string, unknown>>> = {
     name: "system_get_network_status",
     description: "현재 Windows 네트워크 사용 가능 여부와 어댑터 이름·종류·연결 상태·링크 속도를 확인합니다. IP, MAC, DNS, 트래픽 내용은 반환하지 않습니다.",
@@ -203,5 +233,5 @@ export function createSystemTools(
       }, context.signal);
     },
   };
-  return [systemGetStatus, systemGetPowerStatus, systemGetStorageStatus, systemGetDiskHealth, systemGetSecurityStatus, systemGetResourceStatus, systemGetNetworkStatus, systemShowNotification, systemOpenSettings, systemSessionAction];
+  return [systemGetStatus, systemGetPowerStatus, systemGetStorageStatus, systemGetDiskHealth, systemGetSecurityStatus, systemGetResourceStatus, systemGetProcessResourceStatus, systemGetNetworkStatus, systemShowNotification, systemOpenSettings, systemSessionAction];
 }

@@ -7,8 +7,8 @@ namespace LIGClaw.Contracts.Generated;
 
 public static class ContractMetadata
 {
-    public const string ProtocolVersion = "1.14";
-    public const string Hash = "50d4716c048786df0f051ea54e365bf681dc273aac58ceed19699e828a21de69";
+    public const string ProtocolVersion = "1.15";
+    public const string Hash = "0f699521d06925c09033f4791b63801c8ced29758e101da314c5efba2add3cde";
 }
 
 public sealed record AgentJobCancelV1(
@@ -443,6 +443,10 @@ public sealed record SystemGetNetworkStatusV1();
 
 public sealed record SystemGetPowerStatusV1();
 
+public sealed record SystemGetProcessResourceStatusV1(
+    [property: JsonPropertyName("maxResults")] long MaxResults,
+    [property: JsonPropertyName("reason")] string Reason);
+
 public sealed record SystemGetResourceStatusV1();
 
 public sealed record SystemGetSecurityStatusV1();
@@ -475,6 +479,15 @@ public sealed record SystemGetPowerStatusV1Result(
     [property: JsonPropertyName("batteryPresence")] string BatteryPresence,
     [property: JsonPropertyName("energySaverStatus")] string EnergySaverStatus,
     [property: JsonPropertyName("battery")] IReadOnlyDictionary<string, object?>? Battery);
+
+public sealed record SystemGetProcessResourceStatusV1Result(
+    [property: JsonPropertyName("providerStatus")] string ProviderStatus,
+    [property: JsonPropertyName("sampleDurationMilliseconds")] long SampleDurationMilliseconds,
+    [property: JsonPropertyName("observedProcessCount")] long ObservedProcessCount,
+    [property: JsonPropertyName("observedGroupCount")] long ObservedGroupCount,
+    [property: JsonPropertyName("topCpuProcesses")] IReadOnlyList<IReadOnlyDictionary<string, object?>> TopCpuProcesses,
+    [property: JsonPropertyName("topMemoryProcesses")] IReadOnlyList<IReadOnlyDictionary<string, object?>> TopMemoryProcesses,
+    [property: JsonPropertyName("truncated")] bool Truncated);
 
 public sealed record SystemGetResourceStatusV1Result(
     [property: JsonPropertyName("uptimeSeconds")] long UptimeSeconds,
