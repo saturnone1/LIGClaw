@@ -127,6 +127,26 @@ public sealed class PreparedSensitiveContextStoreTests
         Assert.True(result.Success, result.Error);
     }
 
+    [Fact]
+    public void Transferred_context_still_expires_and_zeroes_its_owned_buffers()
+    {
+        var image = new byte[] { 1, 2, 3 };
+        var text = new byte[] { 65, 66 };
+        using var expired = new ManualResetEventSlim();
+        using var context = new PreparedSensitiveContext(
+            "token",
+            Identity(),
+            Draft(image, text),
+            DateTimeOffset.UtcNow.AddMilliseconds(250),
+            TimeSpan.FromMilliseconds(250));
+        context.Expired += (_, _) => expired.Set();
+
+        Assert.True(expired.Wait(TimeSpan.FromSeconds(5)), "전달된 화면 내용이 제한 시간 안에 폐기되지 않았습니다.");
+        AssertZeroed(image);
+        AssertZeroed(text);
+        Assert.Throws<ObjectDisposedException>(() => context.EncodedImage.ToArray());
+    }
+
     private static PreparedSensitiveContextStore Store(Func<DateTimeOffset>? now = null) =>
         new(now, () => Guid.Parse("11111111-1111-1111-1111-111111111111"));
 

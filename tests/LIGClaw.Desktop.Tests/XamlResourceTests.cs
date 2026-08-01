@@ -136,6 +136,9 @@ public sealed partial class XamlResourceTests
 
         Assert.Contains("x:Name=\"PreviewImage\"", previewXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"OcrTextBox\"", previewXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CropOverlay\"", previewXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CropSelectionButton\"", previewXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"선택한 화면 영역 자르기\"", previewXaml, StringComparison.Ordinal);
         Assert.Matches("CancelButton[^>]*IsDefault=\"True\"", previewXaml);
         Assert.DoesNotMatch("ApproveButton[^>]*IsDefault=\"True\"", previewXaml);
         Assert.DoesNotContain("AllowAlways", previewXaml, StringComparison.Ordinal);

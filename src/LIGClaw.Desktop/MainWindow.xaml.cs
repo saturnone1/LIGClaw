@@ -836,7 +836,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var preview = new SensitiveContextPreviewWindow(taken.Context) { Owner = this };
+            var preview = new SensitiveContextPreviewWindow(taken.Context, _screenTextRecognizer) { Owner = this };
             if (preview.ShowDialog() != true)
             {
                 SetRunStatus("화면 내용을 요청에 추가하지 않았어요.");

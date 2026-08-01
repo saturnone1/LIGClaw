@@ -9,7 +9,9 @@ Desktop composer의 `화면 가져오기`가 WPF HWND에 연결한 `GraphicsCapt
 
 패키지 identity가 있는 실행에서는 Windows 로컬 OCR을 사용한다. 4K 같은 일반 화면을 OCR 엔진의 더 작은 입력 한도 때문에 거부하지 않도록 OCR용 bitmap만 종횡비를 유지해 축소하며 원본 preview는 유지한다. OCR 결과는 UTF-8 32KiB 경계에서 Unicode 문자를 자르지 않고 제한한다. 사용자가 preview에서 확인·마스킹한 텍스트만 composer에 추가하고 이미지 자체는 Agent나 Sidecar로 전달하지 않는다. unpackaged 실행은 설치 필요 안내로 끝나며 cloud fallback은 없다.
 
-남은 acceptance는 signed/unsigned MSIX 설치 실행에서 OCR 성공·언어팩 부재, Windows 10 22H2와 Windows 11의 picker 취소·다중 모니터·보호 콘텐츠, preview crop이다.
+preview에서는 마우스 드래그 선택을 Uniform 표시 좌표에서 원본 픽셀로 변환하고, 선택 영역 PNG를 메모리에서 다시 만든 뒤 해당 영역에만 OCR을 재실행한다. 성공해야 이미지와 텍스트를 함께 교체하며 실패하면 기존 검토 내용을 유지한다. 전체 화면 복원도 제공한다. store에서 preview로 소유권이 전달된 뒤에도 컨텍스트 자체의 2분 타이머가 버퍼를 지우고 창을 닫는다.
+
+남은 acceptance는 signed/unsigned MSIX 설치 실행에서 OCR 성공·언어팩 부재, Windows 10 22H2와 Windows 11의 picker 취소·다중 모니터·보호 콘텐츠다.
 
 ## 배경
 
@@ -25,7 +27,7 @@ Windows의 화면 캡처 API는 사용자가 창 또는 디스플레이를 고�
 
 ### 1. 모델 호출보다 사용자 선택이 먼저다
 
-첫 진입점은 composer의 명시적 `화면 읽기` 동작이다. Desktop이 Windows 시스템 picker를 열고 사용자가 창 또는 디스플레이를 직접 고른 경우에만 한 프레임을 캡처한다. 백그라운드 상시 캡처, 주기 캡처, 모델이 고른 HWND·좌표의 무인 캡처는 제공하지 않는다. 선택 영역은 캡처 preview 안에서 사용자가 직접 자르는 후속 단계로 구현한다.
+첫 진입점은 composer의 명시적 `화면 읽기` 동작이다. Desktop이 Windows 시스템 picker를 열고 사용자가 창 또는 디스플레이를 직접 고른 경우에만 한 프레임을 캡처한다. 백그라운드 상시 캡처, 주기 캡처, 모델이 고른 HWND·좌표의 무인 캡처는 제공하지 않는다. 선택 영역은 캡처 preview 안에서 사용자가 직접 자르고 그 영역만 다시 OCR한다.
 
 ### 2. 준비와 전송을 분리한다
 

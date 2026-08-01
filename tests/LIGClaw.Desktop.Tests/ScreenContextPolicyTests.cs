@@ -62,4 +62,66 @@ public sealed class ScreenContextPolicyTests
 
         Assert.Equal((expectedWidth, expectedHeight), scaled);
     }
+
+    [Fact]
+    public void Uniform_crop_maps_display_coordinates_to_source_pixels()
+    {
+        var result = SensitiveImageCropPolicy.MapUniformSelection(
+            100,
+            50,
+            1000,
+            500,
+            10,
+            10,
+            90,
+            40);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(new PixelCropRectangle(100, 100, 800, 300), result.Rectangle);
+    }
+
+    [Fact]
+    public void Uniform_crop_excludes_letterbox_space_and_clamps_reverse_drag()
+    {
+        var result = SensitiveImageCropPolicy.MapUniformSelection(
+            100,
+            100,
+            200,
+            100,
+            120,
+            110,
+            -20,
+            -10);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(new PixelCropRectangle(0, 0, 200, 100), result.Rectangle);
+    }
+
+    [Theory]
+    [InlineData(100, 100, 1000, 1000, 10, 10, 10.5, 10.5)]
+    [InlineData(0, 100, 1000, 1000, 10, 10, 90, 90)]
+    [InlineData(100, 100, 0, 1000, 10, 10, 90, 90)]
+    public void Invalid_or_tiny_crop_is_rejected(
+        double displayWidth,
+        double displayHeight,
+        int sourceWidth,
+        int sourceHeight,
+        double startX,
+        double startY,
+        double endX,
+        double endY)
+    {
+        var result = SensitiveImageCropPolicy.MapUniformSelection(
+            displayWidth,
+            displayHeight,
+            sourceWidth,
+            sourceHeight,
+            startX,
+            startY,
+            endX,
+            endY);
+
+        Assert.False(result.Success);
+        Assert.Null(result.Rectangle);
+    }
 }

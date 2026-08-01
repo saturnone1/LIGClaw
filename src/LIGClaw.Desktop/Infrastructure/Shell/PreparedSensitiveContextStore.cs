@@ -29,6 +29,8 @@ internal sealed record PreparedSensitiveContextTakeResult(
 
 internal sealed class PreparedSensitiveContext : IDisposable
 {
+    private readonly object _sync = new();
+    private readonly ThreadingTimer _expiryTimer;
     private byte[] _encodedImage;
     private byte[] _ocrTextUtf8;
     private bool _disposed;
@@ -37,7 +39,8 @@ internal sealed class PreparedSensitiveContext : IDisposable
         string token,
         PreparedSensitiveContextIdentity identity,
         PreparedSensitiveContextDraft draft,
-        DateTimeOffset expiresAt)
+        DateTimeOffset expiresAt,
+        TimeSpan lifetime)
     {
         Token = token;
         Identity = identity;
@@ -48,7 +51,14 @@ internal sealed class PreparedSensitiveContext : IDisposable
         ExpiresAt = expiresAt;
         _encodedImage = draft.EncodedImage;
         _ocrTextUtf8 = draft.OcrTextUtf8;
+        _expiryTimer = new ThreadingTimer(
+            ExpireFromTimer,
+            null,
+            lifetime,
+            Timeout.InfiniteTimeSpan);
     }
+
+    internal event EventHandler? Expired;
 
     public string Token { get; }
     public PreparedSensitiveContextIdentity Identity { get; }
@@ -67,25 +77,40 @@ internal sealed class PreparedSensitiveContext : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
-        DisposeBuffers();
+        if (!DisposeBuffers()) return;
+        _expiryTimer.Dispose();
         GC.SuppressFinalize(this);
     }
 
     private ReadOnlyMemory<byte> Read(byte[] buffer)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        return buffer;
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return buffer;
+        }
     }
 
-    private void DisposeBuffers()
+    private bool DisposeBuffers()
     {
-        if (_disposed) return;
-        _disposed = true;
-        CryptographicOperations.ZeroMemory(_encodedImage);
-        CryptographicOperations.ZeroMemory(_ocrTextUtf8);
-        _encodedImage = [];
-        _ocrTextUtf8 = [];
+        lock (_sync)
+        {
+            if (_disposed) return false;
+            _disposed = true;
+            CryptographicOperations.ZeroMemory(_encodedImage);
+            CryptographicOperations.ZeroMemory(_ocrTextUtf8);
+            _encodedImage = [];
+            _ocrTextUtf8 = [];
+            return true;
+        }
+    }
+
+    private void ExpireFromTimer(object? state)
+    {
+        if (!DisposeBuffers()) return;
+        _expiryTimer.Dispose();
+        GC.SuppressFinalize(this);
+        Expired?.Invoke(this, EventArgs.Empty);
     }
 }
 
@@ -134,7 +159,12 @@ internal sealed class PreparedSensitiveContextStore : IDisposable
             ObjectDisposedException.ThrowIf(_disposed, this);
             DisposeCurrent();
             var token = _createToken().ToString("N");
-            _current = new PreparedSensitiveContext(token, identity, draft, _utcNow().Add(Lifetime));
+            _current = new PreparedSensitiveContext(
+                token,
+                identity,
+                draft,
+                _utcNow().Add(Lifetime),
+                Lifetime);
             _ = _expiryTimer.Change(Lifetime, Timeout.InfiniteTimeSpan);
             return new PreparedSensitiveContextPrepareResult(true, token);
         }

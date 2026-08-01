@@ -29,7 +29,7 @@
 | Windows 설정·세션 | 부분 | allowlist Windows 설정 페이지 열기(R1), 잠금·절전(R2) | 로그아웃·재시작·종료는 별도 R3 설계 전까지 미제공 |
 | 보안·업데이트 | 완료 | Defender 실시간 보호·서명 나이, 방화벽 profile, Windows Update 최근 성공, BitLocker 읽기(R0) | 보안 설정 변경은 별도 R3 후속 |
 | 장치 | 부분 | 장치명·ID 없이 기본 오디오 출력, 활성 디스플레이 수·주 화면 해상도, 프린터 구성·기본 프린터 오프라인 상태(R0) | 실제 장치 구성 acceptance, Bluetooth·카메라와 제한 조작은 별도 개인정보·R1/R2 설계 후속 |
-| 화면·OCR·음성 | 부분 | ADR 0033 개인정보 경계, composer 사용자 동작 기반 Windows picker 단일 프레임, D3D11/WARP, package identity 기반 로컬 OCR, 4K 비율 축소, `PreparedSensitiveContext` 상한·identity·2분 만료·zeroing, 실제 이미지/OCR preview·선택 마스킹·취소 기본값·확인 텍스트만 합류 | preview crop, 설치 실행과 Windows 10/11 실기 matrix, opt-in STT/TTS |
+| 화면·OCR·음성 | 부분 | ADR 0033 개인정보 경계, composer 사용자 동작 기반 Windows picker 단일 프레임, D3D11/WARP, preview 드래그 crop·OCR 재실행·전체 복원, package identity 기반 로컬 OCR, 4K 비율 축소, `PreparedSensitiveContext` 상한·identity·전달 뒤에도 유지되는 2분 만료·zeroing, 선택 마스킹·취소 기본값·확인 텍스트만 합류 | 설치 실행과 Windows 10/11 실기 matrix, opt-in STT/TTS |
 | MCP·외부 시스템 | 완료 | Streamable HTTP/Bearer 인증, 고정 실행 ID stdio, 연결별 health·장애 격리, exact-name allowlist, 읽기 전용 샘플 RAG | 외부 서비스 없이도 로컬 경로가 동작하며 사용자가 구성한 도달 가능한 endpoint는 주소 대역으로 차단하지 않음 |
 | 배포·진단 | 부분 | self-contained x64 MSIX, 번들 Node, 서명·App Installer 자동화, 민감정보 제거 진단 번들, Sidecar/MCP soak | machine-trusted production 서명으로 깨끗한 Windows 계정 설치·업데이트·제거 gate |
 

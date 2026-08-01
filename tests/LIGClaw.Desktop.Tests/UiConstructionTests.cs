@@ -4,6 +4,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Tools;
 
@@ -58,15 +60,16 @@ public sealed class UiConstructionTests
 
                 sensitiveStore = new PreparedSensitiveContextStore();
                 var identity = new PreparedSensitiveContextIdentity("conversation", "run", "tool-call");
-                var image = Convert.FromBase64String(
-                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+                var image = CreatePng(16, 16);
                 var ocr = Encoding.UTF8.GetBytes("비밀 공개 문장");
                 var prepared = sensitiveStore.Prepare(identity, new PreparedSensitiveContextDraft(
-                    "window", 1, 1, image, ocr, 0));
+                    "window", 16, 16, image, ocr, 0));
                 Assert.True(prepared.Success, prepared.Error);
                 sensitiveContext = Assert.IsType<PreparedSensitiveContext>(
                     sensitiveStore.Take(identity, prepared.Token!).Context);
-                sensitiveWindow = new SensitiveContextPreviewWindow(sensitiveContext);
+                sensitiveWindow = new SensitiveContextPreviewWindow(
+                    sensitiveContext,
+                    new StubScreenTextRecognizer("비밀 공개 문장"));
                 sensitiveContext = null;
                 var sensitiveContent = Assert.IsAssignableFrom<FrameworkElement>(sensitiveWindow.Content);
                 sensitiveContent.Measure(new Size(920, 700));
@@ -74,6 +77,10 @@ public sealed class UiConstructionTests
                 sensitiveContent.UpdateLayout();
                 Assert.NotNull(sensitiveWindow.PreviewImage.Source);
                 Assert.True(sensitiveWindow.ApproveButton.IsEnabled);
+                Assert.True(sensitiveWindow.ApplyCropAsync(new PixelCropRectangle(0, 0, 8, 8)).GetAwaiter().GetResult());
+                var croppedSource = Assert.IsAssignableFrom<BitmapSource>(sensitiveWindow.PreviewImage.Source);
+                Assert.Equal(8, croppedSource.PixelWidth);
+                Assert.Equal(8, croppedSource.PixelHeight);
                 sensitiveWindow.OcrTextBox.Select(0, 2);
                 sensitiveWindow.MaskSelectionButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.Equal("[가림] 공개 문장", sensitiveWindow.OcrTextBox.Text);
@@ -132,6 +139,48 @@ public sealed class UiConstructionTests
     private sealed class NoOpNotificationService : IUserNotificationService
     {
         public Task ShowAsync(string title, string message, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class StubScreenTextRecognizer(string text) : IScreenTextRecognizer
+    {
+        public Task<ScreenTextRecognitionResult> RecognizeAsync(
+            ReadOnlyMemory<byte> encodedImage,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Assert.False(encodedImage.IsEmpty);
+            return Task.FromResult(new ScreenTextRecognitionResult(
+                ScreenTextRecognitionStatus.Recognized,
+                Encoding.UTF8.GetBytes(text)));
+        }
+    }
+
+    private static byte[] CreatePng(int width, int height)
+    {
+        var stride = width * 4;
+        var pixels = new byte[stride * height];
+        for (var index = 0; index < pixels.Length; index += 4)
+        {
+            pixels[index] = 0x6D;
+            pixels[index + 1] = 0x2F;
+            pixels[index + 2] = 0x00;
+            pixels[index + 3] = 0xFF;
+        }
+
+        var bitmap = BitmapSource.Create(
+            width,
+            height,
+            96,
+            96,
+            PixelFormats.Bgra32,
+            null,
+            pixels,
+            stride);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var stream = new MemoryStream();
+        encoder.Save(stream);
+        return stream.ToArray();
     }
 
     private static void VerifyLargeActivityList()
