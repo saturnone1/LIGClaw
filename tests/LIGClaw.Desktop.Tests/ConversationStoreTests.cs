@@ -231,6 +231,28 @@ public sealed class ConversationStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task RejectsAFutureSchemaVersionWithoutKeepingTheDatabaseLocked()
+    {
+        var path = Path.Combine(_directory, "future.db");
+        Directory.CreateDirectory(_directory);
+        await using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            await connection.OpenAsync();
+            var command = connection.CreateCommand();
+            command.CommandText =
+                "CREATE TABLE schema_migrations(version INTEGER NOT NULL PRIMARY KEY, applied_at_utc TEXT NOT NULL); " +
+                "INSERT INTO schema_migrations VALUES (12, '2026-08-01T00:00:00.0000000+00:00');";
+            _ = await command.ExecuteNonQueryAsync();
+        }
+
+        using (var store = new ConversationStore(path))
+            await Assert.ThrowsAsync<InvalidDataException>(() => store.InitializeAsync());
+
+        File.Delete(path);
+        Assert.False(File.Exists(path));
+    }
+
+    [Fact]
     public async Task PersistsApprovalAndToolExecutionWithoutRawInput()
     {
         using var store = CreateStore();
