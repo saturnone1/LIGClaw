@@ -171,7 +171,7 @@ public sealed partial class XamlResourceTests
     }
 
     [Fact]
-    public void ConversationShellExposesAnExplicitThreadBoundaryAndUsesSessionState()
+    public void ConversationShellExposesAnExplicitThreadBoundaryAndUsesRunController()
     {
         var desktop = Path.Combine(FindRepositoryRoot(), "src", "LIGClaw.Desktop");
         var mainXaml = File.ReadAllText(Path.Combine(desktop, "MainWindow.xaml"));
@@ -179,7 +179,7 @@ public sealed partial class XamlResourceTests
 
         Assert.Contains("AutomationProperties.Name=\"새 대화 시작\"", mainXaml, StringComparison.Ordinal);
         Assert.Contains("TurnCountDisplay", mainXaml, StringComparison.Ordinal);
-        Assert.Contains("ConversationSessionState", mainCode, StringComparison.Ordinal);
+        Assert.Contains("ConversationRunController", mainCode, StringComparison.Ordinal);
         Assert.Contains("PersistConversationRunStartAsync", mainCode, StringComparison.Ordinal);
         Assert.DoesNotContain("_activeConversationId = Guid.NewGuid", mainCode, StringComparison.Ordinal);
         Assert.Contains("DispatcherTimer", mainCode, StringComparison.Ordinal);

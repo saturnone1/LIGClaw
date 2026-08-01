@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
     private readonly SemanticMemoryRepository _memories;
     private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
+    private readonly ConversationRunController _conversationRun;
     private readonly IUserNotificationService _notifications;
     private QuickAccessShortcut _configuredQuickAccessShortcut = QuickAccessShortcutCatalog.Default;
     private WindowsPlatformProfile? _platformProfile;
@@ -49,11 +50,8 @@ public partial class MainWindow : Window
     private LocalSubagentOrchestrator? _subagentOrchestrator;
     private Task _persistenceInitialization = Task.CompletedTask;
     private bool _persistenceAvailable;
-    private readonly ConversationSessionState _conversationSession = new();
     private bool _isConnected;
     private bool _isModelConfigured;
-    private bool _isRunning;
-    private bool _isCancelling;
     private bool _refreshingConversations;
     private CancellationTokenSource? _conversationSearchCancellation;
     private long _conversationListRefreshVersion;
@@ -72,6 +70,7 @@ public partial class MainWindow : Window
     internal MainWindow(IUserNotificationService notifications)
     {
         _notifications = notifications;
+        _conversationRun = new ConversationRunController(_toolInvocationPolicy);
         var semanticSearch = new SemanticMemorySearchService(
             _conversationStore,
             new OpenAiSemanticMemoryEmbeddingClient(_semanticMemoryHttpClient),
@@ -401,13 +400,13 @@ public partial class MainWindow : Window
 
     private void NewConversation_Click(object sender, RoutedEventArgs e)
     {
-        if (_isRunning)
+        if (_conversationRun.IsRunning)
         {
             SetRunStatus("현재 요청을 마친 뒤 새 대화를 시작할 수 있어요.");
             return;
         }
         ConversationSwitcherPopup.IsOpen = false;
-        _ = _conversationSession.StartNewConversation();
+        _ = _conversationRun.StartNewConversation();
         RecentConversationsList.SelectedItem = null;
         UserMessageBubble.Visibility = Visibility.Collapsed;
         SetTranscriptMarkdown(string.Empty);
@@ -601,7 +600,7 @@ public partial class MainWindow : Window
 
     private async Task<bool> ExecuteManualUndoAsync(string undoId)
     {
-        if (_isRunning || _toolInvocationCoordinator is null)
+        if (_conversationRun.IsRunning || _toolInvocationCoordinator is null)
         {
             AddDiagnostic("다른 요청이 실행 중일 때는 파일 작업을 되돌릴 수 없습니다.");
             return false;
@@ -713,12 +712,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        var identity = _conversationSession.BeginRun();
+        var identity = _conversationRun.BeginRun();
         var conversationId = identity.ConversationId;
         var runId = identity.RunId;
-        _toolInvocationPolicy.BeginRun(conversationId, runId);
-        _isRunning = true;
-        _isCancelling = false;
         RecentConversationsList.IsEnabled = false;
         UserMessageText.Text = input;
         UserMessageBubble.Visibility = Visibility.Collapsed;
@@ -748,7 +744,7 @@ public partial class MainWindow : Window
                     : null);
             if (!started.Accepted || !StringComparer.Ordinal.Equals(started.RunId, runId))
                 throw new InvalidDataException("Sidecar가 요청 실행 ID를 확인하지 못했습니다.");
-            if (_isRunning && StringComparer.Ordinal.Equals(_conversationSession.ActiveConversationId, conversationId))
+            if (_conversationRun.IsRunning && StringComparer.Ordinal.Equals(_conversationRun.ActiveConversationId, conversationId))
             {
                 SetRunStatus("답변을 준비하고 있어요…");
             }
@@ -766,16 +762,14 @@ public partial class MainWindow : Window
 
     private async void Cancel_Click(object sender, RoutedEventArgs e)
     {
-        if (_conversationSession.ActiveConversationId is not { } conversationId ||
-            _conversationSession.ActiveRunId is not { } runId) return;
-        _ = _conversationSession.CancelRun(conversationId, runId);
-        _isCancelling = true;
+        if (!_conversationRun.TryRequestCancellation(out var activeRun) || activeRun is null) return;
+        var conversationId = activeRun.ConversationId;
         SetRunStatus("요청을 중단하고 있어요…");
         UpdateCommandState();
         try
         {
             var result = await _sidecar.CancelConversationAsync(conversationId);
-            if (_isRunning && StringComparer.Ordinal.Equals(_conversationSession.ActiveConversationId, conversationId))
+            if (_conversationRun.IsRunning && StringComparer.Ordinal.Equals(_conversationRun.ActiveConversationId, conversationId))
             {
                 SetRunStatus(result.Cancelled ? "요청을 중단하고 있어요…" : "이미 처리가 끝났어요.");
             }
@@ -800,7 +794,7 @@ public partial class MainWindow : Window
             await Dispatcher.InvokeAsync(() =>
             {
                 AddDiagnostic($"Agent 이벤트 처리 실패: {exception.Message}");
-                if (_isRunning)
+                if (_conversationRun.IsRunning)
                     ShowRunFailure("응답을 표시하는 중 문제가 발생했어요. 다시 시도해 주세요.");
             });
         }
@@ -808,7 +802,7 @@ public partial class MainWindow : Window
 
     private async Task HandleAgentEventAsync(AgentEvent agentEvent)
     {
-        if (!_toolInvocationPolicy.IsActiveRun(agentEvent.ConversationId, agentEvent.RunId))
+        if (!_conversationRun.IsActiveRun(agentEvent.ConversationId, agentEvent.RunId))
         {
             AddDiagnostic("현재 요청과 일치하지 않는 Agent 이벤트를 무시했습니다.");
             return;
@@ -855,7 +849,7 @@ public partial class MainWindow : Window
             await _subagentOrchestrator.TryHandleToolInvocationAsync(invocation)) return;
         WindowsToolExecutionResult execution;
         var enteredGate = false;
-        _ = _conversationSession.TryGetCancellationToken(
+        _ = _conversationRun.TryGetCancellationToken(
             invocation.ConversationId,
             invocation.RunId,
             out var runCancellationToken);
@@ -1034,23 +1028,16 @@ public partial class MainWindow : Window
 
     private void CompleteRun(string status)
     {
-        if (_conversationSession.ActiveConversationId is { } conversationId &&
-            _conversationSession.ActiveRunId is { } runId)
-        {
-            _toolInvocationPolicy.EndRun(conversationId, runId);
-            _ = _conversationSession.EndRun(conversationId, runId);
-        }
+        _ = _conversationRun.CompleteActiveRun();
         SetRunStatus(status);
-        _isRunning = false;
-        _isCancelling = false;
         RecentConversationsList.IsEnabled = true;
         UpdateCommandState();
     }
 
     private void ShowRunFailure(string message)
     {
-        var failedConversationId = _conversationSession.ActiveConversationId;
-        var failedRunId = _conversationSession.ActiveRunId;
+        var failedConversationId = _conversationRun.ActiveConversationId;
+        var failedRunId = _conversationRun.ActiveRunId;
         AppendTranscriptStatus(message);
         TranscriptPlaceholder.Visibility = Visibility.Collapsed;
         CompleteRun(message);
@@ -1222,7 +1209,7 @@ public partial class MainWindow : Window
         var refreshVersion = Interlocked.Increment(ref _conversationListRefreshVersion);
         try
         {
-            var selectedId = _conversationSession.CurrentConversationId;
+            var selectedId = _conversationRun.CurrentConversationId;
             var normalizedQuery = query?.Trim() ?? string.Empty;
             var conversations = normalizedQuery.Length == 0
                 ? await _conversationStore.GetRecentConversationsAsync(cancellationToken: cancellationToken)
@@ -1261,7 +1248,7 @@ public partial class MainWindow : Window
         object sender,
         System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (_refreshingConversations || _isRunning ||
+        if (_refreshingConversations || _conversationRun.IsRunning ||
             RecentConversationsList.SelectedItem is not ConversationSummary conversation) return;
         ConversationSwitcherPopup.IsOpen = false;
         ShowHome();
@@ -1269,7 +1256,7 @@ public partial class MainWindow : Window
         if (!_persistenceAvailable) return;
         try
         {
-            if (!_conversationSession.SelectConversation(conversation.Id)) return;
+            if (!_conversationRun.SelectConversation(conversation.Id)) return;
             UserMessageBubble.Visibility = Visibility.Collapsed;
             ConversationSubtitle.Text = $"{conversation.TurnCount}턴 대화를 이어서 진행합니다.";
             SetTranscriptMarkdown(await _conversationStore.GetTranscriptAsync(conversation.Id), scrollToEnd: true);
@@ -1295,11 +1282,11 @@ public partial class MainWindow : Window
     private void UpdateCommandState()
     {
         if (!IsInitialized) return;
-        SendButton.IsEnabled = _isConnected && _isModelConfigured && !_isRunning && !string.IsNullOrWhiteSpace(ConversationInput.Text);
-        CancelButton.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
-        CancelButton.IsEnabled = _isRunning && !_isCancelling;
-        TimelineProgressCard.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
-        NewConversationButton.IsEnabled = !_isRunning;
+        SendButton.IsEnabled = _isConnected && _isModelConfigured && !_conversationRun.IsRunning && !string.IsNullOrWhiteSpace(ConversationInput.Text);
+        CancelButton.Visibility = _conversationRun.IsRunning ? Visibility.Visible : Visibility.Collapsed;
+        CancelButton.IsEnabled = _conversationRun.IsRunning && !_conversationRun.IsCancelling;
+        TimelineProgressCard.Visibility = _conversationRun.IsRunning ? Visibility.Visible : Visibility.Collapsed;
+        NewConversationButton.IsEnabled = !_conversationRun.IsRunning;
     }
 
     private void SetRunStatus(string status)
@@ -1313,7 +1300,7 @@ public partial class MainWindow : Window
         {
             _isConnected = status.State == SidecarState.Connected;
             if (!_isConnected) _isModelConfigured = false;
-            if (!_isConnected && _isRunning)
+            if (!_isConnected && _conversationRun.IsRunning)
             {
                 ShowRunFailure("연결이 끊어져 요청이 중단됐어요. 다시 연결되면 재시도해 주세요.");
             }
@@ -1352,10 +1339,10 @@ public partial class MainWindow : Window
             }
             SetRunStatus(status.State switch
             {
-                SidecarState.Connected when !_isRunning => "요청을 입력해 주세요.",
-                SidecarState.Faulted when !_isRunning => "연결을 복구하고 있어요…",
-                SidecarState.Stopped when !_isRunning => "다시 연결해 주세요.",
-                _ when !_isRunning => "준비하고 있어요…",
+                SidecarState.Connected when !_conversationRun.IsRunning => "요청을 입력해 주세요.",
+                SidecarState.Faulted when !_conversationRun.IsRunning => "연결을 복구하고 있어요…",
+                SidecarState.Stopped when !_conversationRun.IsRunning => "다시 연결해 주세요.",
+                _ when !_conversationRun.IsRunning => "준비하고 있어요…",
                 _ => RunStatus.Text,
             });
             UpdateCommandState();
