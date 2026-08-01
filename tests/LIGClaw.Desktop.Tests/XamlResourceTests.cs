@@ -176,6 +176,21 @@ public sealed partial class XamlResourceTests
     }
 
     [Fact]
+    public void TranscriptExposesAccessibleSelectionReadingAndImmediateStop()
+    {
+        var desktop = Path.Combine(FindRepositoryRoot(), "src", "LIGClaw.Desktop");
+        var mainXaml = File.ReadAllText(Path.Combine(desktop, "MainWindow.xaml"));
+        var mainCode = File.ReadAllText(Path.Combine(desktop, "MainWindow.xaml.cs"));
+
+        Assert.Contains("x:Name=\"ReadSelectionButton\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"선택한 답변 읽기\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectionChanged=\"Transcript_SelectionChanged\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"선택 영역 읽기\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("ReadSelectionButton.Content = \"읽기 중지\"", mainCode, StringComparison.Ordinal);
+        Assert.Contains("_textToSpeech.Stop()", mainCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ViewXamlUsesSemanticResourcesInsteadOfRawHexColors()
     {
         var desktop = Path.Combine(FindRepositoryRoot(), "src", "LIGClaw.Desktop");

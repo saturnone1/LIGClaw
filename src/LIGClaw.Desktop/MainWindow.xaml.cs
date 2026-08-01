@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     private readonly IVoiceInputSettingsStore _voiceInputSettingsStore = new VoiceInputSettingsStore();
     private readonly IPushToTalkRecognizer _pushToTalkRecognizer = new WindowsPushToTalkRecognizer();
     private readonly PushToTalkInteractionController _pushToTalk;
+    private readonly ITextToSpeechPlayer _textToSpeech = new WindowsTextToSpeechPlayer();
     private readonly ObservableCollection<string> _diagnostics = [];
     private readonly ConversationStore _conversationStore = ConversationStore.CreateDefault();
     private readonly IConversationRepository _conversationRepository;
@@ -74,6 +75,8 @@ public partial class MainWindow : Window
     private bool _refreshingConversations;
     private bool _isPreparingScreenContext;
     private bool _voiceInputEnabled;
+    private bool _isReadingSelection;
+    private CancellationTokenSource? _textToSpeechStartCancellation;
     private readonly LatestRequestController _conversationListRequests = new();
     private readonly StringBuilder _transcriptMarkdown = new();
     private readonly DispatcherTimer _transcriptRenderTimer;
@@ -91,6 +94,7 @@ public partial class MainWindow : Window
     {
         _notifications = notifications;
         _pushToTalk = new PushToTalkInteractionController(_pushToTalkRecognizer);
+        _textToSpeech.PlaybackEnded += TextToSpeech_PlaybackEnded;
         _conversationRepository = _conversationStore.Conversations;
         _operationalRepository = _conversationStore.Operations;
         _personalMemoryRepository = _conversationStore.Memories;
@@ -491,6 +495,7 @@ public partial class MainWindow : Window
 
     private void ShowShellPage(FrameworkElement page, Button selectedNavigation)
     {
+        if (_isReadingSelection) StopReadingSelection();
         ConversationSwitcherPopup.IsOpen = false;
         ShellPageHost.Content = page;
         ConversationPage.Visibility = Visibility.Collapsed;
@@ -747,6 +752,89 @@ public partial class MainWindow : Window
                 Transcript.ViewportHeight,
                 Transcript.VerticalOffset))
             NewContentIndicator.Visibility = Visibility.Collapsed;
+    }
+
+    private void Transcript_SelectionChanged(object sender, RoutedEventArgs e) => UpdateReadSelectionState();
+
+    private async void ReadSelection_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isReadingSelection)
+        {
+            StopReadingSelection("읽기를 멈췄어요.");
+            return;
+        }
+
+        var selectedText = new System.Windows.Documents.TextRange(
+            Transcript.Selection.Start,
+            Transcript.Selection.End).Text;
+        var validation = TextToSpeechTextPolicy.Prepare(selectedText, out _);
+        if (validation.Status != TextToSpeechStatus.Playing)
+        {
+            SetRunStatus(validation.Error ?? "읽을 답변을 선택해 주세요.");
+            return;
+        }
+
+        _textToSpeechStartCancellation?.Dispose();
+        _textToSpeechStartCancellation = new CancellationTokenSource();
+        _isReadingSelection = true;
+        ReadSelectionButton.Content = "읽기 중지";
+        ReadSelectionButton.IsEnabled = true;
+        SetRunStatus("선택한 답변을 읽을 준비를 하고 있어요.");
+        try
+        {
+            var result = await _textToSpeech.PlayAsync(selectedText, _textToSpeechStartCancellation.Token);
+            if (!_isReadingSelection) return;
+            if (result.Status == TextToSpeechStatus.Playing)
+            {
+                SetRunStatus("선택한 답변을 읽고 있어요. 멈추려면 읽기 중지를 누르세요.");
+                return;
+            }
+            ResetReadSelectionState();
+            SetRunStatus(result.Error ?? "선택한 답변을 읽지 못했어요.");
+        }
+        catch (OperationCanceledException)
+        {
+            ResetReadSelectionState();
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"답변 읽기 시작 실패: {exception.GetType().Name}");
+            ResetReadSelectionState();
+            SetRunStatus("Windows에서 선택한 답변을 읽지 못했어요.");
+        }
+    }
+
+    private void TextToSpeech_PlaybackEnded(object? sender, TextToSpeechPlaybackEndedEventArgs e) =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (!_isReadingSelection) return;
+            ResetReadSelectionState();
+            SetRunStatus(e.Failed
+                ? "Windows에서 선택한 답변을 끝까지 읽지 못했어요."
+                : "선택한 답변을 모두 읽었어요.");
+        });
+
+    private void StopReadingSelection(string? status = null)
+    {
+        _textToSpeechStartCancellation?.Cancel();
+        _textToSpeech.Stop();
+        ResetReadSelectionState();
+        if (status is not null) SetRunStatus(status);
+    }
+
+    private void ResetReadSelectionState()
+    {
+        _isReadingSelection = false;
+        _textToSpeechStartCancellation?.Dispose();
+        _textToSpeechStartCancellation = null;
+        ReadSelectionButton.Content = "선택 영역 읽기";
+        UpdateReadSelectionState();
+    }
+
+    private void UpdateReadSelectionState()
+    {
+        if (!IsInitialized || _isReadingSelection) return;
+        ReadSelectionButton.IsEnabled = !Transcript.Selection.IsEmpty;
     }
 
     private void ConversationInput_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -1338,6 +1426,7 @@ public partial class MainWindow : Window
 
     private void SetTranscriptMarkdown(string markdown, bool scrollToEnd = false)
     {
+        if (_isReadingSelection) StopReadingSelection();
         _transcriptMarkdown.Clear();
         _transcriptMarkdown.Append(markdown);
         TranscriptPlaceholder.Visibility = string.IsNullOrWhiteSpace(markdown)
@@ -1686,6 +1775,7 @@ public partial class MainWindow : Window
         if (System.Windows.Application.Current is not App { IsExitRequested: true })
         {
             e.Cancel = true;
+            if (_isReadingSelection) StopReadingSelection();
             Hide();
             (System.Windows.Application.Current as App)?.NotifyWindowHidden();
         }
@@ -1702,6 +1792,7 @@ public partial class MainWindow : Window
         _sidecar.AgentEventReceived -= Sidecar_AgentEventReceived;
         _sidecar.ToolInvocationReceived -= Sidecar_ToolInvocationReceived;
         _quickAccessHotkey.Pressed -= QuickAccessHotkey_Pressed;
+        _textToSpeech.PlaybackEnded -= TextToSpeech_PlaybackEnded;
         _quickAccessHotkey.Dispose();
         try
         {
@@ -1727,6 +1818,14 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             System.Diagnostics.Debug.WriteLine($"음성 입력 서비스 종료 실패: {exception.GetType().Name}");
+        }
+        try
+        {
+            await _textToSpeech.DisposeAsync();
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Debug.WriteLine($"답변 읽기 서비스 종료 실패: {exception.GetType().Name}");
         }
         try
         {
