@@ -1,60 +1,78 @@
 # LIGClaw
 
-Windows 사용자 세션에 상주하며 반복 작업을 안전하게 대신하는 로컬 우선 개인 비서입니다.
+A local-first personal assistant that lives in the Windows user session and takes over
+repetitive work without handing anything to a remote service.
 
-현재는 Phase 0 walking skeleton 단계입니다. WPF Desktop이 Node.js Sidecar의 생명주기를 소유하고, 사용자별 Windows Named Pipe에서 버전드 JSON-RPC handshake와 heartbeat를 수행합니다.
+**Status: Phase 0 walking skeleton.** A WPF desktop app owns the lifecycle of a Node.js
+sidecar and performs a versioned JSON-RPC handshake plus heartbeat over a per-user Windows
+named pipe. That is the whole of it so far.
 
-## 현재 구현 범위
+## What actually works today
 
-현재 Sidecar capability는 `health.ping`뿐입니다. Cline/LLM, 대화, Windows Tool, 트레이, 메모리, 예약 작업, MCP는 기능을 막아 둔 것이 아니라 아직 구현되지 않았습니다. 라이선스·계정·모델별 feature flag나 호출 quota는 없습니다.
+The only sidecar capability is `health.ping`.
 
-다음 항목은 기능 제한이 아니라 프로세스 안정성과 보안을 위한 경계입니다.
+Cline/LLM integration, conversation, Windows tooling, the tray, memory, scheduled tasks
+and MCP are **not implemented yet** — they are not disabled, gated or paywalled. There are
+no license, account or per-model feature flags, and no call quotas.
 
-- IPC payload 최대 4 MiB와 header 최대 8 KiB
-- 연결 10초, heartbeat 응답 5초 timeout
-- 동일 Windows 사용자만 접근 가능한 Named Pipe
-- 계약 버전과 hash가 다른 Sidecar 연결 거부
-- 진단 UI 최대 100개 항목, 항목당 2,048자 표시
+The following *are* deliberate limits, but they exist for process stability and security
+rather than to restrict functionality:
 
-화면 이미지나 대용량 파일은 향후 IPC에 직접 싣지 않고 승인된 임시 resource handle로 전달해 이 경계를 유지합니다.
+| Boundary | Value |
+|---|---|
+| IPC payload / header ceiling | 4 MiB / 8 KiB |
+| Connect timeout | 10 s |
+| Heartbeat response timeout | 5 s |
+| Named pipe access | same Windows user only |
+| Sidecar with mismatched contract version or hash | connection refused |
+| Diagnostics UI | 100 entries, 2,048 chars each |
 
-## 요구 환경
+Screenshots and large files will not be pushed through IPC directly. When that work
+lands, they will be passed as approved temporary resource handles so these boundaries
+still hold.
+
+## Requirements
 
 - Windows 10/11
-- .NET SDK 10.0.103 이상 패치 버전
+- .NET SDK 10.0.103 or a later patch
 - Node.js 24
-- PowerShell 7 또는 Windows PowerShell 5.1
+- PowerShell 7, or Windows PowerShell 5.1
 
-## 검증
+## Verify
 
 ```powershell
 ./scripts/verify.ps1
 ```
 
-## 실행
+## Run
 
 ```powershell
 ./scripts/run.ps1
 ```
 
-Sidecar를 먼저 빌드한 다음 Desktop을 실행합니다. 창에서 runtime 연결 상태와 제한된 진단 로그를 확인하고 재시작 동작을 시험할 수 있습니다.
+This builds the sidecar first, then launches the desktop app. The window shows runtime
+connection state and a bounded diagnostic log, and lets you exercise restart behaviour.
 
-실제 프로세스 handshake, heartbeat, 강제 종료 후 자동 재시작과 고아 프로세스 정리는 다음으로 확인합니다.
+To exercise the real process handshake, heartbeat, automatic restart after a forced kill,
+and orphan cleanup:
 
 ```powershell
 ./scripts/smoke-sidecar.ps1
 ```
 
-구현 범위와 단계는 [구현 계획](docs/IMPLEMENTATION_PLAN.md), 중요한 결정은 [ADR](docs/adr/)을 참고하십시오.
-
-## 현재 구조
+## Layout
 
 ```text
-src/LIGClaw.Desktop       WPF UI와 Sidecar supervisor
-src/LIGClaw.Application   use case와 port (확장 예정)
-src/LIGClaw.Domain        순수 도메인 모델 (확장 예정)
-src/LIGClaw.Contracts     JSON-RPC 계약과 framing
-sidecar                   교체 가능한 Node.js agent runtime 경계
-contracts                 schema-first RPC/Tool 계약
-tests                     결정적인 계약 테스트
+src/LIGClaw.Desktop       WPF UI and the sidecar supervisor
+src/LIGClaw.Application   use cases and ports (to be expanded)
+src/LIGClaw.Domain        pure domain model (to be expanded)
+src/LIGClaw.Contracts     JSON-RPC contract and framing
+sidecar                   replaceable Node.js agent runtime boundary
+contracts                 schema-first RPC / tool contracts
+tests                     deterministic contract tests
 ```
+
+## Design notes
+
+Scope and phasing live in the [implementation plan](docs/IMPLEMENTATION_PLAN.md);
+the decisions behind the structure are recorded as [ADRs](docs/adr/).
