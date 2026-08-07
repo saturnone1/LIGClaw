@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.zip_create.v1.schema.json",
+  "title": "file.zip_create.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sourcePaths", "destinationPath", "reason"],
+  "properties": {
+    "sourcePaths": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string", "minLength": 3, "maxLength": 32767 } },
+    "destinationPath": { "type": "string", "minLength": 3, "maxLength": 32767 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

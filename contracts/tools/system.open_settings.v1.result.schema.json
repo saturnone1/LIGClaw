@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.open_settings.v1.result.schema.json",
+  "title": "SystemOpenSettingsV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["opened", "page"],
+  "properties": {
+    "opened": { "type": "boolean" },
+    "page": { "type": "string", "enum": ["display", "sound", "notifications", "bluetooth", "network", "apps", "storage", "windows_update", "privacy"] }
+  }
+}

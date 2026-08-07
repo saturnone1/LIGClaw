@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_security_status.v1.schema.json",
+  "title": "system.get_security_status.v1",
+  "description": "Returns bounded read-only Windows Defender, Firewall, and Update status.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

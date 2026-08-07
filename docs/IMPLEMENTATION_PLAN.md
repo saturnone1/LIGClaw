@@ -1,6 +1,6 @@
 # LIGClaw 구현 계획
 
-> 문서 상태: 초안 v1
+> 문서 상태: living plan for v0.6.0
 > 작성 기준일: 2026-07-25
 > 제품 정의: Windows 사용자 세션에 상주하며 반복 작업을 대신하는 로컬 우선 개인 비서
 
@@ -293,6 +293,8 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 
 ### Phase 0 — 결정 검증과 기반 (약 1주)
 
+**상태: 완료 (2026-07-25).** Schema-generated 계약, 실제 Cline 0.0.65 loop를 사용하는 deterministic spike, Replay fixture, 이벤트 streaming/cancel, Sidecar 재시작과 프로세스 통합 테스트가 완료됐다. Phase 1에서는 deterministic model을 Desktop 설정·Credential Locker가 공급하는 실제 provider model로 교체한다.
+
 - 솔루션/워크스페이스, formatter, analyzer, 테스트, CI 구성
 - ADR: WPF, 프로세스 경계, DB 단독 소유, IPC, Tool schema, 런타임 선택
 - Cline agents/sdk 비교 spike와 기록된 이벤트 fixture
@@ -303,25 +305,36 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 
 ### Phase 1 — 상주 셸과 대화 (약 1~2주)
 
+진입 전 디자인 기반(2026-07-25): 공식 LIG Defense & Aerospace CI의 Innovative Blue/Futuristic Gray를 토큰화하고, 독자적인 LIGClaw 앱·트레이 심벌, 공용 WPF 스타일, 작업 중심 메인 화면을 적용했다. 상세 사용 규칙과 자산 재생성 절차는 `docs/DESIGN_SYSTEM.md`를 따른다.
+
+**상태: 완료 (2026-07-26).** 단일 인스턴스, 기존 창 복원, 트레이 상주, 사용자 선택형 빠른 호출, 시작프로그램, 진행/오류/취소 UI와 범용 OpenAI 호환 `Base URL/API Key/Model` 연결 및 Windows Credential Manager 저장을 완료했다. Desktop 단독 SQLite conversation/run/event persistence와 최근 다중 턴 대화 복원을 완료했다. 같은 대화는 안정적인 `conversationId`와 Sidecar runtime을 재사용하고 요청마다 고유 `runId`만 발급하며, 명시적 새 대화에서만 문맥을 분리한다. Windows 10/11은 런타임 build와 capability로 분류하며 공통 Win32 경로를 공유하고 Windows 11 전용 API만 adapter에서 선택한다. Protocol 1.5 Desktop Tool bridge와 bounded history, R0 `system.get_status.v1`, `app.list_windows.v1`, R1 `system.show_notification.v1`, 등록 앱 한정 `app.launch.v1` 실행 경로를 연결했다. Desktop 발급 run identity, 실행별 중복 방지, adapter canonical 위험도, 일반 사용자용 `이번 한 번` 승인으로 프로세스 경계를 보강했다. 기본 단축키에서 자연어 앱 실행을 요청하고 승인한 뒤 Windows 실행 결과를 모델 응답으로 스트리밍하는 replay E2E가 완료 조건을 검증한다.
+
 - single-instance, tray, 시작프로그램, quick input, 설정
 - 대화/진행/오류/취소 UI
 - LLM provider 설정과 Credential Locker
 - conversation/event persistence
 - `system.get_status`, `system.show_notification`, `app.list_windows`, `app.launch`
 
+다음 Phase 2 구현 순서는 `docs/HANDOFF.md`를 단일 인수인계 문서로 사용한다. 현재 R1은 매 호출마다 `이번 한 번` 승인을 요구하며 R2-R4는 동작별 preview와 제한 조건을 먼저 구현한다. Windows 10은 build profile 자동 테스트 외에 22H2 실기 acceptance가 필요하다. Cline의 미사용 Dify provider 하위 의존성에는 low 등급 npm advisory 1건이 남아 있어 호환 가능한 upstream 갱신 시 수동 재검토한다.
+
 완료 조건: 단축키 → 자연어 요청 → Tool 승인/실행 → 결과 스트리밍의 end-to-end 경로가 동작하고 모델 없는 replay E2E 테스트가 통과한다.
 
 ### Phase 2 — 안전한 Windows 작업 (약 2주)
+
+**상태: 완료 + 관측·문맥 확장 (2026-07-26).** Desktop Tool registry에 canonical 위험도·capability·timeout·우선순위를 선언하고 모든 실행을 run identity, 정책, preview, `이번 한 번` 승인, adapter 실행, append-only 감사 기록의 한 경로로 통합했다. 창 활성화·정상 닫기, 설치 앱 표시 이름 검색, Explorer 현재 폴더·선택 항목, 파일 검색·메타데이터·제한 텍스트 읽기·열기·복사·이동·이름 변경·Windows 휴지통·identity 기반 undo, 클립보드 텍스트 읽기·쓰기를 schema-first 계약으로 연결했다. 민감한 Explorer 경로와 파일 텍스트는 승인 뒤에만 모델로 전달하고 진단·감사 원문에는 저장하지 않는다. 파일 쓰기는 절대/canonical 경로와 reparse 최종 대상 재검증, 최대 20개, 덮어쓰기 금지, 보호/UNC 위치 차단, 항목별 부분 실패, Desktop timeout/cancel을 적용한다. 실행 활동 화면은 승인과 결과를 민감 원문 없이 보여주고 가능한 파일 작업을 동일한 R2 승인 경로로 되돌린다. 후속 감사에서 R0 `system.get_storage_status.v1`, `system.get_resource_status.v1`, `system.get_network_status.v1`을 추가해 논리 볼륨 용량, CPU·메모리·업타임, 주소 원문 없는 어댑터 상태를 모델이 직접 조회하도록 확장했다. 전체 Windows 기능 갭과 위험도별 순서는 `docs/WINDOWS_AGENT_CAPABILITY_AUDIT.md`에서 추적한다.
 
 - Tool registry, policy engine, approval UI, audit activity
 - 앱 활성화/종료
 - 파일 검색/열기/복사/이동/이름 변경/휴지통과 undo
 - 클립보드 읽기/쓰기 및 민감 컨텍스트 표시
+- 저장소·CPU·메모리·업타임·네트워크 R0 관측
 - 경로 정규화, overwrite/batch 제한, timeout/cancel
 
 완료 조건: 충돌·권한 거부·긴 경로·junction·부분 실패 테스트가 있고 R2 이상은 승인 없이는 실행되지 않는다.
 
 ### Phase 3 — 기억과 예약 (약 1~2주)
+
+**상태: 완료 (2026-07-26).** 명시적 개인 기억의 schema-first `remember/list/forget`, Desktop 승인 정책, SQLite upsert·출처·민감도·만료, 활성·만료 기억 CRUD·JSON 내보내기 관리 화면을 구현했다. 제한된 Windows Tool 대상 인자는 `$alias:<키>`와 `$preference:<키>`를 Desktop에서 해석하고 승인된 값을 실행까지 고정한다. schema-first `schedule.create/list/cancel`, SQLite schema 5 `scheduled_jobs`·`job_runs`, lease 상태 전이, 단발·매일·매주 현지 시각 반복, DST gap/overlap 정책, `skip`/`run_once_on_resume`/`ask`, 앱 재시작 복구와 예약 조회·수정·삭제 화면을 완료했다. R1 등록 앱 실행·동일 기억 저장·동일 예약에는 SHA-256 exact scope와 30일 만료를 가진 지속 승인 및 설정의 개별 철회를 추가했다. DB 백업·복구 runbook과 ADR 0011·0012·0016에 데이터·실행 경계를 기록했다.
 
 - 명시적 memory CRUD와 관리 화면
 - durable scheduler, 반복 규칙, 재시작 복구, 알림 action
@@ -332,14 +345,20 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 
 ### Phase 4 — UI Automation (약 2주)
 
+**상태: 기반 수직 슬라이스 완료 (2026-07-26).** schema-first `inspect/invoke/set-value/send-text`, Desktop 발급 5분 element handle, HWND·PID·프로세스 시작 시각·UIA runtime identity 재검증, foreground/focus guard, 비밀번호 요소 차단과 사용자 입력 감지 중단을 구현했다. WPF/native Win32 fixture에서 창 이동 뒤 요소 조회·재해석을 자동 검증한다. 좌표와 임의 단축키는 노출하지 않았다. 앱별 UIA provider 호환성 실기 acceptance는 남아 있다.
+
 - UIA tree inspect/find/invoke/set-value
 - 대상 창/element identity 재검증과 focus guard
 - 제한된 send-keys, 사용자 입력 감지 시 중단
 - 좌표 fallback은 별도 capability/승인으로 격리
 
-완료 조건: 샘플 WPF/Win32 앱 fixture에서 DPI, 다중 모니터, 창 이동 후에도 안정적으로 동작하고 잘못된 창에 입력하지 않는다.
+완료 조건: 샘플 WPF/Win32 앱 fixture에서 창 이동 후에도 안정적으로 동작하고 잘못된 창에 입력하지 않는다. 별도 배율·물리 다중 모니터 검증은 필수 조건이 아니다.
 
 ### Phase 5 — MCP와 베타 배포 (약 2주)
+
+Phase 5 착수 전 제품 작업인 **UI/UX 전면 개선 목표**는 완료했다. WPF와 기존 보안·프로세스 경계를 유지하면서 통합 앱 셸, 대화 타임라인, 관리 페이지, 승인·오류 피드백, 접근성 및 반응형 레이아웃을 개편했다. 단계와 증거는 `docs/UI_UX_REDESIGN_PLAN.md`와 `docs/UI_UX_ACCEPTANCE.md`를 따른다.
+
+**상태: 구현 완료, 외부 서명·깨끗한 계정 release gate 대기 (2026-07-26).** Protocol 1.7의 schema-first MCP 설정·상태·호출, 공식 TypeScript SDK 기반 Streamable HTTP와 승인된 실행 ID 기반 stdio, Credential Manager Bearer 인증, 연결별 장애·health·timeout 격리를 구현했다. 발견 도구는 exact-name allowlist 전에는 비활성이며 실제 외부 호출은 Desktop canonical R3 승인·감사 pipeline을 지난다. 읽기 전용 샘플 RAG, bounded result, 진단 번들, parent/crash recovery, MCP·Desktop soak, self-contained MSIX·SHA-256 서명·App Installer 업데이트·설치 수명주기 자동화가 준비됐다. 현재 비관리자 개발 PC에서는 temporary CurrentUser root의 AppX 설치를 Deployment Service가 `0x800B0109`로 거부하므로, production/machine-trusted 인증서가 있는 깨끗한 Windows 계정에서 설치→로그인 자동 시작→업데이트→제거 runbook만 외부 release gate로 남는다. 상세 증거는 `docs/PHASE5_SECURITY_ACCEPTANCE.md`와 ADR 0015를 따른다.
 
 - stdio/Streamable HTTP 연결 관리, auth, health, timeout
 - Tool namespace 충돌 처리와 로컬 재분류
@@ -351,10 +370,34 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 
 ### Phase 6 — 선택 기능
 
-- OCR/VLM 화면 분석, 브라우저 자동화, 음성
+- 에어갭 전용 확장 계획은 `docs/AIRGAP_AGENT_PLAN.md`를 따른다.
+- 포함: 사내망 브라우저 자동화·안전한 search/fetch, 대화 FTS·선택형 로컬 의미 기억, 예약 agent job·background task, 다중 로컬 모델 프로필·fallback, 로컬 하위 에이전트
+- **완료 상태 (2026-07-26):** 에어갭 확장 A-1~A-6을 구현했다. 대화 FTS, 선택형 의미 기억, bounded Web·격리 Edge, durable Agent job, immutable 다중 모델 routing·제한 fallback, Desktop 소유 parent/child ledger와 bounded local subagent가 Protocol 1.12·SQLite schema 11까지 연결됐다. 전체 회귀·Named Pipe 통합·Sidecar/UI smoke가 모두 통과했다.
+- 제외: Skills·플러그인 마켓, 외부 메시징 채널, OCR/VLM·음성. 공용 인터넷·cloud 서비스는 필수 의존성으로 두지 않지만 사용자가 구성한 도달 가능한 endpoint를 앱이 주소 대역으로 차단하지 않는다.
 - 탐색기/선택 텍스트 통합
 - opt-in 능동 제안과 방해 금지 시간
 - 고급 사용자용 sandboxed shell profile
+
+### Phase 7 — B단계 Windows 실무 자동화
+
+**상태: 완료 (2026-07-26).** 상세 범위와 완료 증거는 `docs/B_STAGE_PLAN.md`를 따른다. Protocol 1.13에서 물리 디스크·BitLocker와 Defender·방화벽·Windows Update 관측, bounded 폴더·UTF-8 파일·ZIP 작업, 창 상태·Windows 설정·잠금/절전, 대화 범위 exact R1 승인, Agent 작업 일시정지·재개·재시도와 완료 알림을 연결했다. SQLite schema는 11을 유지하며 온라인 백업, 무결성 검증 복원 staging, 다음 시작 원자 교체와 운영 이력 정리를 Desktop에 추가했다.
+
+- 고정 WMI/COM provider와 항목별 unavailable 장애 격리
+- canonical/reparse 재검증, 덮어쓰기 금지, ZIP traversal·symlink 차단
+- R1 exact-scope 대화 승인과 R2 매회 승인
+- durable Agent 작업 제어, 완료 알림 실패와 실행 ledger 격리
+- API 키를 제외한 로컬 데이터 백업·복원·보존 정책
+
+### Phase 8 — C단계 출시 후보 안정화와 유지보수성
+
+**상태: 진행 중 (2026-08-02).** 상세 순서와 완료 조건은 `docs/C_STAGE_PLAN.md`를 따른다. Windows PowerShell 5.1·PowerShell 7 검증 기준선, Sidecar Tool catalog, Desktop 대화 orchestration, SQLite repository와 설정 section 책임 분리를 완료했다. bounded release evidence 자동화를 추가했고 외부 Windows 10 22H2·서명 설치·실앱 UIA gate는 별도 추적한다. C-4는 Protocol 1.14 R0 전원, Protocol 1.15 R1 bounded 상위 앱 리소스, Protocol 1.16 R1 현재 네트워크 상세, Protocol 1.17 R0 비식별 장치 상태 진단까지 구현했다. C-5는 이미지/OCR preview·crop·로컬 OCR, 기본 꺼짐 누르고 말하기 STT, 선택 답변 TTS, 자동 읽기와 방해 금지 시간을 구현했다. Explorer 선택 항목은 최대 20개·32KiB의 기존 경로만 초기 실행/current-user Named Pipe로 전달해 composer preview에 추가하는 activation 기반을 구현했고, 공식 native `IExplorerCommand`와 MSIX 등록은 SDK 환경 gate다. ADR 0035의 기본 꺼짐 로컬 반복 작업 제안은 동일 완료 요청의 일간/주간 패턴만 제안하고 사용자가 기존 Agent 작업 편집기에서 확인해야 예약한다. 다음은 설치 실행·Windows 10/11 실기 acceptance와 외부 배포 gate다.
+
+- C-0: 검증 기준선과 문서 일치
+- C-1: AI 에이전트가 국소적으로 수정 가능한 책임 분리
+- C-2: 재현 가능한 로컬 release candidate 자동화
+- C-3: Windows 10/11, production 서명, 실제 UIA 외부 gate
+- C-4: 최소 데이터 기반 일상 진단 기능
+- C-5: 별도 개인정보 경계를 갖춘 화면·OCR·음성
 
 ## 11. 테스트 전략
 
@@ -390,6 +433,7 @@ Windows 로그아웃 상태나 앱 미실행 상태에서도 실행해야 하는
 | 리스크 | 대응 |
 |---|---|
 | Cline 0.0.x API 변경 | adapter 격리, 정확한 pin, replay/contract gate, 수동 업그레이드 |
+| Cline의 미사용 provider 하위 의존성 advisory | 실제 노출 경로 확인, 강제 메이저 override 금지, upstream 호환 버전에서 수동 갱신 |
 | LLM의 잘못된 Tool 호출 | schema 검증, allowlist, Desktop 정책, preview/승인 |
 | 프롬프트 인젝션/MCP 오염 | 외부 콘텐츠 비신뢰, Tool 결과 경계, 데이터 전송 승인 |
 | 잘못된 파일/창 조작 | canonical target, identity 재검증, undo, batch 제한 |

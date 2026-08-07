@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/subagent.run.v1.result.schema.json",
+  "title": "subagent.run.v1.result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["batchId", "tasks", "succeeded", "failed"],
+  "properties": {
+    "batchId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "tasks": { "type": "array", "maxItems": 4, "items": { "type": "object" } },
+    "succeeded": { "type": "integer", "minimum": 0 },
+    "failed": { "type": "integer", "minimum": 0 }
+  }
+}

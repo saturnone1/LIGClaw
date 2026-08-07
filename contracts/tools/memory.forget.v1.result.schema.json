@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/memory.forget.v1.result.schema.json",
+  "title": "MemoryForgetV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["forgotten"],
+  "properties": {
+    "forgotten": { "type": "boolean" }
+  }
+}

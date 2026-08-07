@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.open.v1.result.schema.json",
+  "title": "FileOpenV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["opened", "displayName", "isDirectory"],
+  "properties": {
+    "opened": { "type": "boolean" },
+    "displayName": { "type": "string", "maxLength": 260 },
+    "isDirectory": { "type": "boolean" }
+  }
+}

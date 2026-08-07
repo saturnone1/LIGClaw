@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/mcp-configure-params.schema.json",
+  "title": "McpConfigureParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["connections"],
+  "properties": {
+    "connections": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "displayName", "transport", "url", "enabled", "readOnly", "allowedTools"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+          "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "transport": { "type": "string", "enum": ["streamable_http", "stdio"] },
+          "url": { "type": "string", "format": "uri", "minLength": 1, "maxLength": 2048 },
+          "enabled": { "type": "boolean" },
+          "readOnly": { "type": "boolean", "const": true },
+          "allowedTools": {
+            "type": "array",
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+          },
+          "authorization": { "type": "string", "minLength": 1, "maxLength": 1280 },
+          "executableId": { "type": "string", "enum": ["ligclaw-sample-rag"] }
+        }
+      }
+    }
+  }
+}

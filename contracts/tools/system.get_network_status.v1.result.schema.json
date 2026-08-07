@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_network_status.v1.result.schema.json",
+  "title": "SystemGetNetworkStatusV1Result",
+  "description": "Non-sensitive Windows network adapter status.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["networkAvailable", "adapters"],
+  "properties": {
+    "networkAvailable": { "type": "boolean" },
+    "adapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "interfaceType", "status", "speedMbps"],
+        "properties": {
+          "name": { "type": "string" },
+          "interfaceType": { "type": "string" },
+          "status": { "type": "string" },
+          "speedMbps": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

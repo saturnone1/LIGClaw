@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_status.v1.result.schema.json",
+  "title": "SystemGetStatusV1Result",
+  "description": "Non-sensitive Windows session status returned by Desktop.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["windowsRelease", "buildNumber", "architecture", "localTime", "timeZone", "powerSource"],
+  "properties": {
+    "windowsRelease": { "type": "string" },
+    "buildNumber": { "type": "integer" },
+    "architecture": { "type": "string" },
+    "localTime": { "type": "string", "format": "date-time" },
+    "timeZone": { "type": "string" },
+    "powerSource": { "type": "string", "enum": ["ac", "battery", "unknown"] }
+  }
+}

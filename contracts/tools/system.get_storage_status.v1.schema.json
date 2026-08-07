@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_storage_status.v1.schema.json",
+  "title": "system.get_storage_status.v1",
+  "description": "Returns non-destructive logical volume capacity and readiness status.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

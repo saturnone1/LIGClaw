@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/uia.invoke.v1.result.schema.json",
+  "title": "UiaInvokeV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["invoked"],
+  "properties": { "invoked": { "type": "boolean" } }
+}

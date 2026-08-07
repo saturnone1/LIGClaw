@@ -1,0 +1,192 @@
+# LIGClaw C단계 계획 — 출시 후보 안정화와 유지보수성
+
+> 상태: 진행 중
+> 기준일: 2026-08-01
+> 기준 버전: `v0.6.0` (`d8f71c5`)
+> 목표 브랜치: `agent/phase1-desktop-foundation`
+
+## 목표
+
+Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배포 가능한 출시 후보로 만든다. 다음 기능 수를 늘리는 것보다 먼저 현재 PC의 검증 기준선, Windows 10/11 배포 증거, 코드 책임 분리와 변경 안전성을 닫는다.
+
+성공 기준은 다음과 같다.
+
+- Windows 11 개발 PC에서 전체 회귀, Sidecar smoke, UI smoke, bounded soak가 반복 통과한다.
+- Windows PowerShell 5.1과 PowerShell 7에서 모든 배포·검증 스크립트가 동일하게 파싱된다.
+- 큰 composition 파일을 책임별 경계로 분리해 새 Tool 하나를 추가할 때 관련 schema·adapter·policy·test만 읽으면 된다.
+- Windows 10 22H2와 깨끗한 Windows 11 표준 사용자 계정에서 설치·시작·업데이트·제거 evidence를 남긴다.
+- 출시 차단 항목과 의도적으로 제공하지 않는 고위험 기능을 구분한다.
+
+## 실행 원칙
+
+1. C-0과 C-1이 끝날 때까지 새로운 고위험 Windows 쓰기 기능을 추가하지 않는다.
+2. 리팩터링은 계약과 동작을 바꾸지 않는 작은 수직 변경으로 나누고 매 단계에서 전체 replay를 유지한다.
+3. 외부 장비·인증서가 필요한 검증은 로컬 구현과 분리해 gate로 추적한다.
+4. 범용 shell, 권한 상승, 영구 삭제, 좌표 기반 무제한 자동화는 기능 누락으로 보지 않는다.
+5. 새 기능은 일반 사용자의 반복 작업 가치, 최소 데이터, Windows 10/11 공통성 순서로 선택한다.
+
+## C-0 — 기준선 복구와 문서 일치
+
+상태: 완료 (2026-08-01). Windows PowerShell 5.1의 UTF-8 오독을 막는 BOM 규칙과 검증 guard를 추가했고, UI validation을 bounded polling으로 바꾼 뒤 전체 verify·Sidecar/UI smoke를 통과했다.
+
+### 작업
+
+1. `v0.6.0`을 현재 PC에 fast-forward하고 `./scripts/verify.ps1`을 실행한다.
+2. Sidecar handshake·heartbeat·restart·cleanup smoke를 실행한다.
+3. UI smoke를 Windows PowerShell 5.1과 PowerShell 7 양쪽에서 파싱·실행한다.
+4. 비 ASCII PowerShell 스크립트는 UTF-8 BOM을 필수화하고 `verify.ps1`에서 drift를 거부한다.
+5. 비동기 UI 검증은 고정 sleep 대신 bounded polling을 사용한다.
+6. 구현 계획, 기능 감사, 보안 acceptance의 테스트 수와 상태 표기를 현재 기준선으로 맞춘다.
+
+### 완료 조건
+
+- Sidecar 78, Contracts 7, Application 20, Desktop 248, Named Pipe 통합 1 테스트 통과
+- Sidecar smoke와 760×500 UI smoke 통과
+- 빌드 경고·오류와 PowerShell parser 오류 0건
+- `git diff --check`와 계약 생성 drift 검사 통과
+
+## C-1 — AI 에이전트 친화적 책임 분리
+
+상태: C-0 이후 착수.
+
+현재 비생성 source의 주요 집중 지점은 `cline-agent-runtime-adapter.ts` 약 2,200줄, `ConversationStore.cs` 약 2,000줄, `MainWindow.xaml.cs` 약 1,500줄이다. 단순 파일 쪼개기가 아니라 변경 이유와 테스트 경계를 기준으로 분리한다.
+
+### C-1.1 Sidecar Tool catalog 분리
+
+상태: 완료 (2026-08-01).
+
+- built-in Tool 선언을 system/app/file/context/memory/schedule/automation/web/agent 영역으로 나눈다.
+- Cline session·provider routing과 Tool catalog 조립을 분리한다.
+- Desktop canonical Tool name과 Sidecar 노출 목록의 누락·중복을 결정적 테스트로 고정한다.
+- text-only JSON fallback allowlist는 native Tool catalog와 동일한 metadata 원천을 사용하게 한다.
+
+완료 조건: 공개 프로토콜 변경 없이 Sidecar 78개 이상과 Named Pipe 통합 테스트가 통과하고, 신규 Tool 등록 지점이 한 곳으로 수렴한다.
+
+구현 결과: Cline 세션·공급자 라우팅에서 내장 Tool 조립을 분리했고, system/app/file/context/memory/schedule/automation/web/agent 영역 모듈과 공통 스키마 모듈로 나눴다. 모델 노출명과 Desktop canonical 이름 50개는 `tool-registration.ts` 한 곳에서 등록하며 실제 catalog의 누락·중복과 text-only JSON fallback allowlist 일치를 결정적 테스트로 고정했다.
+
+### C-1.2 Desktop 대화 orchestration 분리
+
+상태: 완료 (2026-08-01).
+
+- `MainWindow`에서 conversation/run 수명, 취소, Sidecar event 처리, Tool 진행 상태를 controller로 이동한다.
+- WPF control 조작과 화면 전환만 code-behind에 남긴다.
+- transcript rendering, recent conversation refresh, stale search cancellation을 독립적으로 테스트한다.
+- 조립은 composition root에서 명시하며 service locator나 숨은 singleton을 추가하지 않는다.
+
+구현 결과: conversation/run 수명과 취소, Agent event 표시 정책, Tool 실행 직렬화·진행 상태, 최근 검색의 최신 요청 취소, Sidecar 시작·취소와 대화 run persistence 순서를 독립 controller/interface로 분리했다. 취소가 persistence 처리 중 발생해 UI run이 남던 경합도 terminal 상태와 `cancelled` 기록으로 닫았으며, code-behind에는 WPF 표시·전환과 명시적 조립만 남겼다.
+
+완료 조건: 기존 대화 연속성·취소·Tool 직렬화·스크롤 회귀 테스트와 UI smoke가 동작 변경 없이 통과한다.
+
+### C-1.3 SQLite repository와 migration 분리
+
+상태: 완료. schema 1~11 migration, 단일 connection/gate, pending restore와 backup 검증은 `ConversationDatabase`만 소유한다. 미래 schema 거부 후 파일 잠금 해제를 회귀 테스트로 고정했고 저장소 경계는 ADR 0026에 기록했다. conversation, operational audit/grant/undo, 개인 기억·의미 벡터, 예약·misfire·lease, durable Agent 작업, 로컬 하위 Agent SQL은 각각 전용 repository로 분리했다. composition root와 replay 테스트는 facade 대신 interface adapter를 직접 사용하며 전체 verify에서 Desktop 265개를 포함한 모든 테스트가 통과했다.
+
+- connection·transaction·schema migration 소유자를 `ConversationDatabase` 경계로 좁힌다.
+- 대화/검색, 감사·승인·undo, 기억, 예약, Agent job, subagent repository를 인터페이스별 adapter로 분리한다.
+- SQLite 파일과 connection은 계속 Desktop 단독 소유이며 repository가 개별 connection이나 migration을 만들지 않는다.
+- schema 1~11 upgrade, 손상·미래 버전 거부, backup/restore 테스트를 유지한다.
+
+완료 조건: 기존 DB를 그대로 열 수 있고 모든 repository·scheduler·복원 테스트가 통과하며 schema version은 바뀌지 않는다.
+
+### C-1.4 설정 화면 책임 분리
+
+상태: 구현 완료, UI smoke 재실행 대기. 설정 저장·연결 테스트·진단·백업·복원·정리 작업의 단일 실행과 취소 수명은 `SettingsOperationGuard`가 소유한다. 모델, MCP, 의미 기억, Web 검색, 시작프로그램·단축키 흐름은 section controller로 분리했고 UI는 필드·상태 표시만 담당한다. 의미 기억 metadata와 Credential Manager 비밀도 원자적 rollback을 사용하며 ADR 0027과 실패 주입 테스트로 고정했다. 전체 verify는 Desktop 281개를 포함해 통과했다. UI smoke는 실행 중인 사용자 LIGClaw 프로세스를 종료하지 않는 안전 guard 때문에 아직 재실행하지 않았다.
+
+- 모델 프로필, MCP, 의미 기억, Web 검색, 시작프로그램·단축키 저장 흐름을 section controller로 분리한다.
+- 저장 전 연결 테스트, secret rollback, stale operation cancellation 규칙을 공통 operation guard로 유지한다.
+
+완료 조건: 설정 정책·Credential Manager rollback·UI validation 테스트와 UI smoke가 통과한다.
+
+## C-2 — 로컬 출시 후보 자동화
+
+상태: 진행 중. CI에 Windows PowerShell 5.1 parser gate를 추가했고 `verify.ps1`도 parser와 release manifest fixture를 실행한다. 실행 중인 앱이 기본 build DLL을 잠그지 않도록 verify output을 `artifacts/verify`로 격리했다. `build-release-candidate.ps1` 한 명령이 전체 verify 후 self-contained x64 MSIX를 만들며, package 필수 파일·Appx identity를 검사하고 파일 목록·SHA-256·version·protocol 1.16·schema 11·Node·검증 상태를 release manifest에 기록한다. Windows PowerShell 5.1의 `utf8NoBOM` 실행 비호환도 .NET writer로 수정했다. 현재 PC에는 Windows SDK MakeAppx가 없어 실제 MSIX 생성은 SDK가 있는 CI/개발 환경에서 다시 실행해야 한다. Sidecar/UI/Desktop smoke는 실행 중인 사용자 앱을 종료하거나 두 번째 instance timeout으로 오인하지 않고 명확히 대기한다.
+
+1. CI에서 `verify.ps1` 외에 Windows PowerShell 5.1 script parse 검사를 실행한다.
+2. self-contained x64 MSIX를 무서명 상태까지 재현 가능하게 만들고 파일 목록·Node 번들·manifest를 검사한다.
+3. 릴리스 산출물에 SHA-256 목록, 버전, protocol/schema, 검증 결과를 담은 manifest를 생성한다.
+4. Sidecar restart 10회, MCP cycle, sleep/resume와 DB backup/restore smoke 결과를 릴리스 evidence로 남긴다.
+5. 진단 번들에 prompt·API key·사용자 경로·파일 원문이 없는지 fixture로 재검증한다.
+
+완료 조건: 새 checkout에서 한 문서의 명령만으로 동일한 unsigned release candidate와 검증 보고서를 생성한다.
+
+자동 release evidence 수집기는 MCP 20회 cycle, Desktop 소유 Sidecar 10회 재시작, DB backup/restore, 스케줄 resume reconciliation, 진단 번들 redaction을 실행한다. 결과에는 명령 출력이나 사용자 경로를 넣지 않으며, 실제 하드웨어 sleep/resume는 `manual-required` 외부 검증으로 분리한다. `build-release-candidate.ps1`은 자동 evidence가 통과한 경우에만 해당 JSON과 해시를 MSIX 산출물에 포함한다.
+
+## C-3 — 외부 환경 release gate
+
+상태: 필요한 PC와 서명 체계가 준비되면 실행. 로컬 기능 개발과 별도 추적한다.
+
+### Windows 11 깨끗한 계정
+
+- machine-trusted production 서명으로 설치
+- 첫 실행, Credential Manager, 트레이, 전역 단축키
+- 로그인 자동 시작
+- App Installer 상위 버전 업데이트
+- 제거 후 패키지·시작프로그램·프로세스 잔존 여부 확인
+
+### Windows 10 22H2
+
+- `docs/HANDOFF.md`의 Windows 10 기능 matrix 실행
+- Windows 11 전용 DWM 호출이 선택되지 않는지 확인
+- 알림, Explorer COM, UIA, Credential Manager, 시작프로그램과 SQLite 복구 확인
+- 통과 전에는 1809~21H2를 지원 완료로 표시하지 않는다.
+
+### UI Automation 실제 앱 matrix
+
+- 메모장, 계산기, 설정과 대표 사내 앱에서 inspect/invoke/set-value/send-text 결과 기록
+- 승인 직후 foreground 변경, 사용자 입력 개입, provider timeout을 검증
+- 호환 실패는 앱 전체 실패가 아니라 해당 provider의 구조화된 unavailable로 격리
+
+완료 조건: 서명된 설치 수명주기와 OS/UIA matrix 결과가 `docs/PHASE5_SECURITY_ACCEPTANCE.md`에 기록된다.
+
+## C-4 — 다음 사용자 가치 기능
+
+상태: 읽기 전용 수직 구현 완료, 각 장치 구성의 실기기 확인 대기.
+
+1. **전원 진단 확장 — 구현 완료, 실기기 확인 대기**: Protocol 1.14 `system.get_power_status.v1`이 Windows 10/11 공통 API로 전원 연결, 배터리 유무·잔량·충전·저전력/위험 상태와 에너지 절약 모드를 R0 최소 데이터로 제공한다. 배터리 식별자는 반환하지 않고 데스크톱·provider unavailable을 구조화해 격리한다.
+2. **느린 PC 진단 — 구현 완료, 실기기 확인 대기**: Protocol 1.15 `system.get_process_resource_status.v1`이 Windows 10/11 공통 어댑터로 500ms CPU 표본과 working set을 읽는다. 동일 프로세스 이름은 앱 단위로 합산하고 CPU·메모리 상위 목록을 각각 최대 10개로 제한한다. 프로세스 이름은 R1 매회 문맥 승인을 거치며 PID·경로·창 제목·사용자명은 반환하지 않는다.
+3. **네트워크 진단 상세 — 구현 완료, 실기기 권한 확인 대기**: Protocol 1.16 `system.get_network_details.v1`이 R1 매회 승인 뒤 현재 활성 어댑터 최대 16개의 IP/prefix·DNS·게이트웨이와 연결 SSID를 조회한다. 주소 목록은 adapter별 8/4/4개로 제한하고 MAC/BSSID·profile·자격 증명·연결 이력은 읽거나 저장하지 않는다. 최신 Windows의 위치 동의 거부는 SSID만 `permission_required`로 격리한다.
+4. **장치 상태 — 구현 완료, 다양한 장치 구성 확인 대기**: Protocol 1.17 `system.get_device_status.v1`이 R0로 기본 오디오 출력 상태, 활성 디스플레이 수·주 화면 해상도, 관측 프린터 수·기본 프린터 오프라인 상태를 제공한다. 장치명·하드웨어 ID·드라이버·포트는 반환하지 않고 세 provider 실패를 독립 격리한다. 변경은 별도 R1/R2 Tool로 분리한다.
+
+각 기능 완료 조건은 schema-first 계약, Windows 10/11 capability adapter, canonical 위험도, 최소 데이터 결과, provider unavailable 격리, Sidecar replay와 Desktop adapter 테스트다.
+
+## C-5 — 명시적 사용자 문맥과 입출력
+
+상태: ADR 0033의 개인정보·package identity 경계, 시스템 picker 1회 캡처, preview crop, 로컬 OCR, opt-in 누르고 말하기 STT, 사용자 선택 응답 TTS, 자동 읽기·방해 금지 opt-in까지 구현했다. 설치 실행·Windows 10/11 실기 acceptance가 남았다.
+
+1. **민감 컨텍스트 수명·preview — 구현 완료**: Desktop 메모리 전용 `PreparedSensitiveContext`가 4,096px/16MP/8MiB 이미지·32KiB strict UTF-8 OCR 상한, conversation/run/tool-call 결합, 2분 자동 만료, 교체·거부·완료·종료 zeroing을 보장한다. 전용 preview 창은 이미지와 OCR을 함께 보여 주고 선택 마스킹·전체 삭제·32KiB 재검증을 제공하며 취소가 기본이다. 이미지가 표시되지 않으면 전송을 막고 확인한 OCR 글자만 결과로 내보낸다.
+2. **1회 캡처·선택 영역 — 구현 완료, 실기 matrix 대기**: composer의 명시적 버튼이 Windows 시스템 picker를 열고 사용자가 고른 창·디스플레이만 1회 캡처한다. D3D11 hardware→WARP fallback, 10초 timeout, 캡처 전·후 크기와 PNG 상한, 취소·미지원·실패 분리를 적용했다. preview의 드래그 영역은 DPI·letterbox를 고려해 원본 픽셀로 매핑하며 crop 실패 시 기존 내용을 유지하고 전체 화면 복원을 제공한다.
+3. **Windows 로컬 OCR — 구현 완료, 설치 실행 acceptance 대기**: package identity가 없으면 설치 필요를 명시하고 cloud로 우회하지 않는다. OCR 입력만 엔진 한도까지 비율 축소하고 원본 preview를 유지한다. crop한 영역은 다시 OCR하고 성공 시에만 이미지·텍스트를 함께 교체한다. Unicode 경계의 32KiB 제한 뒤 사용자가 확인·마스킹한 텍스트만 composer에 합류한다. store에서 preview로 전달된 컨텍스트도 자체 타이머로 2분 뒤 zeroing·창 닫기를 수행한다.
+4. **누르고 말하기 STT — 구현 완료, 설치 실행 acceptance 대기**: 설정 기본값은 꺼짐이며 사용자가 켠 경우에만 composer에서 마우스 또는 Space/Enter를 누르는 동안 Windows 연속 받아쓰기를 사용한다. release·capture 상실·취소·60초 timeout에 종료하고 최종 인식 텍스트만 16,000자로 제한해 요청에 추가한다. package identity·마이크 권한·언어·네트워크 실패를 구분하며 PCM과 중간 결과는 저장하거나 Sidecar에 전달하지 않는다.
+5. **선택 응답 TTS·자동 읽기 — 구현 완료, 실기 acceptance 대기**: 사용자가 transcript에서 읽을 답변 글을 직접 선택하면 Windows 로컬 음성 합성으로 읽는다. 같은 버튼이 즉시 중지로 바뀌며 합성 준비 중 중지·자연 종료·실패·창 종료의 수명을 분리한다. 자동 읽기는 별도 기본 꺼짐 opt-in이며 앱이 활성화되고 STT/TTS가 유휴 상태이며 방해 금지 시간 밖일 때 완성된 새 답변만 읽는다. 기본 방해 금지는 22:00–07:00이고 30분 단위로 변경한다.
+6. **Explorer 우클릭 진입점 — activation 기반 완료, native handler 대기**: ADR 0034에 따라 최대 20개·32KiB의 기존 경로만 정규화해 초기 실행 또는 current-user Named Pipe로 전달하고 파일 내용 없이 composer preview에 추가한다. Windows 10/11 공식 `IExplorerCommand` native DLL과 MSIX COM/context-menu manifest 연결은 Visual C++ workload·Windows SDK 환경에서 빌드·실기 검증한다.
+7. **opt-in 반복 작업 제안 — 구현 완료**: ADR 0035에 따라 기본 꺼짐이며 최근 45일 완료 요청 최대 200개를 로컬 exact-normalized 비교한다. 서로 다른 날짜 3회와 일간/주간 간격이 분명할 때만 제안하고 화면·Explorer 문맥, 민감 문구, 명시적 예약 요청은 제외한다. 원문을 복제하지 않고 fingerprint·최근 제안 시각·무시 목록만 HKCU에 최대 100개 저장하며 14일 cooldown을 적용한다. 제안 카드는 자동 실행·예약하지 않고 기존 Agent 작업 편집기를 prefill해 사용자가 최종 검토·저장한다.
+
+화면·OCR·음성 원문은 SQLite·진단·감사에 저장하지 않는다. 모델이 고른 좌표·HWND 캡처, 인증 입력, 백그라운드 상시 캡처는 추가하지 않는다. OCR package identity가 없으면 구조화된 제한으로 알리고 cloud OCR이나 임의 executable로 우회하지 않는다.
+
+## 의도적으로 보류하는 기능
+
+- 임의 PowerShell·cmd·사용자 생성 script 실행
+- 관리자 권한 자동 상승과 서비스 설정 변경
+- 영구 삭제와 무제한 덮어쓰기
+- 로그아웃·재시작·종료 자동 실행
+- 좌표만 사용하는 범용 데스크톱 자동화
+- 클립보드·화면의 상시 감시
+
+이 항목은 과한 제약이 아니라 영향 범위, 복구, 사용자 동의가 현재 typed Tool 정책으로 증명되지 않은 기능이다. 실제 요구가 확인되면 각각 독립 계약과 위험도·preview·undo 가능성을 먼저 설계한다.
+
+## 의존성과 유지보수
+
+- `@cline/*`는 0.0.x exact pin을 유지하고 계약/replay 전체 통과 없이 올리지 않는다.
+- 미사용 Dify provider 하위 `@ai-sdk/provider-utils` low advisory는 실행 노출을 재확인하며 호환 upstream이 나오면 수동 갱신한다.
+- .NET, Node, MCP SDK와 Windows 지원표는 release candidate마다 공식 지원 상태를 다시 확인한다.
+- dependency 변경과 기능 변경을 같은 커밋에 섞지 않는다.
+
+## 전체 순서
+
+```text
+C-0 기준선 복구
+  ├─ C-1 책임 분리 ── C-2 로컬 출시 자동화 ── C-4 사용자 가치 기능 ── C-5 문맥·입출력
+  └─ C-3 외부 OS·서명·UIA gate (환경 준비 시 병행)
+```
+
+C-5의 현재 PC에서 구현 가능한 항목은 완료했다. 다음은 실행 중인 사용자 앱이 종료된 뒤 picker·crop·STT·TTS·자동 읽기·반복 제안 설정의 UI smoke를 재검증하는 것이다. Explorer native `IExplorerCommand`와 MSIX manifest는 Visual C++ workload·Windows SDK 환경에서 빌드·실기 검증한다. C-3 Windows 10 실기기·production 서명·실앱 UIA와 설치 상태 OCR/STT/TTS gate는 환경이 준비되는 대로 병행한다.

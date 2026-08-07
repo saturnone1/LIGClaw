@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/explorer.get_context.v1.schema.json",
+  "title": "explorer.get_context.v1",
+  "description": "Reads the current folder and bounded selected items from the most recently active File Explorer after explicit approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reason"],
+  "properties": {
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

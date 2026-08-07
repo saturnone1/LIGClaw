@@ -1,0 +1,72 @@
+<Window x:Class="LIGClaw.Desktop.ToolApprovalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="동작 승인" Width="680" SizeToContent="Height"
+        MinHeight="300" MaxHeight="640"
+        Icon="Assets/ligclaw.ico"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="APPROVAL / USER CONTROL" />
+            <TextBlock x:Name="HeadingText" Margin="0,7,0,0" Style="{StaticResource PageTitleStyle}"
+                       Text="이 동작을 허용할까요?" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Margin="0,22,0,0" Style="{StaticResource CardStyle}"
+                Background="{DynamicResource BrandIceBrush}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="ACTION" />
+                <TextBlock x:Name="ActionText" Margin="0,6,0,0" Style="{StaticResource ActionTitleStyle}"
+                           AutomationProperties.Name="승인할 동작" TextWrapping="Wrap" />
+                <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                    <Border Style="{StaticResource StatusBadgeStyle}">
+                        <TextBlock x:Name="RiskText" Style="{StaticResource StatusTagTextStyle}" FontWeight="SemiBold" />
+                    </Border>
+                    <Border Margin="7,0,0,0" Style="{StaticResource StatusBadgeStyle}">
+                        <TextBlock x:Name="UndoText" Style="{StaticResource StatusTagTextStyle}" />
+                    </Border>
+                </StackPanel>
+                <TextBlock x:Name="DetailsText" Margin="0,12,0,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           AutomationProperties.Name="동작 상세 정보" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Margin="0,16,0,0" Style="{StaticResource WarningBannerStyle}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="SCOPE / DURATION" />
+                <TextBlock x:Name="ScopeText" Margin="0,5,0,0"
+                           Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"
+                           Text="허용하면 이번 요청에서 이 동작을 한 번만 실행합니다." />
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="3" Margin="0,22,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="DenyButton" Grid.Column="1" Margin="0,0,10,0"
+                    Style="{StaticResource SecondaryButtonStyle}" IsDefault="True"
+                    IsCancel="True" Click="Deny_Click" Content="허용 안 함" />
+            <Button Grid.Column="2" Click="AllowOnce_Click" Content="이번 한 번 허용" />
+            <Button x:Name="AllowConversationButton" Grid.Column="3" Margin="10,0,0,0"
+                    Click="AllowConversation_Click" Content="이 대화 동안 허용"
+                    AutomationProperties.Name="표시된 동작을 이 대화 동안 허용" />
+            <Button x:Name="AllowAlwaysButton" Grid.Column="4" Margin="10,0,0,0"
+                    Click="AllowAlways_Click" Content="30일 동안 항상 허용"
+                    AutomationProperties.Name="이 동작을 30일 동안 항상 허용" />
+        </Grid>
+    </Grid>
+</Window>

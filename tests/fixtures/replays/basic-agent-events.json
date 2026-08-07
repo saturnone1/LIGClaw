@@ -1,0 +1,8 @@
+{
+  "name": "basic normalized agent event sequence",
+  "events": [
+    { "sequence": 0, "type": "run_started" },
+    { "sequence": 1, "type": "text_delta", "text": "hello" },
+    { "sequence": 2, "type": "run_completed" }
+  ]
+}

@@ -1,0 +1,31 @@
+<Window x:Class="LIGClaw.Desktop.AgentJobHistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Agent 실행 결과 · LIGClaw" Height="650" Width="760"
+        MinHeight="480" MinWidth="600" Icon="Assets/ligclaw.ico"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip">
+    <Grid Margin="28">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <StackPanel>
+            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="AGENT JOB / RUN LEDGER" />
+            <TextBlock x:Name="HeadingText" Style="{StaticResource PageTitleStyle}" />
+            <TextBlock x:Name="SummaryText" Style="{StaticResource PageSubtitleStyle}" TextWrapping="Wrap" />
+        </StackPanel>
+        <ListBox x:Name="RunList" Grid.Row="1" Margin="0,18,0,0" BorderThickness="0"
+                 ItemContainerStyle="{StaticResource ListRowStyle}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="0,3,0,16">
+                        <TextBlock FontWeight="SemiBold" Text="{Binding Header}" />
+                        <TextBlock Margin="0,5,0,0" Style="{StaticResource CaptionTextStyle}" Text="{Binding Timing}" />
+                        <TextBox Margin="0,8,0,0" Text="{Binding Result}" IsReadOnly="True" TextWrapping="Wrap"
+                                 AutomationProperties.Name="Agent 작업 실행 결과"
+                                 MaxHeight="220" VerticalScrollBarVisibility="Auto" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <Button Grid.Row="2" Width="92" Margin="0,16,0,0" HorizontalAlignment="Right"
+                Style="{StaticResource PrimaryButtonStyle}" IsCancel="True" Content="닫기" />
+    </Grid>
+</Window>

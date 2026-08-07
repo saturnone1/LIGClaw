@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.write_text.v1.schema.json",
+  "title": "file.write_text.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "text", "reason"],
+  "properties": {
+    "path": { "type": "string", "minLength": 3, "maxLength": 32767 },
+    "text": { "type": "string", "maxLength": 131072 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

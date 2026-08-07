@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/tool-result-result.schema.json",
+  "title": "ToolResultResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["accepted"],
+  "properties": {
+    "accepted": { "type": "boolean" }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_device_status.v1.schema.json",
+  "title": "system.get_device_status.v1",
+  "description": "Returns a bounded read-only snapshot of default audio output, displays, and printers.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

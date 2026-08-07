@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_resource_status.v1.result.schema.json",
+  "title": "SystemGetResourceStatusV1Result",
+  "description": "Current Windows CPU, memory, and uptime snapshot.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["uptimeSeconds", "logicalProcessorCount", "cpuUsagePercent", "memoryTotalBytes", "memoryAvailableBytes", "memoryUsedPercent"],
+  "properties": {
+    "uptimeSeconds": { "type": "integer", "minimum": 0 },
+    "logicalProcessorCount": { "type": "integer", "minimum": 1 },
+    "cpuUsagePercent": { "type": "number", "minimum": 0, "maximum": 100 },
+    "memoryTotalBytes": { "type": "integer", "minimum": 0 },
+    "memoryAvailableBytes": { "type": "integer", "minimum": 0 },
+    "memoryUsedPercent": { "type": "number", "minimum": 0, "maximum": 100 }
+  }
+}

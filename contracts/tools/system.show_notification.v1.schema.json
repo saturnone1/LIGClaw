@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.show_notification.v1.schema.json",
+  "title": "SystemShowNotificationV1",
+  "description": "Shows one local Windows notification after explicit user approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "message", "reason"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 63 },
+    "message": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

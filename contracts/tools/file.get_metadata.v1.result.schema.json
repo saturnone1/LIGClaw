@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.get_metadata.v1.result.schema.json",
+  "title": "FileGetMetadataV1Result",
+  "description": "Minimal metadata for an existing file or directory.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "name", "isDirectory", "sizeBytes", "lastWriteTimeUtc", "readOnly"],
+  "properties": {
+    "path": { "type": "string", "minLength": 3, "maxLength": 32767 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 260 },
+    "isDirectory": { "type": "boolean" },
+    "sizeBytes": { "type": "integer", "minimum": 0 },
+    "lastWriteTimeUtc": { "type": "string", "format": "date-time" },
+    "readOnly": { "type": "boolean" }
+  }
+}

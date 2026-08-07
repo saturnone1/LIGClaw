@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_disk_health.v1.result.schema.json",
+  "title": "SystemGetDiskHealthV1Result",
+  "description": "Bounded physical disk health and BitLocker protection summaries without recovery material.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["physicalDiskProviderStatus", "physicalDisks", "bitLockerProviderStatus", "bitLockerVolumes"],
+  "properties": {
+    "physicalDiskProviderStatus": { "type": "string", "enum": ["available", "unavailable"] },
+    "physicalDisks": { "type": "array", "maxItems": 32, "items": { "type": "object" } },
+    "bitLockerProviderStatus": { "type": "string", "enum": ["available", "unavailable"] },
+    "bitLockerVolumes": { "type": "array", "maxItems": 32, "items": { "type": "object" } }
+  }
+}

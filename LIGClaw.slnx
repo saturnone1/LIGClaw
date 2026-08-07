@@ -6,6 +6,11 @@
     <Project Path="src/LIGClaw.Domain/LIGClaw.Domain.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/LIGClaw.Application.Tests/LIGClaw.Application.Tests.csproj" />
     <Project Path="tests/LIGClaw.Contracts.Tests/LIGClaw.Contracts.Tests.csproj" />
+    <Project Path="tests/LIGClaw.Desktop.Tests/LIGClaw.Desktop.Tests.csproj" />
+    <Project Path="tests/LIGClaw.Sidecar.IntegrationTests/LIGClaw.Sidecar.IntegrationTests.csproj" />
+    <Project Path="tests/LIGClaw.UiAutomationFixture/LIGClaw.UiAutomationFixture.csproj" />
+    <Project Path="tests/LIGClaw.Win32AutomationFixture/LIGClaw.Win32AutomationFixture.csproj" />
   </Folder>
 </Solution>

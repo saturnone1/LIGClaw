@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/mcp-configure-result.schema.json",
+  "title": "McpConfigureResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["connections"],
+  "properties": {
+    "connections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "displayName", "state", "toolCount", "tools", "allowedTools"],
+        "properties": {
+          "id": { "type": "string" },
+          "displayName": { "type": "string" },
+          "state": { "type": "string", "enum": ["connected", "disabled", "failed"] },
+          "toolCount": { "type": "integer", "minimum": 0 },
+          "tools": { "type": "array", "maxItems": 128, "items": { "type": "string" } },
+          "allowedTools": { "type": "array", "maxItems": 32, "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

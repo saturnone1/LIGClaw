@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_device_status.v1.result.schema.json",
+  "title": "SystemGetDeviceStatusV1Result",
+  "description": "Current bounded device status without device names, hardware identifiers, ports, or driver details.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["audioOutput", "displays", "printers"],
+  "properties": {
+    "audioOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerStatus", "defaultOutputStatus"],
+      "properties": {
+        "providerStatus": { "type": "string", "enum": ["available", "unavailable"] },
+        "defaultOutputStatus": { "type": "string", "enum": ["active", "disabled", "not_present", "unplugged", "unknown"] }
+      }
+    },
+    "displays": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerStatus", "activeDisplayCount", "truncated"],
+      "properties": {
+        "providerStatus": { "type": "string", "enum": ["available", "unavailable"] },
+        "activeDisplayCount": { "type": "integer", "minimum": 0, "maximum": 16 },
+        "truncated": { "type": "boolean" },
+        "primaryDisplay": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["widthPixels", "heightPixels"],
+          "properties": {
+            "widthPixels": { "type": "integer", "minimum": 1, "maximum": 32768 },
+            "heightPixels": { "type": "integer", "minimum": 1, "maximum": 32768 }
+          }
+        }
+      }
+    },
+    "printers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerStatus", "observedPrinterCount", "defaultPrinterStatus", "truncated"],
+      "properties": {
+        "providerStatus": { "type": "string", "enum": ["available", "unavailable"] },
+        "observedPrinterCount": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "defaultPrinterStatus": { "type": "string", "enum": ["online", "offline", "not_configured", "unknown"] },
+        "truncated": { "type": "boolean" }
+      }
+    }
+  }
+}

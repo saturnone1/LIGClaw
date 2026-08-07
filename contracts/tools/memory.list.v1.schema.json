@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/memory.list.v1.schema.json",
+  "title": "memory.list.v1",
+  "description": "Returns bounded unexpired personal memories to the model after user approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reason"],
+  "properties": {
+    "query": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}
