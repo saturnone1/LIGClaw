@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.close.v1.schema.json",
+  "title": "app.close.v1",
+  "description": "Requests a graceful close of a currently visible top-level window after explicit approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["windowId", "reason"],
+  "properties": {
+    "windowId": { "type": "string", "pattern": "^0x[0-9A-Fa-f]+$", "maxLength": 18 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

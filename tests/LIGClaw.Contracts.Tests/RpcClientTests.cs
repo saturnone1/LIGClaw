@@ -1,10 +1,39 @@
 using System.Text.Json;
+using LIGClaw.Contracts.Generated;
 using LIGClaw.Contracts.Protocol;
 
 namespace LIGClaw.Contracts.Tests;
 
 public sealed class RpcClientTests
 {
+    [Fact]
+    public async Task DispatchesNotificationBeforeCompletingResponse()
+    {
+        var expectedEvent = new AgentEvent(
+            "conversation-1",
+            "run-1",
+            0,
+            "run_started",
+            DateTimeOffset.UnixEpoch,
+            null,
+            null);
+        await using var client = await CreateClientAsync(
+            new RpcNotification("agent.event", JsonSerializer.SerializeToElement(expectedEvent)),
+            new RpcResponse("1", JsonSerializer.SerializeToElement(new PingResult(DateTimeOffset.UnixEpoch)), null));
+        var received = new TaskCompletionSource<AgentEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.NotificationReceived += (_, notification) =>
+        {
+            if (notification.Method == "agent.event")
+                received.TrySetResult(notification.Params!.Value.Deserialize<AgentEvent>(ContentLengthMessageStream.SerializerOptions)!);
+        };
+
+        var result = await client.InvokeAsync<PingResult>("ping", null);
+        var agentEvent = await received.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.Equal(DateTimeOffset.UnixEpoch, result.TimestampUtc);
+        Assert.Equal(expectedEvent, agentEvent);
+    }
+
     [Fact]
     public async Task RejectsUnsupportedJsonRpcVersion()
     {
@@ -34,10 +63,11 @@ public sealed class RpcClientTests
         Assert.Contains("both result and error", exception.Message, StringComparison.Ordinal);
     }
 
-    private static async Task<RpcClient> CreateClientAsync(RpcResponse response)
+    private static async Task<RpcClient> CreateClientAsync(params object[] messages)
     {
         var input = new MemoryStream();
-        await new ContentLengthMessageStream(input).WriteAsync(response);
+        var framed = new ContentLengthMessageStream(input);
+        foreach (var message in messages) await framed.WriteAsync(message);
         input.Position = 0;
         return new RpcClient(new ScriptedDuplexStream(input));
     }

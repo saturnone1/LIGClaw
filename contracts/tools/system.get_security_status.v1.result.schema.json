@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_security_status.v1.result.schema.json",
+  "title": "SystemGetSecurityStatusV1Result",
+  "description": "Read-only provider summaries; unavailable providers do not fail the complete snapshot.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["defender", "firewall", "windowsUpdate"],
+  "properties": {
+    "defender": { "type": "object" },
+    "firewall": { "type": "object" },
+    "windowsUpdate": { "type": "object" }
+  }
+}

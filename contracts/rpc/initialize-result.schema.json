@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/initialize-result.schema.json",
+  "title": "InitializeResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "sidecarVersion", "contractHash", "capabilities"],
+  "properties": {
+    "protocolVersion": { "type": "string" },
+    "sidecarVersion": { "type": "string" },
+    "contractHash": { "type": "string" },
+    "capabilities": { "type": "array", "items": { "type": "string" } }
+  }
+}

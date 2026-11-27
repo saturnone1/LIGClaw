@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/mcp-call-params.schema.json",
+  "title": "McpCallParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["connectionId", "toolName", "arguments"],
+  "properties": {
+    "connectionId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+    "toolName": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "arguments": { "type": "object" }
+  }
+}

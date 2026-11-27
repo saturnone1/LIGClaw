@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.copy.v1.result.schema.json",
+  "title": "FileCopyV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["succeeded", "failed", "items"],
+  "properties": {
+    "succeeded": { "type": "integer", "minimum": 0, "maximum": 20 },
+    "failed": { "type": "integer", "minimum": 0, "maximum": 20 },
+    "items": { "type": "array", "maxItems": 20, "items": { "type": "object" } }
+  }
+}

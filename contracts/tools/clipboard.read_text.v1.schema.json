@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/clipboard.read_text.v1.schema.json",
+  "title": "clipboard.read_text.v1",
+  "description": "Reads bounded clipboard text only after explaining that it will be returned to the model.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reason"],
+  "properties": {
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

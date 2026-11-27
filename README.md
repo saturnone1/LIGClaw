@@ -1,78 +1,91 @@
 # LIGClaw
 
-A local-first personal assistant that lives in the Windows user session and takes over
-repetitive work without handing anything to a remote service.
+A local-first Windows assistant with a WPF desktop host and a Node.js
+sidecar connected through per-user, versioned JSON-RPC Named Pipes.
 
-**Status: Phase 0 walking skeleton.** A WPF desktop app owns the lifecycle of a Node.js
-sidecar and performs a versioned JSON-RPC handshake plus heartbeat over a per-user Windows
-named pipe. That is the whole of it so far.
+The integrated development baseline is **v0.6.0**. It includes conversation,
+the resident Windows shell, approved Windows tools, local memory and
+scheduling, bounded UI Automation, and MCP integration. It is a beta, not a
+fully validated release: installation, login startup, upgrade, and removal
+on clean Windows accounts with a trusted signing chain remain external
+release gates. Windows 10 deployment support also awaits hardware validation.
 
-## What actually works today
+The [capability audit](docs/WINDOWS_AGENT_CAPABILITY_AUDIT.md) distinguishes
+implemented, partial, planned, and follow-up functionality. The current
+priority is [release hardening and maintainability](docs/C_STAGE_PLAN.md).
 
-The only sidecar capability is `health.ping`.
+## Implemented scope
 
-Cline/LLM integration, conversation, Windows tooling, the tray, memory, scheduled tasks
-and MCP are **not implemented yet** — they are not disabled, gated or paywalled. There are
-no license, account or per-model feature flags, and no call quotas.
+- Single-instance desktop shell, tray, configurable quick-access shortcut
+  (default `Ctrl + Alt + Space`), and opt-in current-user login startup.
+- Streaming conversation, cancellation, recent conversation history, and
+  Markdown responses. Desktop owns SQLite persistence.
+- Named OpenAI-compatible model profiles and bounded fallback routing;
+  API keys are held in Windows Credential Manager. Model requests are sent
+  to the endpoint configured by the user.
+- Desktop-owned Windows tool policy, approval, bounded execution, and audit.
+  Capabilities include system diagnostics, registered applications, windows,
+  scoped files and clipboard, explicit memory, reminders, and agent jobs.
+- MCP Streamable HTTP and a fixed-ID bundled stdio sample, with exact-name
+  tool allowlists and Desktop approval for calls.
+- User-driven screen context, bounded browser/UI Automation, and opt-in
+  speech features; see the capability audit for limits and unfinished work.
 
-The following *are* deliberate limits, but they exist for process stability and security
-rather than to restrict functionality:
-
-| Boundary | Value |
-|---|---|
-| IPC payload / header ceiling | 4 MiB / 8 KiB |
-| Connect timeout | 10 s |
-| Heartbeat response timeout | 5 s |
-| Named pipe access | same Windows user only |
-| Sidecar with mismatched contract version or hash | connection refused |
-| Diagnostics UI | 100 entries, 2,048 chars each |
-
-Screenshots and large files will not be pushed through IPC directly. When that work
-lands, they will be passed as approved temporary resource handles so these boundaries
-still hold.
+Domain and Application remain independent of Windows, WPF, SQLite, Cline,
+and MCP adapters. Desktop is the final authority for external effects and
+persistence; Sidecar owns the replaceable agent runtime. Arbitrary shell
+execution and permanent deletion are not exposed as normal tools.
 
 ## Requirements
 
-- Windows 10/11
-- .NET SDK 10.0.103 or a later patch
-- Node.js 24
-- PowerShell 7, or Windows PowerShell 5.1
+- Windows 10/11; technical minimum target is Windows 10 1809 (build 17763).
+  Supported deployment combinations are subject to the release gates above.
+- .NET SDK 10.0.103 or a later patch in that SDK feature band (`global.json`).
+- Node.js 24.
+- PowerShell 7 or Windows PowerShell 5.1.
 
-## Verify
+Conversation data lives under `%LOCALAPPDATA%\LIGClaw\Data\ligclaw.db`.
+API keys are stored separately in Windows Credential Manager.
+
+## Verify and run
 
 ```powershell
 ./scripts/verify.ps1
-```
-
-## Run
-
-```powershell
 ./scripts/run.ps1
 ```
 
-This builds the sidecar first, then launches the desktop app. The window shows runtime
-connection state and a bounded diagnostic log, and lets you exercise restart behaviour.
+Verification covers PowerShell 5.1 parsing, release evidence helpers,
+generated contract drift, TypeScript, Node tests, dependency audit, .NET
+formatting, builds, and tests. The run script builds Sidecar and opens Desktop.
+Closing the window keeps the app in the tray; use the tray menu to exit.
 
-To exercise the real process handshake, heartbeat, automatic restart after a forced kill,
-and orphan cleanup:
+The current dependency audit remains a release blocker: four package findings
+share one upstream Zod advisory in the unused Dify provider dependency path.
+The aggregate verification script reports this failure rather than suppressing
+it. See [the dependency review](docs/adr/0036-reviewed-sidecar-dependency-refresh.md)
+for the exact path, compatible updates, passing functional checks, and limits.
+
+With no existing LIGClaw instance running, the following exercises the real
+process handshake, heartbeat, restart after a forced Sidecar kill, and cleanup:
 
 ```powershell
 ./scripts/smoke-sidecar.ps1
 ```
 
-## Layout
+## Structure and documentation
 
 ```text
-src/LIGClaw.Desktop       WPF UI and the sidecar supervisor
-src/LIGClaw.Application   use cases and ports (to be expanded)
-src/LIGClaw.Domain        pure domain model (to be expanded)
-src/LIGClaw.Contracts     JSON-RPC contract and framing
-sidecar                   replaceable Node.js agent runtime boundary
-contracts                 schema-first RPC / tool contracts
-tests                     deterministic contract tests
+src/LIGClaw.Desktop       WPF composition, orchestration, and lifecycle
+src/LIGClaw.Application   use cases and ports
+src/LIGClaw.Domain        domain policies
+src/LIGClaw.Contracts     generated RPC contracts and framing
+sidecar                  Replay/Cline runtime and MCP adapters
+contracts                schema-first RPC and tool definitions
+tests                    deterministic contract, policy, and adapter tests
 ```
 
-## Design notes
-
-Scope and phasing live in the [implementation plan](docs/IMPLEMENTATION_PLAN.md);
-the decisions behind the structure are recorded as [ADRs](docs/adr/).
+Start with the [handoff](docs/HANDOFF.md), [implementation plan](docs/IMPLEMENTATION_PLAN.md),
+[design system](docs/DESIGN_SYSTEM.md), and [architecture decisions](docs/adr/).
+Contract version/hash mismatches are rejected. IPC is bounded to a 4 MiB
+payload and 8 KiB header; sensitive content is passed only through the
+approved context/resource paths documented in the capability audit.

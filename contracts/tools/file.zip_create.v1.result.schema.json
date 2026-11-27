@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.zip_create.v1.result.schema.json",
+  "title": "FileZipCreateV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["created", "path", "sourceCount"],
+  "properties": {
+    "created": { "type": "boolean" },
+    "path": { "type": "string" },
+    "sourceCount": { "type": "integer", "minimum": 1, "maximum": 20 },
+    "undoId": { "type": "string" }
+  }
+}

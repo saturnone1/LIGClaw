@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/browser.open.v1.schema.json",
+  "title": "BrowserOpenV1",
+  "description": "Opens an HTTP(S) URL in the isolated LIGClaw Edge profile.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["url", "reason"],
+  "properties": {
+    "url": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.rename.v1.result.schema.json",
+  "title": "FileRenameV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["renamed", "displayName"],
+  "properties": {
+    "renamed": { "type": "boolean" },
+    "displayName": { "type": "string", "maxLength": 255 },
+    "undoId": { "type": "string", "minLength": 32, "maxLength": 32 }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.list_windows.v1.schema.json",
+  "title": "app.list_windows.v1",
+  "description": "Lists visible top-level Windows application windows without executable paths or window contents.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

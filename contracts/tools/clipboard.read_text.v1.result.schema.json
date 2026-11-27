@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/clipboard.read_text.v1.result.schema.json",
+  "title": "ClipboardReadTextV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["text", "length", "truncated"],
+  "properties": {
+    "text": { "type": "string", "maxLength": 32768 },
+    "length": { "type": "integer", "minimum": 0, "maximum": 32768 },
+    "truncated": { "type": "boolean" }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/mcp-call-result.schema.json",
+  "title": "McpCallResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["text", "isError", "truncated"],
+  "properties": {
+    "text": { "type": "string", "maxLength": 65536 },
+    "isError": { "type": "boolean" },
+    "truncated": { "type": "boolean" }
+  }
+}

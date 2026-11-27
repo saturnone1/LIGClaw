@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.show_notification.v1.result.schema.json",
+  "title": "SystemShowNotificationV1Result",
+  "description": "Whether Desktop displayed the approved notification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["shown"],
+  "properties": {
+    "shown": { "type": "boolean" }
+  }
+}

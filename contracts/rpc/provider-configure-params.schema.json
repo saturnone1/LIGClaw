@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/provider-configure-params.schema.json",
+  "title": "ProviderConfigureParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["baseUrl", "apiKey", "model"],
+  "properties": {
+    "baseUrl": { "type": "string", "format": "uri", "minLength": 1 },
+    "apiKey": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 }
+  }
+}

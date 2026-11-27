@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/uia.inspect.v1.schema.json",
+  "title": "uia.inspect.v1",
+  "description": "Inspects a bounded set of UI Automation elements in one approved top-level window.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["windowId", "reason"],
+  "properties": {
+    "windowId": { "type": "string", "pattern": "^0x[0-9A-Fa-f]+$", "maxLength": 18 },
+    "query": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "maxElements": { "type": "integer", "minimum": 1, "maximum": 50 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

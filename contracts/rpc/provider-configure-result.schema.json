@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/provider-configure-result.schema.json",
+  "title": "ProviderConfigureResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["configured"],
+  "properties": {
+    "configured": { "type": "boolean" }
+  }
+}

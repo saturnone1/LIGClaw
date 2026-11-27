@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.read_text.v1.schema.json",
+  "title": "file.read_text.v1",
+  "description": "Reads bounded text from one existing absolute file after showing the exact path and reason for approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "reason"],
+  "properties": {
+    "path": { "type": "string", "minLength": 3, "maxLength": 32767 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

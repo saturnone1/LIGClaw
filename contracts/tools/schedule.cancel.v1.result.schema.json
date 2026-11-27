@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/schedule.cancel.v1.result.schema.json",
+  "title": "schedule.cancel.v1.result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["cancelled"],
+  "properties": {
+    "cancelled": { "type": "boolean" }
+  }
+}

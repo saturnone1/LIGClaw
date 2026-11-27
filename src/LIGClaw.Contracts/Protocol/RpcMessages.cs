@@ -19,17 +19,7 @@ public sealed record RpcError(
     [property: JsonPropertyName("code")] int Code,
     [property: JsonPropertyName("message")] string Message);
 
-public sealed record InitializeParams(
-    [property: JsonPropertyName("protocolVersion")] string ProtocolVersion,
-    [property: JsonPropertyName("hostVersion")] string HostVersion,
-    [property: JsonPropertyName("contractHash")] string ContractHash,
-    [property: JsonPropertyName("sessionToken")] string SessionToken);
-
-public sealed record InitializeResult(
-    [property: JsonPropertyName("protocolVersion")] string ProtocolVersion,
-    [property: JsonPropertyName("sidecarVersion")] string SidecarVersion,
-    [property: JsonPropertyName("contractHash")] string ContractHash,
-    [property: JsonPropertyName("capabilities")] IReadOnlyList<string> Capabilities);
-
-public sealed record PingResult(
-    [property: JsonPropertyName("timestampUtc")] DateTimeOffset TimestampUtc);
+public sealed record RpcNotification(
+    [property: JsonPropertyName("method")] string Method,
+    [property: JsonPropertyName("params")] JsonElement? Params,
+    [property: JsonPropertyName("jsonrpc")] string JsonRpc = ProtocolConstants.JsonRpcVersion);

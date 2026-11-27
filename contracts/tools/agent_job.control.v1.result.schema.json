@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/agent_job.control.v1.result.schema.json",
+  "title": "AgentJobControlV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["changed", "action"],
+  "properties": {
+    "changed": { "type": "boolean" },
+    "action": { "type": "string", "enum": ["pause", "resume", "retry_now"] }
+  }
+}

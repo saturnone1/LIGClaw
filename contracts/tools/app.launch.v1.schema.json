@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.launch.v1.schema.json",
+  "title": "AppLaunchV1",
+  "description": "Launches an exact Desktop-resolved Start Menu application after explicit user approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["appName", "reason"],
+  "properties": {
+    "appName": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

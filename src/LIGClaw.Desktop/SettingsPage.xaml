@@ -1,0 +1,332 @@
+<UserControl x:Class="LIGClaw.Desktop.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="설정 페이지">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="{DynamicResource PagePadding}" MaxWidth="880" HorizontalAlignment="Center">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="SETTINGS / CONTROL" />
+                <TextBlock Style="{StaticResource PageTitleStyle}" Text="설정" />
+                <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                           Text="모델 연결과 자주 사용하는 실행 방식을 관리합니다." />
+            </StackPanel>
+
+            <Border Grid.Row="1" Margin="0,24,0,0" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="BEHAVIOR / STARTUP" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="Windows 시작 시 자동 실행" />
+                            <TextBlock Margin="0,5,18,0" Style="{StaticResource CaptionTextStyle}"
+                                       Text="로그인하면 창을 띄우지 않고 트레이에서 준비합니다." />
+                        </StackPanel>
+                        <CheckBox x:Name="StartWithWindowsCheckBox" Grid.Column="1"
+                                  AutomationProperties.Name="Windows 시작 시 LIGClaw 자동 실행"
+                                  Style="{StaticResource ToggleSwitchStyle}"
+                                  VerticalAlignment="Center" />
+                    </Grid>
+                    <Border Margin="0,18,0,18" Height="1" Background="{DynamicResource DividerBrush}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="VOICE / MICROPHONE" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="누르고 말해서 입력" />
+                            <TextBlock Margin="0,5,18,0" Style="{StaticResource CaptionTextStyle}"
+                                       Text="기본은 꺼짐입니다. 켜면 버튼을 누르는 동안만 Windows 음성 인식을 사용하며 원시 오디오는 저장하지 않습니다."
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <CheckBox x:Name="VoiceInputEnabledCheckBox" Grid.Column="1"
+                                  AutomationProperties.Name="누르고 말하기 음성 입력 사용"
+                                  Style="{StaticResource ToggleSwitchStyle}"
+                                  VerticalAlignment="Center" />
+                    </Grid>
+                    <Border Margin="0,18,0,18" Height="1" Background="{DynamicResource DividerBrush}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="VOICE / AUTO READ" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="새 답변 자동 읽기" />
+                            <TextBlock Margin="0,5,18,0" Style="{StaticResource CaptionTextStyle}" TextWrapping="Wrap"
+                                       Text="기본은 꺼짐입니다. 앱을 보고 있을 때만 새 답변을 읽고 방해 금지 시간에는 소리를 내지 않습니다." />
+                            <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center" Style="{StaticResource FieldLabelStyle}" Text="방해 금지" />
+                                <ComboBox x:Name="QuietStartComboBox" Width="92" Margin="10,0,6,0"
+                                          DisplayMemberPath="DisplayName" SelectedValuePath="Minute"
+                                          AutomationProperties.Name="방해 금지 시작 시간" />
+                                <TextBlock VerticalAlignment="Center" Text="부터" />
+                                <ComboBox x:Name="QuietEndComboBox" Width="92" Margin="6,0"
+                                          DisplayMemberPath="DisplayName" SelectedValuePath="Minute"
+                                          AutomationProperties.Name="방해 금지 종료 시간" />
+                                <TextBlock VerticalAlignment="Center" Text="까지" />
+                            </StackPanel>
+                        </StackPanel>
+                        <CheckBox x:Name="AutoReadEnabledCheckBox" Grid.Column="1"
+                                  AutomationProperties.Name="새 답변 자동 읽기 사용"
+                                  Style="{StaticResource ToggleSwitchStyle}" VerticalAlignment="Center" />
+                    </Grid>
+                    <Border Margin="0,18,0,18" Height="1" Background="{DynamicResource DividerBrush}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="ASSIST / ROUTINE" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="반복 작업 제안" />
+                            <TextBlock Margin="0,5,18,0" Style="{StaticResource CaptionTextStyle}" TextWrapping="Wrap"
+                                       Text="기본은 꺼짐입니다. 켜면 이 PC의 완료된 요청 중 날짜를 달리해 같은 요청을 3회 이상 반복한 경우에만 예약을 제안합니다. 자동으로 실행하거나 예약하지 않습니다." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <CheckBox x:Name="RoutineSuggestionsEnabledCheckBox"
+                                      AutomationProperties.Name="반복 작업 제안 사용"
+                                      Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right" />
+                            <Button x:Name="ClearRoutineSuggestionHistoryButton" Margin="0,10,0,0"
+                                    Style="{StaticResource CompactButtonStyle}"
+                                    AutomationProperties.Name="무시한 반복 작업 제안 초기화"
+                                    Click="ClearRoutineSuggestionHistory_Click" Content="무시 목록 초기화" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="2" Margin="0,14,0,0" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="MODEL CONNECTION" />
+                    <TextBlock Style="{StaticResource CardTitleStyle}" Text="모델 API 연결" />
+                    <TextBlock Margin="0,4,0,13" Style="{StaticResource CaptionTextStyle}"
+                               Text="OpenAI 호환 API의 연결 정보를 입력하고 먼저 연결을 확인하세요." />
+                    <TextBlock x:Name="ConnectionStepText" Margin="0,0,0,13"
+                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
+                               Text="1. 입력  →  2. 연결 테스트  →  3. 저장" />
+                    <Grid Margin="0,0,0,13">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <ComboBox x:Name="ModelProfileComboBox" DisplayMemberPath="DisplayName" SelectedValuePath="ProfileId"
+                                  SelectionChanged="ModelProfileComboBox_SelectionChanged"
+                                  AutomationProperties.Name="모델 프로필 선택" />
+                        <Button Grid.Column="1" Margin="9,0,0,0" Style="{StaticResource CompactButtonStyle}"
+                                Click="NewModelProfile_Click" Content="새 프로필" />
+                    </Grid>
+                    <Grid Margin="0,0,0,13">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Style="{StaticResource FieldLabelStyle}" Text="프로필 ID" /><TextBox x:Name="ModelProfileIdTextBox" Margin="0,5,0,0" MaxLength="64" AutomationProperties.Name="모델 프로필 ID" /></StackPanel>
+                        <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource FieldLabelStyle}" Text="표시 이름" /><TextBox x:Name="ModelProfileNameTextBox" Margin="0,5,0,0" MaxLength="80" AutomationProperties.Name="모델 프로필 표시 이름" /></StackPanel>
+                    </Grid>
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Base URL" />
+                    <TextBox x:Name="BaseUrlTextBox" Margin="0,5,0,0"
+                             AutomationProperties.Name="모델 API Base URL"
+                             TextChanged="BaseUrlTextBox_TextChanged" />
+                    <TextBlock x:Name="BaseUrlErrorText" Margin="0,5,0,0"
+                               Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap"
+                               Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
+                    <TextBlock x:Name="ConnectionSecurityWarningText" Margin="0,6,0,10"
+                               Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                               Visibility="Collapsed"
+                               Text="HTTP 연결에서는 API 키가 암호화되지 않을 수 있어요. 신뢰할 수 있는 내부 주소인지 확인하세요." />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Model" />
+                    <TextBox x:Name="ModelTextBox" Margin="0,5,0,10"
+                             AutomationProperties.Name="모델 이름"
+                             TextChanged="ModelInput_Changed" />
+                    <TextBlock x:Name="ModelErrorText" Margin="0,-5,0,10"
+                               Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap"
+                               Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="API Key" />
+                    <PasswordBox x:Name="ApiKeyPasswordBox" Margin="0,5,0,0" Padding="12,10"
+                                 AutomationProperties.Name="API Key"
+                                 PasswordChanged="ModelInput_Changed" />
+                    <TextBlock x:Name="ApiKeyErrorText" Margin="0,5,0,0"
+                               Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap"
+                               Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
+                    <TextBlock x:Name="SavedKeyHint" Margin="0,5,0,0" Style="{StaticResource CaptionTextStyle}"
+                               Text="비워 두면 저장된 키를 그대로 사용합니다." />
+                    <Button x:Name="TestConnectionButton" Margin="0,13,0,0" HorizontalAlignment="Left"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            AutomationProperties.Name="모델 연결 테스트"
+                            Click="TestConnection_Click" Content="연결 테스트" />
+                    <TextBlock Margin="0,14,0,5" Style="{StaticResource FieldLabelStyle}"
+                               Text="Fallback 프로필 ID (우선순위대로, 줄바꿈)" />
+                    <TextBox x:Name="FallbackProfileIdsTextBox" MinHeight="58" AcceptsReturn="True" TextWrapping="Wrap"
+                             AutomationProperties.Name="Fallback 모델 프로필 순서" />
+                    <TextBlock Margin="0,5,0,0" Style="{StaticResource CaptionTextStyle}"
+                               Text="인증 실패·요청 한도·일시 장애·모델 부재에서만 순서대로 전환합니다. 명시 선택 작업은 전환하지 않습니다." TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="3" Margin="0,14,0,0" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="MEMORY / SEMANTIC SEARCH" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="선택형 의미 기억" />
+                            <TextBlock Margin="0,4,18,0" Style="{StaticResource CaptionTextStyle}"
+                                       Text="표현이 달라도 관련된 기억을 찾습니다. 켜면 검색어와 만료되지 않은 기억 내용이 아래 endpoint로 전송됩니다."
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <CheckBox x:Name="SemanticMemoryEnabledCheckBox" Grid.Column="1"
+                                  VerticalAlignment="Center" Style="{StaticResource ToggleSwitchStyle}"
+                                  AutomationProperties.Name="의미 기억 사용" />
+                    </Grid>
+                    <TextBlock Margin="0,13,0,0" Style="{StaticResource FieldLabelStyle}" Text="Embedding Base URL" />
+                    <TextBox x:Name="SemanticMemoryBaseUrlTextBox" Margin="0,5,0,10"
+                             AutomationProperties.Name="Embedding API Base URL" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Embedding Model" />
+                    <TextBox x:Name="SemanticMemoryModelTextBox" Margin="0,5,0,10"
+                             AutomationProperties.Name="Embedding 모델 이름" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="API Key (선택)" />
+                    <PasswordBox x:Name="SemanticMemoryApiKeyPasswordBox" Margin="0,5,0,0" Padding="12,10"
+                                 AutomationProperties.Name="Embedding API Key" />
+                    <TextBlock Margin="0,5,0,0" Style="{StaticResource CaptionTextStyle}"
+                               Text="비워 두면 저장된 키를 유지합니다. 키가 필요 없는 로컬 서버도 사용할 수 있습니다." />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="4" Margin="0,14,0,0" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="WEB / SEARCH" />
+                    <TextBlock Style="{StaticResource CardTitleStyle}" Text="Web 검색 공급자" />
+                    <TextBlock Margin="0,4,0,13" Style="{StaticResource CaptionTextStyle}"
+                               Text="로컬·사내·외부 HTTP(S) 검색 endpoint를 지정합니다. 검색 시 URL의 {query} 부분만 인코딩된 검색어로 바뀝니다."
+                               TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="검색 URL 템플릿 (선택)" />
+                    <TextBox x:Name="WebSearchUrlTemplateTextBox" Margin="0,5,0,0"
+                             AutomationProperties.Name="Web 검색 URL 템플릿" />
+                    <TextBlock Margin="0,5,0,0" Style="{StaticResource CaptionTextStyle}"
+                               Text="예: http://127.0.0.1:8080/search?q={query} · 비워 두면 web.search는 사용하지 않으며 직접 URL 가져오기는 계속 사용할 수 있습니다."
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="5" Margin="0,14,0,0" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="KNOWLEDGE / MCP" />
+                            <TextBlock Style="{StaticResource CardTitleStyle}" Text="MCP 지식 연결" />
+                    <TextBlock Margin="0,4,16,0" Style="{StaticResource CaptionTextStyle}"
+                                       Text="Streamable HTTP 서버의 읽기 전용 도구를 연결합니다." />
+                        </StackPanel>
+                        <CheckBox x:Name="McpEnabledCheckBox" Grid.Column="1" VerticalAlignment="Center"
+                                  Style="{StaticResource ToggleSwitchStyle}"
+                                  AutomationProperties.Name="MCP 연결 사용" />
+                    </Grid>
+                    <CheckBox x:Name="McpSampleRagCheckBox" Margin="0,13,0,0"
+                              Content="내장 읽기 전용 샘플 RAG 사용 (승인된 stdio 실행파일)"
+                              AutomationProperties.Name="내장 샘플 RAG 사용" />
+                    <TextBlock Margin="0,13,0,0" Style="{StaticResource FieldLabelStyle}" Text="표시 이름" />
+                    <TextBox x:Name="McpDisplayNameTextBox" Margin="0,5,0,10"
+                             AutomationProperties.Name="MCP 표시 이름" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Server URL" />
+                    <TextBox x:Name="McpUrlTextBox" Margin="0,5,0,0"
+                             AutomationProperties.Name="MCP Streamable HTTP 서버 주소" />
+                    <TextBlock Margin="0,10,0,0" Style="{StaticResource FieldLabelStyle}" Text="Bearer token (선택)" />
+                    <PasswordBox x:Name="McpTokenPasswordBox" Margin="0,5,0,0" Padding="12,10"
+                                 AutomationProperties.Name="MCP Bearer token" />
+                    <TextBlock Margin="0,5,0,0" Style="{StaticResource CaptionTextStyle}"
+                               Text="비워 두면 Windows 자격 증명 관리자에 저장된 token을 그대로 사용합니다." />
+                    <TextBlock Margin="0,10,0,0" Style="{StaticResource FieldLabelStyle}" Text="호출을 허용할 도구 이름" />
+                    <TextBox x:Name="McpAllowedToolsTextBox" Margin="0,5,0,0" MinHeight="58"
+                             AcceptsReturn="True" TextWrapping="Wrap"
+                             AutomationProperties.Name="허용할 MCP 도구 이름 목록" />
+                    <TextBlock Margin="0,5,0,0" Style="{StaticResource CaptionTextStyle}"
+                               Text="먼저 비워 둔 채 저장해 발견된 이름을 확인한 다음, 읽기 전용으로 신뢰할 도구만 한 줄에 하나씩 입력하세요. 호출할 때도 매번 승인을 받습니다."
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="McpStatusText" Margin="0,7,0,0"
+                               Style="{StaticResource CaptionTextStyle}"
+                               Text="HTTPS 또는 이 PC의 localhost 주소만 허용됩니다. 인증이 필요한 서버는 아직 지원하지 않습니다."
+                               TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="6" Margin="0,14,0,0" Style="{StaticResource InfoBannerStyle}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="QUICK ACCESS" />
+                    <TextBlock FontWeight="SemiBold" Text="빠른 호출" />
+                    <TextBlock x:Name="ShortcutStatusText" Margin="0,4,0,0"
+                               Style="{StaticResource CaptionTextStyle}"
+                               Text="어느 화면에서든 LIGClaw를 바로 열 수 있어요." />
+                    <ComboBox x:Name="ShortcutComboBox" Margin="0,11,0,0"
+                              DisplayMemberPath="DisplayName" SelectedValuePath="Id"
+                              AutomationProperties.Name="빠른 호출 단축키" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="7" Margin="0,14,0,0" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="PERMISSIONS" />
+                    <TextBlock Style="{StaticResource CardTitleStyle}" Text="항상 허용한 동작" />
+                    <TextBlock Margin="0,4,0,10" Style="{StaticResource CaptionTextStyle}"
+                               Text="정확히 같은 R1 동작에만 적용되며 30일 후 자동 만료됩니다. 언제든 철회할 수 있습니다."
+                               TextWrapping="Wrap" />
+                    <ListBox x:Name="CapabilityGrantList" MinHeight="48" MaxHeight="150"
+                             DisplayMemberPath="DisplayText"
+                             AutomationProperties.Name="항상 허용한 동작 목록" />
+                    <Button x:Name="RevokeGrantButton" Margin="0,10,0,0" HorizontalAlignment="Left"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="RevokeGrant_Click" Content="선택 권한 철회" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="8" Margin="0,14,0,0" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="DATA / RECOVERY" />
+                    <TextBlock Style="{StaticResource CardTitleStyle}" Text="로컬 데이터 보호" />
+                    <TextBlock Margin="0,4,0,10" Style="{StaticResource CaptionTextStyle}"
+                               Text="대화·기억·예약·실행 이력을 원자적으로 백업합니다. 복원은 무결성 검사 후 다음 앱 시작 시 적용됩니다. API 키는 포함되지 않습니다."
+                               TextWrapping="Wrap" />
+                    <WrapPanel>
+                        <Button x:Name="BackupDataButton" Margin="0,0,9,9" Style="{StaticResource SecondaryButtonStyle}"
+                                Click="BackupData_Click" Content="데이터 백업" />
+                        <Button x:Name="RestoreDataButton" Margin="0,0,9,9" Style="{StaticResource SecondaryButtonStyle}"
+                                Click="RestoreData_Click" Content="백업에서 복원" />
+                        <Button x:Name="CleanupHistoryButton" Margin="0,0,0,9" Style="{StaticResource DangerButtonStyle}"
+                                Click="CleanupHistory_Click" Content="1년 지난 운영 이력 정리" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock x:Name="SettingsStatusText" Grid.Row="9" Margin="0,13,0,0"
+                       Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"
+                       AutomationProperties.LiveSetting="Polite" />
+
+            <StackPanel Grid.Row="10" Margin="0,14,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="SaveDiagnosticsButton" Margin="0,0,9,0"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Click="SaveDiagnostics_Click" Content="문제 해결 번들 저장" />
+                <Button x:Name="CancelButton" Margin="0,0,9,0" Style="{StaticResource SecondaryButtonStyle}"
+                        Click="Cancel_Click" Content="대화로 돌아가기" />
+                <Button x:Name="SaveButton" Click="Save_Click" Content="저장" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

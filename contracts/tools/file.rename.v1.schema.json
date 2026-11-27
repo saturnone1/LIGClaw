@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.rename.v1.schema.json",
+  "title": "file.rename.v1",
+  "description": "Renames one existing file in place without overwriting and journals it for undo.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "newName", "reason"],
+  "properties": {
+    "path": { "type": "string", "minLength": 3, "maxLength": 32767 },
+    "newName": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

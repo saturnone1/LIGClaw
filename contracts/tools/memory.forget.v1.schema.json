@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/memory.forget.v1.schema.json",
+  "title": "memory.forget.v1",
+  "description": "Deletes one explicit personal memory after user approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["memoryId", "reason"],
+  "properties": {
+    "memoryId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.session_action.v1.schema.json",
+  "title": "system.session_action.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "reason"],
+  "properties": {
+    "action": { "type": "string", "enum": ["lock", "sleep"] },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

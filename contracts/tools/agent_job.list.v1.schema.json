@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/agent_job.list.v1.schema.json",
+  "title": "agent_job.list.v1",
+  "description": "Lists durable background agent jobs after explicit user approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reason"],
+  "properties": {
+    "includeInactive": { "type": "boolean" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

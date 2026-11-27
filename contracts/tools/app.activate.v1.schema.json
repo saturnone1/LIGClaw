@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.activate.v1.schema.json",
+  "title": "app.activate.v1",
+  "description": "Activates a currently visible top-level window by its Desktop-issued window id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["windowId", "reason"],
+  "properties": {
+    "windowId": { "type": "string", "pattern": "^0x[0-9A-Fa-f]+$", "maxLength": 18 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

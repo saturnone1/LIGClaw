@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_resource_status.v1.schema.json",
+  "title": "system.get_resource_status.v1",
+  "description": "Returns a short non-sensitive CPU, memory, and uptime snapshot.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

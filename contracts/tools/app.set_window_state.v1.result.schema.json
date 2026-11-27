@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.set_window_state.v1.result.schema.json",
+  "title": "AppSetWindowStateV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["changed", "state", "title", "processName"],
+  "properties": {
+    "changed": { "type": "boolean" },
+    "state": { "type": "string", "enum": ["minimize", "maximize", "restore"] },
+    "title": { "type": "string" },
+    "processName": { "type": "string" }
+  }
+}

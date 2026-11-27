@@ -1,0 +1,148 @@
+<Window x:Class="LIGClaw.Desktop.SensitiveContextPreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="화면 내용 확인" Width="920" Height="700"
+        MinWidth="760" MinHeight="560"
+        Icon="Assets/ligclaw.ico"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="SCREEN REVIEW / LOCAL ONLY" />
+            <TextBlock Margin="0,7,0,0" Style="{StaticResource PageTitleStyle}"
+                       Text="Agent에게 보여 줄 화면 내용을 확인하세요" TextWrapping="Wrap" />
+            <TextBlock x:Name="TargetSummaryText" Margin="0,8,0,0"
+                       Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Margin="0,18,0,0" Style="{StaticResource WarningBannerStyle}">
+            <TextBlock TextWrapping="Wrap"
+                       Text="이미지와 인식된 글자는 아직 이 PC를 벗어나지 않았습니다. 필요 없는 내용을 지우거나 마스킹한 뒤 요청에 추가하세요." />
+        </Border>
+
+        <Grid Grid.Row="2" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="2*" MinWidth="270" />
+            </Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource CardStyle}" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="CAPTURE PREVIEW" />
+                        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="필요한 부분만 마우스로 드래그해 선택할 수 있어요. 자르면 해당 영역의 글자를 다시 읽습니다."
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Border Grid.Row="1" Margin="0,10,0,0"
+                            Background="{DynamicResource SurfaceMutedBrush}"
+                            CornerRadius="{DynamicResource RadiusSmall}">
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto"
+                                      Focusable="False">
+                            <Grid x:Name="PreviewImageHost">
+                                <Image x:Name="PreviewImage" Stretch="Uniform"
+                                       AutomationProperties.Name="선택한 화면 미리보기" />
+                                <Canvas x:Name="CropOverlay" Background="Transparent"
+                                        Cursor="Cross"
+                                        AutomationProperties.Name="화면 자르기 영역"
+                                        AutomationProperties.HelpText="이미지에서 필요한 영역을 마우스로 드래그하세요. 키보드 사용자는 전체 이미지를 그대로 검토할 수 있습니다."
+                                        MouseLeftButtonDown="CropOverlay_MouseLeftButtonDown"
+                                        MouseMove="CropOverlay_MouseMove"
+                                        MouseLeftButtonUp="CropOverlay_MouseLeftButtonUp">
+                                    <Rectangle x:Name="CropSelectionRectangle"
+                                               Visibility="Collapsed"
+                                               Stroke="{DynamicResource FocusBrush}"
+                                               Fill="{DynamicResource ConversationUserBrush}"
+                                               StrokeThickness="2" Opacity="0.72"
+                                               IsHitTestVisible="False" />
+                                </Canvas>
+                            </Grid>
+                        </ScrollViewer>
+                    </Border>
+                    <StackPanel Grid.Row="2" Margin="0,10,0,0" Orientation="Horizontal">
+                        <Button x:Name="CropSelectionButton"
+                                Style="{StaticResource CompactButtonStyle}"
+                                IsEnabled="False"
+                                AutomationProperties.Name="선택한 화면 영역 자르기"
+                                Click="CropSelection_Click" Content="선택 영역 자르기" />
+                        <Button x:Name="RestoreImageButton" Margin="8,0,0,0"
+                                Style="{StaticResource CompactButtonStyle}"
+                                IsEnabled="False"
+                                AutomationProperties.Name="전체 화면과 글자 복원"
+                                Click="RestoreImage_Click" Content="전체 화면 복원" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="RECOGNIZED TEXT" />
+                        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="요청에 추가할 글자만 남기세요. 선택한 부분은 한 번에 마스킹할 수 있습니다."
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBox x:Name="OcrTextBox" Grid.Row="1" Margin="0,12,0,0"
+                             AcceptsReturn="True" TextWrapping="Wrap"
+                             MaxLength="32768"
+                             VerticalScrollBarVisibility="Auto"
+                             IsUndoEnabled="False" SpellCheck.IsEnabled="False"
+                             AutomationProperties.Name="인식된 화면 글자 편집 및 마스킹"
+                             TextChanged="OcrTextBox_TextChanged" />
+                    <StackPanel Grid.Row="2" Margin="0,10,0,0" Orientation="Horizontal">
+                        <Button x:Name="MaskSelectionButton"
+                                Style="{StaticResource CompactButtonStyle}"
+                                AutomationProperties.Name="선택한 글자 마스킹"
+                                Click="MaskSelection_Click" Content="선택 마스킹" />
+                        <Button x:Name="ClearTextButton" Margin="8,0,0,0"
+                                Style="{StaticResource CompactButtonStyle}"
+                                AutomationProperties.Name="인식된 글자 모두 지우기"
+                                Click="ClearText_Click" Content="모두 지우기" />
+                    </StackPanel>
+                    <TextBlock x:Name="ValidationText" Grid.Row="3" Margin="0,10,0,0"
+                               Foreground="{DynamicResource DangerBrush}"
+                               AutomationProperties.LiveSetting="Assertive"
+                               TextWrapping="Wrap" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="3" Margin="0,20,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="PreviewStatusText" VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       AutomationProperties.LiveSetting="Polite" TextWrapping="Wrap" />
+            <Button x:Name="CancelButton" Grid.Column="1" Margin="12,0,10,0"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    AutomationProperties.Name="화면 내용 추가 취소"
+                    IsDefault="True" IsCancel="True"
+                    Click="Cancel_Click" Content="취소" />
+            <Button x:Name="ApproveButton" Grid.Column="2"
+                    AutomationProperties.Name="확인한 화면 글자를 요청에 추가"
+                    Click="Approve_Click" Content="요청에 추가" />
+        </Grid>
+    </Grid>
+</Window>

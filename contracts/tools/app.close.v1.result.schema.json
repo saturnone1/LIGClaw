@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.close.v1.result.schema.json",
+  "title": "AppCloseV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["closeRequested", "title", "processName"],
+  "properties": {
+    "closeRequested": { "type": "boolean" },
+    "title": { "type": "string", "maxLength": 512 },
+    "processName": { "type": "string", "maxLength": 128 }
+  }
+}

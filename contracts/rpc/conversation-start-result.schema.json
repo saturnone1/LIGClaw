@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/conversation-start-result.schema.json",
+  "title": "ConversationStartResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["accepted", "runId"],
+  "properties": {
+    "accepted": { "type": "boolean" },
+    "runId": { "type": "string", "minLength": 1 }
+  }
+}

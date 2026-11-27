@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/uia.set_value.v1.schema.json",
+  "title": "uia.set_value.v1",
+  "description": "Sets one non-password UI Automation value after identity and focus revalidation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["elementId", "value", "reason"],
+  "properties": {
+    "elementId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "value": { "type": "string", "maxLength": 2000 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/mcp.read.v1.result.schema.json",
+  "title": "McpReadV1Result",
+  "description": "Bounded untrusted text returned by an approved MCP server.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["text", "source", "truncated"],
+  "properties": {
+    "text": { "type": "string", "maxLength": 65536 },
+    "source": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "truncated": { "type": "boolean" }
+  }
+}

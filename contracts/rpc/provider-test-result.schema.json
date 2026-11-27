@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/provider-test-result.schema.json",
+  "title": "ProviderTestResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["success", "message"],
+  "properties": {
+    "success": { "type": "boolean" },
+    "message": { "type": "string" }
+  }
+}

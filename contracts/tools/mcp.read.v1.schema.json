@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/mcp.read.v1.schema.json",
+  "title": "mcp.read.v1",
+  "description": "Calls one explicitly allowlisted external MCP tool after Desktop approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["connectionId", "toolName", "arguments", "reason"],
+  "properties": {
+    "connectionId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+    "toolName": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "arguments": { "type": "object" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

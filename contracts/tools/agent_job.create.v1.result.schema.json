@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/agent_job.create.v1.result.schema.json",
+  "title": "agent_job.create.v1.result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jobId", "nextRunAtUtc", "status"],
+  "properties": {
+    "jobId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "nextRunAtUtc": { "type": "string", "format": "date-time" },
+    "status": { "type": "string" }
+  }
+}

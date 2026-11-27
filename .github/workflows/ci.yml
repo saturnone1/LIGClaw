@@ -25,6 +25,10 @@ jobs:
           cache: npm
           cache-dependency-path: sidecar/package-lock.json
 
+      - name: Parse scripts with Windows PowerShell 5.1
+        shell: powershell
+        run: ./scripts/test-powershell51-parse.ps1
+
       - name: Verify
         shell: pwsh
         run: ./scripts/verify.ps1

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_process_resource_status.v1.result.schema.json",
+  "title": "SystemGetProcessResourceStatusV1Result",
+  "description": "Bounded process-name groups ranked by sampled CPU and working-set memory.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["providerStatus", "sampleDurationMilliseconds", "observedProcessCount", "observedGroupCount", "topCpuProcesses", "topMemoryProcesses", "truncated"],
+  "properties": {
+    "providerStatus": { "type": "string", "enum": ["available", "unavailable"] },
+    "sampleDurationMilliseconds": { "type": "integer", "minimum": 0, "maximum": 5000 },
+    "observedProcessCount": { "type": "integer", "minimum": 0 },
+    "observedGroupCount": { "type": "integer", "minimum": 0 },
+    "topCpuProcesses": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["processName", "instanceCount", "cpuUsagePercent", "workingSetBytes"],
+        "properties": {
+          "processName": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "instanceCount": { "type": "integer", "minimum": 1 },
+          "cpuUsagePercent": { "type": "number", "minimum": 0, "maximum": 100 },
+          "workingSetBytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "topMemoryProcesses": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["processName", "instanceCount", "cpuUsagePercent", "workingSetBytes"],
+        "properties": {
+          "processName": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "instanceCount": { "type": "integer", "minimum": 1 },
+          "cpuUsagePercent": { "type": "number", "minimum": 0, "maximum": 100 },
+          "workingSetBytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "truncated": { "type": "boolean" }
+  }
+}

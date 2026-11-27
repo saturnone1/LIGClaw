@@ -25,12 +25,15 @@ public sealed class ContentLengthMessageStream(Stream stream)
         }
 
         var header = Encoding.ASCII.GetBytes($"Content-Length: {payload.Length}\r\n\r\n");
+        var frame = GC.AllocateUninitializedArray<byte>(header.Length + payload.Length);
+        header.CopyTo(frame, 0);
+        payload.CopyTo(frame, header.Length);
         await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await stream.WriteAsync(header, cancellationToken).ConfigureAwait(false);
-            await stream.WriteAsync(payload, cancellationToken).ConfigureAwait(false);
-            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            await stream.WriteAsync(frame, CancellationToken.None).ConfigureAwait(false);
+            await stream.FlushAsync(CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {

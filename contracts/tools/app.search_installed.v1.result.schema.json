@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.search_installed.v1.result.schema.json",
+  "title": "AppSearchInstalledV1Result",
+  "description": "Bounded Start Menu application display names safe for a later app.launch request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apps", "truncated"],
+  "properties": {
+    "apps": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["displayName"],
+        "properties": {
+          "displayName": { "type": "string", "minLength": 1, "maxLength": 260 }
+        }
+      }
+    },
+    "truncated": { "type": "boolean" }
+  }
+}

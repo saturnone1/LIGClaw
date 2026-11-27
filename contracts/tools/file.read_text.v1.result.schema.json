@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.read_text.v1.result.schema.json",
+  "title": "FileReadTextV1Result",
+  "description": "Approved text content bounded to 128 KiB and never written to diagnostics or audit summaries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["text", "length", "truncated"],
+  "properties": {
+    "text": { "type": "string", "maxLength": 131072 },
+    "length": { "type": "integer", "minimum": 0, "maximum": 131072 },
+    "truncated": { "type": "boolean" }
+  }
+}

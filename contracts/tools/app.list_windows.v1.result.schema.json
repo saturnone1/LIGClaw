@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/app.list_windows.v1.result.schema.json",
+  "title": "AppListWindowsV1Result",
+  "description": "Bounded visible top-level window metadata returned by Desktop.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["windows"],
+  "properties": {
+    "windows": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["windowId", "title", "processName", "isForeground", "isMinimized"],
+        "properties": {
+          "windowId": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "maxLength": 512 },
+          "processName": { "type": "string", "maxLength": 128 },
+          "isForeground": { "type": "boolean" },
+          "isMinimized": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

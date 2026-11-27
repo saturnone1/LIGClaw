@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/explorer.get_context.v1.result.schema.json",
+  "title": "ExplorerGetContextV1Result",
+  "description": "Approved File Explorer folder and selected item paths with a strict result bound.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["folderPath", "selectedItems", "selectionTruncated"],
+  "properties": {
+    "folderPath": { "type": "string", "minLength": 3, "maxLength": 32767 },
+    "selectedItems": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "name", "isDirectory"],
+        "properties": {
+          "path": { "type": "string", "minLength": 3, "maxLength": 32767 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 260 },
+          "isDirectory": { "type": "boolean" }
+        }
+      }
+    },
+    "selectionTruncated": { "type": "boolean" }
+  }
+}

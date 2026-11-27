@@ -1,0 +1,79 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <!-- Official CI source colors. Keep these values exact. -->
+    <Color x:Key="BrandBlueColor">#002F6D</Color>
+    <Color x:Key="BrandGrayColor">#D0D3D4</Color>
+    <Color x:Key="ShadowColor">#33485F</Color>
+    <Color x:Key="DeepNavyColor">#071A33</Color>
+    <Color x:Key="SignalCyanColor">#25A7D9</Color>
+
+    <SolidColorBrush x:Key="BrandBlueBrush" Color="{StaticResource BrandBlueColor}" />
+    <SolidColorBrush x:Key="BrandBlueHoverBrush" Color="#064587" />
+    <SolidColorBrush x:Key="BrandBluePressedBrush" Color="#001F49" />
+    <SolidColorBrush x:Key="BrandGrayBrush" Color="{StaticResource BrandGrayColor}" />
+    <SolidColorBrush x:Key="DeepNavyBrush" Color="{StaticResource DeepNavyColor}" />
+    <SolidColorBrush x:Key="SignalCyanBrush" Color="{StaticResource SignalCyanColor}" />
+    <SolidColorBrush x:Key="MetalHighlightBrush" Color="#EDF1F3" />
+    <SolidColorBrush x:Key="BrandIceBrush" Color="#F3F7FB" />
+    <SolidColorBrush x:Key="CanvasBrush" Color="#F4F7FA" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SurfaceMutedBrush" Color="#EEF3F8" />
+    <SolidColorBrush x:Key="SurfaceSunkenBrush" Color="#E5ECF3" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#D8E0E8" />
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="#AAB8C7" />
+    <SolidColorBrush x:Key="DividerBrush" Color="#E4E9EF" />
+    <SolidColorBrush x:Key="FocusBrush" Color="#2C73C9" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#132238" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#52657A" />
+    <SolidColorBrush x:Key="TextOnBrandBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="InfoBrush" Color="#2867A8" />
+    <SolidColorBrush x:Key="InfoSubtleBrush" Color="#EAF3FC" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#16845B" />
+    <SolidColorBrush x:Key="SuccessSubtleBrush" Color="#E8F6F0" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#B66A0A" />
+    <SolidColorBrush x:Key="WarningSubtleBrush" Color="#FFF4E5" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#C43D4B" />
+    <SolidColorBrush x:Key="DangerSubtleBrush" Color="#FDECEF" />
+    <SolidColorBrush x:Key="InactiveBrush" Color="#8796A8" />
+    <SolidColorBrush x:Key="NavigationTextBrush" Color="#D9E5F2" />
+    <SolidColorBrush x:Key="NavigationTextMutedBrush" Color="#AFC3D9" />
+    <SolidColorBrush x:Key="NavigationHoverBrush" Color="#17477F" />
+    <SolidColorBrush x:Key="NavigationSelectedBrush" Color="#24558D" />
+    <SolidColorBrush x:Key="NavigationLogoBackdropBrush" Color="#1AFFFFFF" />
+    <SolidColorBrush x:Key="CommandHeaderBrush" Color="#FBFCFE" />
+    <SolidColorBrush x:Key="ConversationUserBrush" Color="#E7F0FA" />
+    <SolidColorBrush x:Key="OverlayScrimBrush" Color="#66071933" />
+
+    <FontFamily x:Key="AppFontFamily">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="MonoFontFamily">Cascadia Mono, Consolas</FontFamily>
+    <sys:Double x:Key="TypeDisplaySize">28</sys:Double>
+    <sys:Double x:Key="TypePageTitleSize">24</sys:Double>
+    <sys:Double x:Key="TypeSectionTitleSize">17</sys:Double>
+    <sys:Double x:Key="TypeBodySize">14</sys:Double>
+    <sys:Double x:Key="TypeCaptionSize">11</sys:Double>
+    <sys:Double x:Key="TypeEyebrowSize">10</sys:Double>
+    <sys:Double x:Key="TypeMetricSize">13</sys:Double>
+    <sys:Double x:Key="TypeBrandSize">20</sys:Double>
+    <sys:Double x:Key="TypeCommandSize">15</sys:Double>
+    <sys:Double x:Key="TypeControlSize">12</sys:Double>
+    <sys:Double x:Key="TypeActionSize">16</sys:Double>
+    <sys:Double x:Key="AppRailCompactWidth">72</sys:Double>
+    <sys:Double x:Key="AppRailExpandedWidth">216</sys:Double>
+    <sys:Double x:Key="ConversationReadingWidth">880</sys:Double>
+    <sys:Double x:Key="HeroComposerWidth">680</sys:Double>
+    <Thickness x:Key="Space1">4</Thickness>
+    <Thickness x:Key="Space2">8</Thickness>
+    <Thickness x:Key="Space3">12</Thickness>
+    <Thickness x:Key="Space4">16</Thickness>
+    <Thickness x:Key="Space5">20</Thickness>
+    <Thickness x:Key="Space6">24</Thickness>
+    <Thickness x:Key="PagePadding">28</Thickness>
+    <Thickness x:Key="PagePaddingCompact">16</Thickness>
+    <Thickness x:Key="CommandHeaderPadding">18,12</Thickness>
+    <CornerRadius x:Key="RadiusSmall">6</CornerRadius>
+    <CornerRadius x:Key="RadiusMedium">10</CornerRadius>
+    <CornerRadius x:Key="RadiusLarge">16</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+</ResourceDictionary>

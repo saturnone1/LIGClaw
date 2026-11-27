@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.open.v1.schema.json",
+  "title": "file.open.v1",
+  "description": "Opens one existing canonical file or directory with the Windows shell after approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "reason"],
+  "properties": {
+    "path": { "type": "string", "minLength": 3, "maxLength": 32767 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

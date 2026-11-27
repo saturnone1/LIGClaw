@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_power_status.v1.schema.json",
+  "title": "system.get_power_status.v1",
+  "description": "Returns a bounded Windows battery, charging, and energy-saver snapshot.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

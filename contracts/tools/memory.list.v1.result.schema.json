@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/memory.list.v1.result.schema.json",
+  "title": "MemoryListV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["memories", "truncated"],
+  "properties": {
+    "memories": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["memoryId", "kind", "key", "value", "sensitivity", "source", "updatedAtUtc"],
+        "properties": {
+          "memoryId": { "type": "string" },
+          "kind": { "type": "string" },
+          "key": { "type": "string" },
+          "value": { "type": "string" },
+          "sensitivity": { "type": "string" },
+          "source": { "type": "string" },
+          "updatedAtUtc": { "type": "string" },
+          "expiresAtUtc": { "type": "string" }
+        }
+      }
+    },
+    "truncated": { "type": "boolean" }
+  }
+}

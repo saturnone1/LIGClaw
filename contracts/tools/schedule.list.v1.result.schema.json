@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/schedule.list.v1.result.schema.json",
+  "title": "schedule.list.v1.result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jobs", "truncated"],
+  "properties": {
+    "jobs": { "type": "array", "items": { "type": "object" } },
+    "truncated": { "type": "boolean" }
+  }
+}

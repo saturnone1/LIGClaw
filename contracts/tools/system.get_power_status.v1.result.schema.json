@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/system.get_power_status.v1.result.schema.json",
+  "title": "SystemGetPowerStatusV1Result",
+  "description": "Current bounded Windows power snapshot without hardware identifiers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["providerStatus", "powerSource", "batteryPresence", "energySaverStatus"],
+  "properties": {
+    "providerStatus": { "type": "string", "enum": ["available", "unavailable"] },
+    "powerSource": { "type": "string", "enum": ["ac", "battery", "unknown"] },
+    "batteryPresence": { "type": "string", "enum": ["present", "not_present", "unknown"] },
+    "energySaverStatus": { "type": "string", "enum": ["on", "off", "unknown"] },
+    "battery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chargingStatus", "safetyStatus", "percent"],
+      "properties": {
+        "chargingStatus": { "type": "string", "enum": ["charging", "discharging", "not_charging", "unknown"] },
+        "safetyStatus": { "type": "string", "enum": ["normal", "low", "critical", "unknown"] },
+        "percent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "estimatedRuntimeSeconds": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

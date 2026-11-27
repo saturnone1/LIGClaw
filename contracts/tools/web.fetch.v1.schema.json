@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/web.fetch.v1.schema.json",
+  "title": "WebFetchV1",
+  "description": "Fetches bounded text content from an explicitly approved HTTP(S) URL.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["url", "reason"],
+  "properties": {
+    "url": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

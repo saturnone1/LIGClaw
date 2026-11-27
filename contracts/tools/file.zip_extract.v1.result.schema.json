@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/file.zip_extract.v1.result.schema.json",
+  "title": "FileZipExtractV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["extracted", "path", "entryCount"],
+  "properties": {
+    "extracted": { "type": "boolean" },
+    "path": { "type": "string" },
+    "entryCount": { "type": "integer", "minimum": 0, "maximum": 500 },
+    "undoId": { "type": "string" }
+  }
+}

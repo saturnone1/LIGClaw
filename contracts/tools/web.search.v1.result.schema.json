@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/web.search.v1.result.schema.json",
+  "title": "WebSearchV1Result",
+  "description": "Bounded untrusted text returned by the configured search endpoint.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query", "finalUrl", "statusCode", "contentType", "text", "truncated", "redirectCount"],
+  "properties": {
+    "query": { "type": "string" },
+    "finalUrl": { "type": "string" },
+    "statusCode": { "type": "integer" },
+    "contentType": { "type": "string" },
+    "text": { "type": "string" },
+    "truncated": { "type": "boolean" },
+    "redirectCount": { "type": "integer", "minimum": 0, "maximum": 5 }
+  }
+}

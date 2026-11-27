@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/agent_job.control.v1.schema.json",
+  "title": "agent_job.control.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jobId", "action", "reason"],
+  "properties": {
+    "jobId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "action": { "type": "string", "enum": ["pause", "resume", "retry_now"] },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}
