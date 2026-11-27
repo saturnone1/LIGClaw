@@ -10,7 +10,7 @@ using Point = System.Windows.Point;
 
 namespace LIGClaw.Desktop;
 
-public partial class SensitiveContextPreviewWindow : Window
+public partial class SensitiveContextPreviewWindow : Wpf.Ui.Controls.FluentWindow
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly IScreenTextRecognizer? _screenTextRecognizer;

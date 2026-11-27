@@ -14,9 +14,18 @@ import {
   type McpToolCatalogEntry,
 } from "./tools/built-in-tool-catalog.js";
 import type { DesktopToolInvoker } from "./tools/tool-shared.js";
+import {
+  CapabilityRunScope,
+  createCapabilityAgentTools,
+  createCapabilityRuntimeHooks,
+  prepareCapabilityTurn,
+  validateCapabilityRuntimeSnapshot,
+  type ValidatedCapabilityRuntimeSnapshot,
+} from "./capability-runtime-projection.js";
 import { classifyRuntimeFailure } from "./runtime-failure.js";
 import { testProviderConnection } from "./provider-connection-probe.js";
 import { detectTextToolCallFallback } from "./text-tool-call-fallback.js";
+import type { WorkflowInvoker } from "./workflow-bridge.js";
 import {
   detectMemoryLookupIntent,
   detectMemoryRememberIntent,
@@ -33,11 +42,12 @@ export const OPENAI_COMPATIBLE_PROVIDER_ID = "openai-compatible";
 
 interface ConversationRuntimeSession {
   readonly agent: AgentRuntime;
-  readonly runScope: { runId: string };
+  readonly capabilityScope: CapabilityRunScope;
+  readonly toolInvoker?: DesktopToolInvoker;
   active: boolean;
   retireAfterRun: boolean;
   lastUsed: number;
-  readonly routingKey: string;
+  readonly sessionKey: string;
 }
 
 interface RoutedProvider extends ProviderConfigureParams { readonly profileId: string; }
@@ -52,6 +62,7 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
     private readonly model?: AgentModel,
     private readonly desktopToolBridge?: DesktopToolBridge,
     private readonly providerProbe: typeof testProviderConnection = testProviderConnection,
+    private readonly workflowBridge?: WorkflowInvoker,
   ) {}
 
   configure(provider: ProviderConfigureParams): void {
@@ -75,9 +86,34 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
     return this.model !== undefined || this.provider !== undefined;
   }
 
+  createFeatureBuilderAgent(agentId: string, sessionId: string, systemPrompt: string): AgentRuntime {
+    const common = {
+      agentId,
+      conversationId: sessionId,
+      systemPrompt,
+      tools: [],
+      maxIterations: 1,
+      toolExecution: "sequential",
+    } as const;
+    if (this.model) return new AgentRuntime({ ...common, model: this.model });
+    if (this.provider) {
+      return new AgentRuntime({
+        ...common,
+        providerId: OPENAI_COMPATIBLE_PROVIDER_ID,
+        modelId: this.provider.model,
+        apiKey: this.provider.apiKey,
+        baseUrl: this.provider.baseUrl,
+      });
+    }
+    throw new Error("Model connection is not configured.");
+  }
+
   async run(request: RuntimeRunRequest, emit: RuntimeEventSink, signal: AbortSignal): Promise<void> {
+    const capabilitySnapshot = validateCapabilityRuntimeSnapshot(request.capabilitySnapshot);
+    if (capabilitySnapshot.candidates.some((candidate) => candidate.kind === "workflow") && !this.workflowBridge)
+      throw new Error("Workflow Capability projection requires the dedicated Workflow bridge.");
     const memoryRemember = detectMemoryRememberIntent(request.input);
-    if (memoryRemember && this.desktopToolBridge) {
+    if (capabilitySnapshot.candidates.length === 0 && memoryRemember && this.desktopToolBridge) {
       emit({ type: "run_started" });
       try {
         const output = await this.desktopToolBridge.invoke({
@@ -105,7 +141,7 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
       return;
     }
     const memoryLookup = detectMemoryLookupIntent(request.input);
-    if (memoryLookup && this.desktopToolBridge) {
+    if (capabilitySnapshot.candidates.length === 0 && memoryLookup && this.desktopToolBridge) {
       emit({ type: "run_started" });
       try {
         const output = await this.desktopToolBridge.invoke({
@@ -133,18 +169,27 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
     const selectedRoute = this.model ? undefined : await this.selectProvider(request, emit, signal);
     let session = this.sessions.get(request.conversationId);
     const routingKey = selectedRoute ? providerRoutingKey(selectedRoute) : this.provider ? providerRoutingKey(this.provider) : "injected-model";
-    if (session && session.routingKey !== routingKey) {
+    const sessionKey = runtimeSessionKey(routingKey, capabilitySnapshot.snapshotHash);
+    if (session?.active) {
+      if (session.sessionKey !== sessionKey) session.retireAfterRun = true;
+      throw new Error("A Cline run is already active for this conversation.");
+    }
+    if (session && session.sessionKey !== sessionKey) {
+      this.sessions.delete(request.conversationId);
+      session = undefined;
+    }
+    if (session && capabilitySnapshot.candidates.length > 0 && !history.provided) {
       this.sessions.delete(request.conversationId);
       session = undefined;
     }
     if (!session) {
       this.evictLeastRecentlyUsedSession();
-      session = this.createSession(request, history.messages, selectedRoute);
+      session = this.createSession(request, history.messages, capabilitySnapshot, selectedRoute);
       this.sessions.set(request.conversationId, session);
     } else if (history.provided) {
       session.agent.restore(history.messages);
     }
-    session.runScope.runId = request.runId;
+    session.capabilityScope.reset(request.runId);
     session.active = true;
     session.lastUsed = Date.now();
     const agent = session.agent;
@@ -178,7 +223,7 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
         bufferedText += mapped.text ?? "";
         const trimmed = bufferedText.trimStart();
         if (!trimmed) return;
-        if (!sawToolActivity && looksLikeJsonToolPayload(trimmed)) {
+        if ((!sawToolActivity || session.capabilityScope.selected) && looksLikeJsonToolPayload(trimmed)) {
           textMode = "json-candidate";
           return;
         }
@@ -198,12 +243,19 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
       completed ||= result.status === "completed";
       aborted ||= result.status === "aborted";
       failed ||= result.status === "failed";
-      if (looksLikeJsonToolPayload(bufferedText) && !sawToolActivity && result.status === "completed" && this.desktopToolBridge) {
+      if (looksLikeJsonToolPayload(bufferedText) && result.status === "completed" && session.toolInvoker) {
         const fallback = detectTextToolCallFallback(request.input, bufferedText);
         if (fallback) {
           session.retireAfterRun = true;
+          if (session.capabilityScope.selected) {
+            emit({ type: "text_delta", text: "선택된 기능에서는 텍스트 Tool fallback을 실행할 수 없습니다." });
+            sawUserFacingText = true;
+            emit({ type: "run_completed" });
+            terminalEventEmitted = true;
+          }
+          if (terminalEventEmitted) return;
           try {
-            await this.desktopToolBridge.invoke({
+            await session.toolInvoker.invoke({
               conversationId: request.conversationId,
               runId: request.runId,
               name: fallback.name,
@@ -256,27 +308,51 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
   private createSession(
     request: RuntimeRunRequest,
     initialMessages: readonly AgentMessage[],
+    capabilitySnapshot: ValidatedCapabilityRuntimeSnapshot,
     routedProvider?: ProviderConfigureParams,
   ): ConversationRuntimeSession {
-    const runScope = { runId: request.runId };
+    const capabilityScope = new CapabilityRunScope(capabilitySnapshot, request.runId);
     const scopedBridge: DesktopToolInvoker | undefined = this.desktopToolBridge
       ? {
-        invoke: (toolRequest, signal, timeoutMs) => this.desktopToolBridge!.invoke({
-          ...toolRequest,
-          conversationId: request.conversationId,
-          runId: runScope.runId,
-        }, signal, timeoutMs),
+        invoke: (toolRequest, signal, timeoutMs) => {
+          capabilityScope.assertDesktopToolAllowed(toolRequest.name);
+          const capabilityContext = capabilityScope.invocationContext;
+          const { capabilityContext: _untrustedContext, ...scopedRequest } = toolRequest;
+          return this.desktopToolBridge!.invoke({
+            ...scopedRequest,
+            conversationId: request.conversationId,
+            runId: capabilityScope.runId,
+            ...(capabilityContext ? { capabilityContext } : {}),
+          }, signal, timeoutMs);
+        },
       }
       : undefined;
+    const ordinaryTools = scopedBridge
+      ? createDesktopTools(scopedBridge, request.conversationId, request.runId, this.mcpTools)
+      : [];
+    if (capabilitySnapshot.candidates.length > 0 && !this.desktopToolBridge)
+      throw new Error("Capability selection requires the Desktop Tool bridge.");
+    const capabilityTools = this.desktopToolBridge
+      ? createCapabilityAgentTools(
+        capabilityScope,
+        this.desktopToolBridge,
+        request.conversationId,
+        ordinaryTools,
+        this.workflowBridge,
+      )
+      : [];
+    const capabilityHooks = createCapabilityRuntimeHooks(capabilityScope, ordinaryTools, capabilityTools);
     const common = {
       agentId: `ligclaw-${request.conversationId}`,
       conversationId: request.conversationId,
       systemPrompt: LIGCLAW_SYSTEM_PROMPT,
-      tools: scopedBridge
-        ? createDesktopTools(scopedBridge, request.conversationId, request.runId, this.mcpTools)
-        : [],
+      tools: [...ordinaryTools, ...capabilityTools],
+      hooks: capabilityHooks,
+      prepareTurn: ({ systemPrompt }: { readonly systemPrompt?: string }) =>
+        prepareCapabilityTurn(capabilityScope, systemPrompt),
       initialMessages,
       maxIterations: RUNTIME_LIMITS.maximumAgentIterations,
+      toolExecution: "sequential",
     } as const;
     const provider = routedProvider ?? this.provider;
     const agent = this.model
@@ -292,8 +368,16 @@ export class ClineAgentRuntimeAdapter implements AgentRuntimeAdapter {
         : undefined;
     if (!agent) throw new Error("Model connection is not configured.");
     return {
-      agent, runScope, active: false, retireAfterRun: false, lastUsed: Date.now(),
-      routingKey: provider ? providerRoutingKey(provider) : "injected-model",
+      agent,
+      capabilityScope,
+      ...(scopedBridge ? { toolInvoker: scopedBridge } : {}),
+      active: false,
+      retireAfterRun: false,
+      lastUsed: Date.now(),
+      sessionKey: runtimeSessionKey(
+        provider ? providerRoutingKey(provider) : "injected-model",
+        capabilitySnapshot.snapshotHash,
+      ),
     };
   }
 
@@ -415,6 +499,14 @@ function providerRoutingKey(provider: ProviderConfigureParams): string {
   return `${profileId}\n${provider.baseUrl}\n${provider.model}\n${secretHash}`;
 }
 
+function runtimeSessionKey(routingKey: string, capabilitySnapshotHash: string): string {
+  return createHash("sha256")
+    .update(routingKey)
+    .update("\0")
+    .update(capabilitySnapshotHash)
+    .digest("hex");
+}
+
 function fallbackReason(message: string): string {
   if (/401|인증/.test(message)) return "provider_authentication";
   if (/404|찾지 못/.test(message)) return "provider_model_not_found";
@@ -476,6 +568,69 @@ export function createDeterministicSpikeModel(): AgentModel {
         for (const part of message.content) {
           if (part.type === "text") userText = part.text;
         }
+      }
+      if (userText === "__test_builder_open__") {
+        const toolResult = request.messages
+          .flatMap((message: AgentMessage) => message.content)
+          .find((part: AgentMessage["content"][number]) =>
+            part.type === "tool-result" && part.toolName === "capability_builder_open"
+          );
+        if (!toolResult) {
+          yield {
+            type: "tool-call-delta",
+            toolCallId: "deterministic-builder-open-call",
+            toolName: "capability_builder_open",
+            input: { intent: "create" },
+          };
+          yield { type: "finish", reason: "tool-calls" };
+          return;
+        }
+        yield { type: "text-delta", text: "Feature Builder 열기 요청을 확인했습니다." };
+        yield { type: "finish", reason: "stop" };
+        return;
+      }
+      if (userText === "__test_capability_status__") {
+        const parts = request.messages.flatMap((message: AgentMessage) => message.content);
+        const selectorResult = parts.find((part: AgentMessage["content"][number]) =>
+          part.type === "tool-result" && /^cap_[0-9a-f]{24}$/.test(part.toolName)
+        );
+        if (!selectorResult) {
+          const capabilityTools = request.tools.filter(
+            (tool: { readonly name: string }) => /^cap_[0-9a-f]{24}$/.test(tool.name),
+          );
+          if (capabilityTools.length !== 1)
+            throw new Error("Deterministic Capability fixture requires exactly one projected Capability Tool.");
+          yield {
+            type: "tool-call-delta",
+            toolCallId: "deterministic-capability-select-call",
+            toolName: capabilityTools[0]!.name,
+            input: {},
+          };
+          yield { type: "finish", reason: "tool-calls" };
+          return;
+        }
+
+        const statusResult = parts.find((part: AgentMessage["content"][number]) =>
+          part.type === "tool-result" && part.toolName === "system_get_status"
+        );
+        if (!statusResult || statusResult.type !== "tool-result") {
+          yield {
+            type: "tool-call-delta",
+            toolCallId: "deterministic-capability-status-call",
+            toolName: "system_get_status",
+            input: {},
+          };
+          yield { type: "finish", reason: "tool-calls" };
+          return;
+        }
+
+        const release = typeof statusResult.output === "object" && statusResult.output !== null &&
+            "windowsRelease" in statusResult.output
+          ? String(statusResult.output.windowsRelease)
+          : "unknown";
+        yield { type: "text-delta", text: `Capability로 확인한 운영체제는 ${release}입니다.` };
+        yield { type: "finish", reason: "stop" };
+        return;
       }
       if (userText === "__test_system_status__") {
         const toolResult = request.messages

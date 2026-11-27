@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/workflow-invoke-params.schema.json",
+  "title": "WorkflowInvokeParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "workflowCallId",
+    "conversationId",
+    "runId",
+    "name",
+    "capabilityContext",
+    "idempotencyKey",
+    "deadlineUtc",
+    "input"
+  ],
+  "properties": {
+    "workflowCallId": {
+      "type": "string",
+      "pattern": "^wfinv_[0-9a-f]{48}$"
+    },
+    "conversationId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "name": {
+      "type": "string",
+      "const": "workflow.invoke.v1"
+    },
+    "capabilityContext": {
+      "$ref": "./capability-invocation-context.schema.json"
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "pattern": "^wfid_[0-9a-f]{64}$"
+    },
+    "deadlineUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "input": {
+      "type": "object",
+      "description": "Bounded model input validated again by the Desktop exact Capability input contract."
+    }
+  }
+}

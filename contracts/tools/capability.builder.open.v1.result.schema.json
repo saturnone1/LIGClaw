@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/capability.builder.open.v1.result.schema.json",
+  "title": "CapabilityBuilderOpenV1Result",
+  "description": "Acknowledges only the accepted Builder intent; the persisted requirement is never returned.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["accepted", "intent"],
+  "properties": {
+    "accepted": {
+      "type": "boolean",
+      "const": true
+    },
+    "intent": {
+      "type": "string",
+      "enum": ["create", "revise"]
+    }
+  }
+}

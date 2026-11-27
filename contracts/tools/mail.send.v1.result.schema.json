@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/mail.send.v1.result.schema.json",
+  "title": "MailSendV1Result",
+  "description": "Returns bounded Desktop-issued mail operation metadata without transport details.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operationId", "status", "draftHash"],
+  "properties": {
+    "operationId": { "type": "string", "minLength": 68, "maxLength": 68 },
+    "status": { "type": "string", "enum": ["queued", "delivered"] },
+    "draftHash": { "type": "string", "minLength": 71, "maxLength": 71 }
+  }
+}

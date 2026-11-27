@@ -16,8 +16,12 @@ public partial class ActivityView : System.Windows.Controls.UserControl
             new ActivityFilter("전체 상태", "all"),
             new ActivityFilter("완료", "succeeded"),
             new ActivityFilter("실패", "failed"),
+            new ActivityFilter("검토 필요", "attention_required"),
+            new ActivityFilter("재시작 필요", "interrupted"),
             new ActivityFilter("허용 안 함", "denied"),
             new ActivityFilter("중단", "cancelled"),
+            new ActivityFilter("정보 필요", "needs_information"),
+            new ActivityFilter("실행 중", "running"),
         };
         ActivityFilterBox.SelectedValue = "all";
         ActivitySortBox.ItemsSource = new[]
@@ -72,7 +76,7 @@ public partial class ActivityView : System.Windows.Controls.UserControl
             "name" => filtered.OrderBy(item => item.Summary, StringComparer.CurrentCultureIgnoreCase),
             _ => filtered.OrderByDescending(item => item.CreatedAtUtc),
         };
-        var items = filtered.ToArray();
+        var items = filtered.Select(ActivityListItem.Create).ToArray();
         ActivityList.ItemsSource = items;
         EmptyMessage.Text = status == "all"
             ? "아직 기록된 실행이 없습니다."
@@ -89,4 +93,21 @@ public partial class ActivityView : System.Windows.Controls.UserControl
 
     private sealed record ActivityFilter(string Label, string Status);
     private sealed record ActivitySort(string Label, string Value);
+
+    private sealed record ActivityListItem(
+        ToolActivitySummary Source,
+        string Summary,
+        string ToolDisplay,
+        string RiskDisplay,
+        string StatusDisplay,
+        string CreatedAtDisplay)
+    {
+        internal static ActivityListItem Create(ToolActivitySummary source) => new(
+            source,
+            source.Summary,
+            UserFacingText.Tool(source.ToolName),
+            UserFacingText.Risk(source.Risk),
+            source.StatusDisplay,
+            source.CreatedAtDisplay);
+    }
 }

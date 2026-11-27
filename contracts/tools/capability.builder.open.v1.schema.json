@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/capability.builder.open.v1.schema.json",
+  "title": "CapabilityBuilderOpenV1",
+  "description": "Requests the Desktop-owned Feature Builder using only a bounded create or revise intent.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["intent"],
+  "properties": {
+    "intent": {
+      "type": "string",
+      "enum": ["create", "revise"]
+    }
+  }
+}

@@ -5,6 +5,21 @@ using LIGClaw.Contracts.Generated;
 
 namespace LIGClaw.Desktop.Infrastructure.Tools;
 
+internal sealed record ToolInvocationPreflight(
+    bool Allowed,
+    string? Error = null,
+    string? AuditSummary = null)
+{
+    public static ToolInvocationPreflight Allow { get; } = new(true);
+
+    public static ToolInvocationPreflight Deny(string error, string auditSummary) =>
+        new(false, error, auditSummary);
+}
+
+internal sealed record WorkflowPreparedAuthorization(
+    bool Allowed,
+    string? Error = null);
+
 internal sealed class ToolInvocationCoordinator
 {
     private static readonly TimeSpan AlwaysGrantLifetime = TimeSpan.FromDays(30);
@@ -49,14 +64,152 @@ internal sealed class ToolInvocationCoordinator
 
     public async Task<WindowsToolExecutionResult> ExecuteAsync(
         ToolInvokeParams invocation,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        await ExecuteAsync(invocation, workflowOnlyObservation: false, cancellationToken)
+            .ConfigureAwait(false);
+
+    internal async Task<WindowsToolExecutionResult> ExecuteWorkflowObservationAsync(
+        ToolInvokeParams invocation,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteAsync(invocation, workflowOnlyObservation: true, cancellationToken)
+            .ConfigureAwait(false);
+
+    private async Task<WindowsToolExecutionResult> ExecuteAsync(
+        ToolInvokeParams invocation,
+        bool workflowOnlyObservation,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(invocation);
-        var authorization = policy.Prepare(
+        var preparation = policy.Prepare(
             invocation.ConversationId,
             invocation.RunId,
             invocation.ToolCallId,
             invocation.Risk);
+        if (!preparation.Allowed && !preparation.RequiresApproval)
+        {
+            var failure = Failure(preparation.Error ?? "이 동작을 실행할 수 없어요.");
+            await RecordExecutionAsync(
+                invocation,
+                failure,
+                "denied",
+                "작업 도구 실행 예약 정책이 요청을 거부했어요.",
+                cancellationToken).ConfigureAwait(false);
+            return failure;
+        }
+
+        return await ExecutePreparedCoreAsync(
+            invocation,
+            ToolInvocationPreflight.Allow,
+            workflowOnlyObservation,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    internal async Task<WorkflowPreparedAuthorization> AuthorizePreparedWorkflowEffectAsync(
+        ToolInvokeParams invocation,
+        IPreparedWorkflowEffect effect,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(invocation);
+        ArgumentNullException.ThrowIfNull(effect);
+        if (!StringComparer.Ordinal.Equals(invocation.Name, effect.ToolName) ||
+            !StringComparer.Ordinal.Equals(invocation.Risk, effect.Risk))
+            return new WorkflowPreparedAuthorization(false, "준비된 작업 흐름 동작과 작업 도구 요청이 일치하지 않습니다.");
+        var preparation = policy.Prepare(
+            invocation.ConversationId,
+            invocation.RunId,
+            invocation.ToolCallId,
+            invocation.Risk);
+        if (!preparation.Allowed && !preparation.RequiresApproval)
+            return new WorkflowPreparedAuthorization(false, preparation.Error ?? "작업 흐름 동작을 승인할 수 없어요.");
+        var authorization = policy.ClaimPrepared(
+            invocation.ConversationId,
+            invocation.RunId,
+            invocation.ToolCallId,
+            invocation.Risk);
+        if (!authorization.Allowed && !authorization.RequiresApproval)
+            return new WorkflowPreparedAuthorization(false, authorization.Error ?? "작업 흐름 동작을 승인할 수 없어요.");
+        if (!authorization.RequiresApproval) return new WorkflowPreparedAuthorization(authorization.Allowed);
+
+        ToolApprovalChoice choice;
+        try
+        {
+            choice = await requestApproval(effect.ApprovalPrompt, false, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            choice = ToolApprovalChoice.Deny;
+        }
+        var approved = choice == ToolApprovalChoice.AllowOnce;
+        authorization = policy.ResolveApproval(
+            invocation.ConversationId,
+            invocation.RunId,
+            invocation.ToolCallId,
+            approved);
+        await RecordApprovalAsync(
+            invocation,
+            authorization.Allowed,
+            AddCapabilityAuditScope("workflow_once", invocation.CapabilityContext),
+            "작업 흐름의 일회성 동작 승인",
+            cancellationToken).ConfigureAwait(false);
+        return authorization.Allowed
+            ? new WorkflowPreparedAuthorization(true)
+            : new WorkflowPreparedAuthorization(false, authorization.Error ?? "작업 흐름 동작을 승인하지 않았어요.");
+    }
+
+    internal async Task<WindowsToolExecutionResult> ExecutePreparedAsync(
+        ToolInvokeParams invocation,
+        ToolInvocationPreflight preflight,
+        CancellationToken cancellationToken = default) =>
+        await ExecutePreparedCoreAsync(
+            invocation,
+            preflight,
+            workflowOnlyObservation: false,
+            cancellationToken).ConfigureAwait(false);
+
+    private async Task<WindowsToolExecutionResult> ExecutePreparedCoreAsync(
+        ToolInvokeParams invocation,
+        ToolInvocationPreflight preflight,
+        bool workflowOnlyObservation,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(invocation);
+        ArgumentNullException.ThrowIfNull(preflight);
+        var authorization = policy.ClaimPrepared(
+            invocation.ConversationId,
+            invocation.RunId,
+            invocation.ToolCallId,
+            invocation.Risk);
+        if (!authorization.Allowed && !authorization.RequiresApproval)
+        {
+            var failure = Failure(authorization.Error ?? "이 동작을 실행할 수 없어요.");
+            await RecordExecutionAsync(
+                invocation,
+                failure,
+                "denied",
+                "예약된 작업 도구 실행을 이어서 처리하지 않았어요.",
+                cancellationToken).ConfigureAwait(false);
+            return failure;
+        }
+        if (!preflight.Allowed)
+        {
+            if (authorization.RequiresApproval)
+            {
+                _ = policy.ResolveApproval(
+                    invocation.ConversationId,
+                    invocation.RunId,
+                    invocation.ToolCallId,
+                    approved: false);
+            }
+            var failure = Failure(preflight.Error ?? "기능 정책에 따라 실행하지 않았어요.");
+            await RecordExecutionAsync(
+                invocation,
+                failure,
+                "denied",
+                preflight.AuditSummary ?? "기능 실행 전 정책이 요청을 거부했어요.",
+                cancellationToken).ConfigureAwait(false);
+            return failure;
+        }
+
         if (authorization.RequiresApproval)
         {
             var preview = toolHost.CreateApprovalPrompt(invocation);
@@ -103,7 +256,7 @@ internal sealed class ToolInvocationCoordinator
                 invocation.RunId,
                 invocation.ToolCallId,
                 approved);
-            var approvalScope = activeGrant is not null
+            var approvalScopeKind = activeGrant is not null
                 ? $"always:{activeGrant.Id}"
                 : choice switch
                 {
@@ -111,12 +264,18 @@ internal sealed class ToolInvocationCoordinator
                     ToolApprovalChoice.AllowConversation => "conversation",
                     _ => "once",
                 };
+            var approvalScope = AddCapabilityAuditScope(
+                approvalScopeKind,
+                invocation.CapabilityContext);
             await RecordApprovalAsync(invocation, approved, approvalScope, preview.Prompt.Action, cancellationToken).ConfigureAwait(false);
             if (!authorization.Allowed) toolHost.DiscardApproval(invocation);
 
             if (authorization.Allowed)
             {
-                var execution = await ExecuteAndRecordAsync(invocation, cancellationToken).ConfigureAwait(false);
+                var execution = await ExecuteAndRecordAsync(
+                    invocation,
+                    workflowOnlyObservation,
+                    cancellationToken).ConfigureAwait(false);
                 if (execution.Success && choice == ToolApprovalChoice.AllowConversation && !hasConversationGrant && allowAlways)
                     conversationGrants[conversationGrantKey] = 0;
                 if (execution.Success && choice == ToolApprovalChoice.AllowAlways && activeGrant is null && allowAlways)
@@ -133,14 +292,18 @@ internal sealed class ToolInvocationCoordinator
             return failure;
         }
 
-        return await ExecuteAndRecordAsync(invocation, cancellationToken).ConfigureAwait(false);
+        return await ExecuteAndRecordAsync(invocation, workflowOnlyObservation, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<WindowsToolExecutionResult> ExecuteAndRecordAsync(
         ToolInvokeParams invocation,
+        bool workflowOnlyObservation,
         CancellationToken cancellationToken)
     {
-        var execution = await toolHost.ExecuteAsync(invocation, cancellationToken).ConfigureAwait(false);
+        var execution = workflowOnlyObservation
+            ? await toolHost.ExecuteWorkflowObservationAsync(invocation, cancellationToken).ConfigureAwait(false)
+            : await toolHost.ExecuteAsync(invocation, cancellationToken).ConfigureAwait(false);
         var status = execution.Success
             ? "succeeded"
             : cancellationToken.IsCancellationRequested ? "cancelled" : "failed";
@@ -148,7 +311,7 @@ internal sealed class ToolInvocationCoordinator
             invocation,
             execution,
             status,
-            execution.ActivitySummary ?? (execution.Success ? "Windows 작업을 완료했어요." : "Windows 작업을 완료하지 못했어요."),
+            execution.ActivitySummary ?? (execution.Success ? "윈도우 작업을 완료했어요." : "윈도우 작업을 완료하지 못했어요."),
             cancellationToken).ConfigureAwait(false);
         return execution;
     }
@@ -221,9 +384,38 @@ internal sealed class ToolInvocationCoordinator
 
     private static string ComputeScopeHash(ToolInvokeParams invocation, WindowsToolApprovalPrompt prompt)
     {
-        var material = string.Join("\n", invocation.Name, invocation.Risk, prompt.GrantScope ?? string.Empty);
+        var material = string.Join(
+            "\n",
+            invocation.Name,
+            invocation.Risk,
+            prompt.GrantScope ?? string.Empty,
+            CapabilityIdentityMaterial(invocation.CapabilityContext));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material)));
     }
+
+    private static string AddCapabilityAuditScope(
+        string scope,
+        CapabilityInvocationContext? context) =>
+        $"{scope}|cap:{CapabilityIdentityDigest(context)}";
+
+    private static string CapabilityIdentityDigest(CapabilityInvocationContext? context)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(CapabilityIdentityMaterial(context)));
+        return Convert.ToHexString(bytes.AsSpan(0, 8)).ToLowerInvariant();
+    }
+
+    private static string CapabilityIdentityMaterial(CapabilityInvocationContext? context) =>
+        context is null
+            ? "none"
+            : string.Join(
+                "\n",
+                context.SnapshotHash,
+                context.ModelToolName,
+                context.CapabilityId,
+                context.Version,
+                context.ContentHash,
+                context.CatalogRevision.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                context.ConnectionBindingHash);
 
     private async Task RecordExecutionAsync(
         ToolInvokeParams invocation,

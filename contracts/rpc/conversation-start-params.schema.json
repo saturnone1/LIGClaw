@@ -34,6 +34,9 @@
         "allowFallback": { "type": "boolean" },
         "explicitSelection": { "type": "boolean" }
       }
+    },
+    "capabilitySnapshot": {
+      "$ref": "./capability-runtime-snapshot.schema.json"
     }
   }
 }

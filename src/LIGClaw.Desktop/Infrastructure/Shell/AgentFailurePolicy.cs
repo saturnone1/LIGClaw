@@ -4,8 +4,8 @@ internal static class AgentFailurePolicy
 {
     public static string ToUserMessage(string? failureCode) => failureCode switch
     {
-        "runtime.provider_authentication" => "모델 API 키 인증에 실패했습니다. 설정에서 새 키를 확인해 주세요.",
-        "runtime.provider_permission" => "현재 API 키로 이 모델을 사용할 권한이 없습니다.",
+        "runtime.provider_authentication" => "인공지능 모델 접속 키 인증에 실패했습니다. 설정에서 새 키를 확인해 주세요.",
+        "runtime.provider_permission" => "현재 접속 키로 이 모델을 사용할 권한이 없습니다.",
         "runtime.provider_model_not_found" => "설정한 모델을 공급자에서 찾지 못했습니다.",
         "runtime.provider_rate_limited" => "모델 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.",
         "runtime.provider_request_invalid" => "모델 공급자가 대화 요청 형식을 거부했습니다.",

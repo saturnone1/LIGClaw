@@ -4,8 +4,12 @@ param()
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $parseFailures = New-Object System.Collections.Generic.List[string]
+$scriptDirectories = @(
+    (Join-Path $repositoryRoot 'scripts'),
+    (Join-Path $repositoryRoot 'packaging')
+)
 
-Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'scripts') -Filter '*.ps1' -File | ForEach-Object {
+Get-ChildItem -LiteralPath $scriptDirectories -Filter '*.ps1' -File | ForEach-Object {
     $tokens = $null
     $errors = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/capability-proposal-artifact.schema.json",
+  "title": "CapabilityProposalArtifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "mediaType", "content"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "enum": [
+        "manifest.json",
+        "instructions.md",
+        "input.schema.json",
+        "settings.schema.json",
+        "workflow.json",
+        "tests.json"
+      ]
+    },
+    "mediaType": {
+      "type": "string",
+      "enum": ["application/json", "text/markdown"]
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 262144
+    }
+  }
+}

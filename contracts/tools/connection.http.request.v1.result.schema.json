@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/connection.http.request.v1.result.schema.json",
+  "title": "ConnectionHttpRequestV1Result",
+  "description": "A bounded, untrusted text response from an approved Connection request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["statusCode", "contentType", "text", "truncated", "responseBytes", "untrusted"],
+  "properties": {
+    "statusCode": { "type": "integer", "minimum": 200, "maximum": 299 },
+    "contentType": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "text": { "type": "string", "maxLength": 16000 },
+    "truncated": { "type": "boolean" },
+    "responseBytes": { "type": "integer", "minimum": 0, "maximum": 49152 },
+    "untrusted": { "type": "boolean", "const": true }
+  }
+}

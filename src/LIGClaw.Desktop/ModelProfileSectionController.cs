@@ -42,7 +42,7 @@ internal sealed class ModelProfileSectionController(IModelConnectionSettingsStor
         if (string.IsNullOrWhiteSpace(model))
             throw new SettingsSectionValidationException("사용할 모델 이름을 입력해 주세요.", ModelProfileField.Model);
         if (string.IsNullOrWhiteSpace(apiKey))
-            throw new SettingsSectionValidationException("API Key를 입력해 주세요.", ModelProfileField.ApiKey);
+            throw new SettingsSectionValidationException("접속 키를 입력해 주세요.", ModelProfileField.ApiKey);
         if (profileId.Length is < 1 or > 64 || profileId.Any(character =>
                 !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_'))
             throw new SettingsSectionValidationException("프로필 ID는 영문, 숫자, -, _만 사용해 64자 이내로 입력해 주세요.");

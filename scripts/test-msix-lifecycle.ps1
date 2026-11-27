@@ -14,8 +14,13 @@ try {
     Add-AppxPackage -Path $initial
     $first = Get-AppxPackage -Name LIGClaw -ErrorAction Stop
     Start-Process "shell:AppsFolder\$($first.PackageFamilyName)!LIGClaw"
-    Start-Sleep -Seconds 2
-    if (-not (Get-Process -Name LIGClaw.Desktop -ErrorAction SilentlyContinue)) { throw '설치된 앱이 실행되지 않았습니다.' }
+    $launchDeadline = [DateTimeOffset]::UtcNow.AddSeconds(15)
+    do {
+        $launched = Get-Process -Name LIGClaw.Desktop -ErrorAction SilentlyContinue
+        if ($launched) { break }
+        Start-Sleep -Milliseconds 250
+    } while ([DateTimeOffset]::UtcNow -lt $launchDeadline)
+    if (-not $launched) { throw '설치된 앱이 15초 안에 실행되지 않았습니다.' }
     Get-Process -Name LIGClaw.Desktop -ErrorAction SilentlyContinue | Stop-Process
 
     Add-AppxPackage -Path $update
@@ -29,4 +34,12 @@ finally {
 }
 
 if (Get-AppxPackage -Name LIGClaw -ErrorAction SilentlyContinue) { throw '패키지가 제거되지 않았습니다.' }
-[pscustomobject]@{ Install = 'passed'; Launch = 'passed'; Update = 'passed'; Remove = 'passed' }
+[pscustomobject]@{
+    Install = 'passed'
+    Launch = 'passed'
+    Update = 'passed'
+    Remove = 'passed'
+    SignatureGate = 'trusted-signature'
+    InitialVersion = $first.Version.ToString()
+    UpdatedVersion = $second.Version.ToString()
+}

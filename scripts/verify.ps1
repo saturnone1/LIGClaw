@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [string]$NpmAuditRegistry = 'https://registry.npmjs.org'
+)
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
@@ -49,7 +51,11 @@ try {
     Invoke-Checked npm run check
     Invoke-Checked npm run build
     Invoke-Checked npm test
-    Invoke-Checked npm audit --audit-level=moderate
+    # Package installation continues to use the operator-configured registry so
+    # air-gapped builds can consume an approved mirror. Advisory metadata may
+    # come from a separate audit-capable registry because some Nexus npm proxy
+    # endpoints intentionally do not implement npm's audit API.
+    Invoke-Checked npm audit --audit-level=moderate --registry=$NpmAuditRegistry
 }
 finally {
     Pop-Location

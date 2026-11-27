@@ -7,7 +7,7 @@ using ComboBoxItem = System.Windows.Controls.ComboBoxItem;
 
 namespace LIGClaw.Desktop;
 
-public partial class AgentJobEditorWindow : Window
+public partial class AgentJobEditorWindow : Wpf.Ui.Controls.FluentWindow
 {
     private readonly IAgentJobRepository _jobs;
     private readonly string _source;
@@ -73,7 +73,7 @@ public partial class AgentJobEditorWindow : Window
         }
         catch
         {
-            ValidationMessage.Text = "Agent 작업을 저장하지 못했습니다.";
+            ValidationMessage.Text = "자동 작업을 저장하지 못했습니다.";
         }
     }
 

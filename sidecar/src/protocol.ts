@@ -2,6 +2,12 @@ export const JSON_RPC_VERSION = "2.0" as const;
 export { CONTRACT_HASH, PROTOCOL_VERSION } from "./generated/contracts.js";
 export type {
   AgentEvent,
+  CapabilityProposalAnswer,
+  CapabilityProposalArtifact,
+  CapabilityProposalGenerateParams,
+  CapabilityProposalGenerateResult,
+  CapabilityProposalInventory,
+  CapabilityProposalQuestion,
   ConversationCancelParams,
   ConversationCancelResult,
   ConversationStartParams,
@@ -21,6 +27,10 @@ export type {
   ToolInvokeParams,
   ToolResultParams,
   ToolResultResult,
+  WorkflowInvokeParams,
+  WorkflowInvokeV1Result,
+  WorkflowResultParams,
+  WorkflowResultResult,
 } from "./generated/contracts.js";
 export const MAXIMUM_HEADER_BYTES = 8 * 1024;
 export const MAXIMUM_PAYLOAD_BYTES = 4 * 1024 * 1024;

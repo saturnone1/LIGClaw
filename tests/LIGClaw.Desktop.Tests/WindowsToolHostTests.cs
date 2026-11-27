@@ -110,6 +110,115 @@ public sealed class WindowsToolHostTests
         Assert.Empty(notifications.Shown);
     }
 
+    [Fact]
+    public async Task PreparesNotificationAsAnImmutableSingleUseWorkflowEffect()
+    {
+        var profile = WindowsPlatformProfile.Classify(10, 0, 22631, isWorkstation: true);
+        var notifications = new FakeNotificationService();
+        var host = new WindowsToolHost(profile, [new SystemShowNotificationTool(notifications)]);
+        var input = new Dictionary<string, object?>
+        {
+            ["title"] = "원래 제목",
+            ["message"] = "원래 내용",
+            ["reason"] = "Workflow 테스트",
+        };
+        var invocation = new ToolInvokeParams(
+            "workflow-step-1",
+            "conversation-1",
+            "run-1",
+            "system.show_notification.v1",
+            "R1",
+            input);
+
+        var preparedAt = DateTimeOffset.UtcNow;
+        var preparation = await host.PrepareWorkflowEffectAsync(invocation, preparedAt);
+        input["title"] = "변조된 제목";
+        var effect = Assert.IsAssignableFrom<IPreparedWorkflowEffect>(preparation.Effect);
+        var first = await effect.ExecuteOnceAsync(preparedAt, CancellationToken.None);
+        var second = await effect.ExecuteOnceAsync(preparedAt, CancellationToken.None);
+
+        Assert.True(preparation.Success);
+        Assert.Equal(71, effect.CanonicalPayloadHash.Length);
+        Assert.Equal(71, effect.CanonicalBindingHash.Length);
+        Assert.Contains("원래 제목", effect.ApprovalPrompt.Action, StringComparison.Ordinal);
+        Assert.Equal(WorkflowEffectDisposition.Succeeded, first.Disposition);
+        Assert.Equal(WorkflowEffectDisposition.NotStarted, second.Disposition);
+        Assert.Equal(("원래 제목", "원래 내용"), Assert.Single(notifications.Shown));
+    }
+
+    [Fact]
+    public async Task DiscardedWorkflowEffectCannotBeExecuted()
+    {
+        var profile = WindowsPlatformProfile.Classify(10, 0, 22631, isWorkstation: true);
+        var notifications = new FakeNotificationService();
+        var host = new WindowsToolHost(profile, [new SystemShowNotificationTool(notifications)]);
+        var invocation = new ToolInvokeParams(
+            "workflow-step-1",
+            "conversation-1",
+            "run-1",
+            "system.show_notification.v1",
+            "R1",
+            new Dictionary<string, object?>
+            {
+                ["title"] = "제목",
+                ["message"] = "내용",
+                ["reason"] = "Workflow 테스트",
+            });
+        var effect = Assert.IsAssignableFrom<IPreparedWorkflowEffect>(
+            (await host.PrepareWorkflowEffectAsync(invocation, DateTimeOffset.UtcNow)).Effect);
+
+        await effect.DisposeAsync();
+        var execution = await effect.ExecuteOnceAsync(DateTimeOffset.UtcNow, CancellationToken.None);
+
+        Assert.Equal(WorkflowEffectDisposition.NotStarted, execution.Disposition);
+        Assert.Empty(notifications.Shown);
+    }
+
+    [Fact]
+    public async Task WorkflowEffectUsesTheTrustedExecutionClockForItsFinalExpiryCheck()
+    {
+        var preparedAt = DateTimeOffset.Parse("2026-08-02T00:00:00Z");
+        var notifications = new FakeNotificationService();
+        var host = new WindowsToolHost(
+            WindowsPlatformProfile.Classify(10, 0, 22631, isWorkstation: true),
+            [new SystemShowNotificationTool(notifications)]);
+        var effect = Assert.IsAssignableFrom<IPreparedWorkflowEffect>(
+            (await host.PrepareWorkflowEffectAsync(
+                new ToolInvokeParams(
+                    "workflow-step-expiry",
+                    "conversation-1",
+                    "run-1",
+                    "system.show_notification.v1",
+                    "R1",
+                    new Dictionary<string, object?>
+                    {
+                        ["title"] = "제목",
+                        ["message"] = "내용",
+                        ["reason"] = "Workflow expiry 테스트",
+                    }),
+                preparedAt)).Effect);
+
+        var execution = await effect.ExecuteOnceAsync(effect.ExpiresAtUtc, CancellationToken.None);
+
+        Assert.Equal(WorkflowEffectDisposition.NotStarted, execution.Disposition);
+        Assert.Empty(notifications.Shown);
+    }
+
+    [Fact]
+    public async Task OnlyNotificationDescriptorAdvertisesWorkflowOneShotPreparation()
+    {
+        var profile = WindowsPlatformProfile.Classify(10, 0, 22631, isWorkstation: true);
+        var host = new WindowsToolHost(
+            profile,
+            [new SystemGetStatusTool(profile), new SystemShowNotificationTool(new FakeNotificationService())]);
+
+        Assert.False(host.Descriptors.Single(item => item.Name == "system.get_status.v1").SupportsWorkflowOneShot);
+        Assert.True(host.Descriptors.Single(item => item.Name == "system.show_notification.v1").SupportsWorkflowOneShot);
+        Assert.False((await host.PrepareWorkflowEffectAsync(
+            Invocation("system.get_status.v1", "R0"),
+            DateTimeOffset.UtcNow)).Success);
+    }
+
     [Theory]
     [InlineData(19045)]
     [InlineData(22631)]
@@ -244,6 +353,22 @@ public sealed class WindowsToolHostTests
         var adapter = new FakeTool(WindowsCapability.Win32DesktopShell, 1, "duplicate");
 
         Assert.Throws<InvalidOperationException>(() => new WindowsToolRegistry([adapter, adapter]));
+    }
+
+    [Fact]
+    public void DescriptorsExposeOnlyAdaptersSupportedByTheCurrentWindowsProfile()
+    {
+        var windows10 = WindowsPlatformProfile.Classify(10, 0, 19045, isWorkstation: true);
+        var host = new WindowsToolHost(
+            windows10,
+            [
+                new FakeTool(WindowsCapability.Win32DesktopShell, 1, "common"),
+                new FakeTool(WindowsCapability.Windows11Shell, 2, "windows11"),
+            ]);
+
+        var descriptor = Assert.Single(host.Descriptors);
+
+        Assert.Equal(WindowsCapability.Win32DesktopShell, descriptor.RequiredCapabilities);
     }
 
     [Fact]

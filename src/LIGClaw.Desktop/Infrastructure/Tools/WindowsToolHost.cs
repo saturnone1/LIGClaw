@@ -1,4 +1,5 @@
 using LIGClaw.Application.Agents;
+using LIGClaw.Application.Mail;
 using LIGClaw.Application.Memory;
 using LIGClaw.Application.Scheduling;
 using LIGClaw.Contracts.Generated;
@@ -11,7 +12,8 @@ internal sealed record WindowsToolExecutionResult(
     bool Success,
     IReadOnlyDictionary<string, object?> Output,
     string? Error = null,
-    string? ActivitySummary = null);
+    string? ActivitySummary = null,
+    string? ErrorCode = null);
 
 internal sealed record WindowsToolApprovalPrompt(
     string Heading,
@@ -19,7 +21,12 @@ internal sealed record WindowsToolApprovalPrompt(
     string Details,
     string Risk = "R1",
     bool CanUndo = false,
-    string? GrantScope = null);
+    string? GrantScope = null)
+{
+    public override string ToString() =>
+        $"{nameof(WindowsToolApprovalPrompt)} {{ Risk = {Risk}, CanUndo = {CanUndo}, " +
+        $"HasGrantScope = {GrantScope is not null} }}";
+}
 
 internal sealed record WindowsToolApprovalPromptResult(
     bool Success,
@@ -45,7 +52,9 @@ internal sealed record WindowsToolDescriptor(
     string Risk,
     WindowsCapability RequiredCapabilities,
     TimeSpan Timeout,
-    int Priority);
+    int Priority,
+    bool SupportsWorkflowOneShot,
+    bool WorkflowOnlyObservation);
 
 internal sealed class WindowsToolRegistry
 {
@@ -65,7 +74,9 @@ internal sealed class WindowsToolRegistry
                 adapter.Risk,
                 adapter.RequiredCapabilities,
                 adapter.Timeout,
-                adapter.Priority))
+                adapter.Priority,
+                adapter is IWorkflowOneShotToolAdapter,
+                adapter is IWorkflowOnlyObservationToolAdapter))
             .OrderBy(descriptor => descriptor.Name, StringComparer.Ordinal)
             .ThenByDescending(descriptor => descriptor.Priority)
             .ToArray();
@@ -83,6 +94,7 @@ internal sealed class WindowsToolRegistry
 
 internal sealed class WindowsToolHost
 {
+    private static readonly TimeSpan WorkflowPreparationLifetime = TimeSpan.FromMinutes(2);
     private readonly WindowsPlatformProfile _platform;
     private readonly WindowsToolRegistry _registry;
     private readonly MemoryArgumentResolver? _memoryArguments;
@@ -98,7 +110,13 @@ internal sealed class WindowsToolHost
         IAgentJobRepository? agentJobs = null,
         Func<ILocalSubagentOrchestrator?>? getSubagentOrchestrator = null,
         Func<McpConnectionSettings?>? loadMcpSettings = null,
-        Func<McpCallParams, CancellationToken, Task<McpCallResult>>? callMcp = null)
+        Func<McpCallParams, CancellationToken, Task<McpCallResult>>? callMcp = null,
+        IConnectionHttpExecutionResolver? connectionHttpResolver = null,
+        IMailGatewayExecutionResolver? mailGatewayResolver = null,
+        IMailOutboxRepository? mailOutbox = null,
+        MailGatewayWireClient? mailGatewayWireClient = null,
+        ISmtpExecutionResolver? smtpResolver = null,
+        SmtpWireClient? smtpWireClient = null)
     {
         _platform = platform;
         _memoryArguments = memories is null ? null : new MemoryArgumentResolver(memories);
@@ -145,6 +163,7 @@ internal sealed class WindowsToolHost
             new WebSearchTool(webClient, webSearchSettings.Load),
             new BrowserOpenTool(edgeSessions),
             new BrowserSnapshotTool(edgeSessions),
+            new MailCreateDraftTool(),
         };
         if (undoJournal is not null)
         {
@@ -183,21 +202,54 @@ internal sealed class WindowsToolHost
             defaultAdapters.Add(new SubagentRunTool(getSubagentOrchestrator));
         if (loadMcpSettings is not null && callMcp is not null)
             defaultAdapters.Add(new McpReadTool(loadMcpSettings, callMcp));
+        if (connectionHttpResolver is not null)
+            defaultAdapters.Add(new ConnectionHttpRequestTool(connectionHttpResolver));
+        IWorkflowOneShotToolAdapter? mailGatewaySend =
+            mailGatewayResolver is not null && mailOutbox is not null && mailGatewayWireClient is not null
+                ? new MailSendTool(mailGatewayResolver, mailOutbox, mailGatewayWireClient)
+                : null;
+        IWorkflowOneShotToolAdapter? smtpSend =
+            smtpResolver is not null && mailOutbox is not null && smtpWireClient is not null
+                ? new SmtpMailSendTool(smtpResolver, mailOutbox, smtpWireClient)
+                : null;
+        if (mailGatewaySend is not null && smtpSend is not null)
+            defaultAdapters.Add(new CompositeMailSendTool(mailGatewaySend, smtpSend));
+        else if (mailGatewaySend is not null)
+            defaultAdapters.Add(mailGatewaySend);
+        else if (smtpSend is not null)
+            defaultAdapters.Add(smtpSend);
         _registry = new WindowsToolRegistry(adapters ?? defaultAdapters);
     }
 
-    public IReadOnlyList<WindowsToolDescriptor> Descriptors => _registry.Descriptors;
+    public IReadOnlyList<WindowsToolDescriptor> Descriptors => _registry.Descriptors
+        .Where(descriptor => _platform.Supports(descriptor.RequiredCapabilities))
+        .ToArray();
 
     public async Task<WindowsToolExecutionResult> ExecuteAsync(
         ToolInvokeParams invocation,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCoreAsync(invocation, allowWorkflowOnlyObservation: false, cancellationToken)
+            .ConfigureAwait(false);
+
+    internal async Task<WindowsToolExecutionResult> ExecuteWorkflowObservationAsync(
+        ToolInvokeParams invocation,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCoreAsync(invocation, allowWorkflowOnlyObservation: true, cancellationToken)
+            .ConfigureAwait(false);
+
+    private async Task<WindowsToolExecutionResult> ExecuteCoreAsync(
+        ToolInvokeParams invocation,
+        bool allowWorkflowOnlyObservation,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(invocation);
         var adapter = FindAdapter(invocation);
         if (adapter is null)
-            return Failure("이 Windows 버전에서 사용할 수 없는 기능이에요.");
+            return Failure("이 윈도우 버전에서 사용할 수 없는 기능이에요.");
+        if (adapter is IWorkflowOnlyObservationToolAdapter && !allowWorkflowOnlyObservation)
+            return Failure("이 기능은 검증된 작업 흐름 안에서만 사용할 수 있어요.");
         if (!StringComparer.Ordinal.Equals(adapter.Risk, invocation.Risk))
-            return Failure("Tool 위험 등급이 Desktop 정책과 일치하지 않습니다.");
+            return Failure("작업 도구의 위험 수준이 앱 정책과 일치하지 않습니다.");
 
         try
         {
@@ -214,15 +266,15 @@ internal sealed class WindowsToolHost
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return Failure("Tool 실행을 중단했어요.");
+            return Failure("작업 도구 실행을 중단했어요.");
         }
         catch (OperationCanceledException)
         {
-            return Failure("Tool 실행 제한 시간을 초과했어요.");
+            return Failure("작업 도구 실행 제한 시간을 초과했어요.");
         }
         catch (Exception)
         {
-            return Failure("Windows 기능을 실행하지 못했어요.");
+            return Failure("윈도우 기능을 실행하지 못했어요.");
         }
     }
 
@@ -231,9 +283,9 @@ internal sealed class WindowsToolHost
         ArgumentNullException.ThrowIfNull(invocation);
         var adapter = FindAdapter(invocation);
         if (adapter is null)
-            return new WindowsToolApprovalPromptResult(false, Error: "이 Windows 버전에서 사용할 수 없는 기능이에요.");
+            return new WindowsToolApprovalPromptResult(false, Error: "이 윈도우 버전에서 사용할 수 없는 기능이에요.");
         if (!StringComparer.Ordinal.Equals(adapter.Risk, invocation.Risk))
-            return new WindowsToolApprovalPromptResult(false, Error: "Tool 위험 등급이 Desktop 정책과 일치하지 않습니다.");
+            return new WindowsToolApprovalPromptResult(false, Error: "작업 도구의 위험 수준이 앱 정책과 일치하지 않습니다.");
         try
         {
             var resolution = _memoryArguments?.ResolveAsync(invocation.Input, CancellationToken.None).GetAwaiter().GetResult()
@@ -258,6 +310,38 @@ internal sealed class WindowsToolHost
         catch (Exception)
         {
             return new WindowsToolApprovalPromptResult(false, Error: "실행할 동작을 확인하지 못했어요.");
+        }
+    }
+
+    public async Task<WorkflowEffectPreparationResult> PrepareWorkflowEffectAsync(
+        ToolInvokeParams invocation,
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(invocation);
+        var adapter = FindAdapter(invocation);
+        if (adapter is not IWorkflowOneShotToolAdapter workflowAdapter)
+            return new WorkflowEffectPreparationResult(false, Error: "작업 흐름의 일회성 실행 준비를 지원하지 않는 작업 도구예요.");
+        if (!StringComparer.Ordinal.Equals(adapter.Risk, invocation.Risk))
+            return new WorkflowEffectPreparationResult(false, Error: "작업 도구의 위험 수준이 앱 정책과 일치하지 않습니다.");
+        try
+        {
+            return await workflowAdapter.PrepareWorkflowEffectAsync(
+                invocation,
+                nowUtc,
+                WorkflowPreparationLifetime,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return new WorkflowEffectPreparationResult(
+                false,
+                Error: "작업 흐름 동작 준비를 중단했어요.",
+                ErrorCode: "workflow.cancelled");
+        }
+        catch (Exception)
+        {
+            return new WorkflowEffectPreparationResult(false, Error: "작업 흐름 동작을 안전하게 준비하지 못했어요.");
         }
     }
 

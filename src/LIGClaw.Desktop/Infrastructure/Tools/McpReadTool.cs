@@ -22,7 +22,7 @@ internal sealed class McpReadTool(
         var argumentPreview = JsonSerializer.Serialize(arguments);
         if (argumentPreview.Length > 4_000) argumentPreview = string.Concat(argumentPreview.AsSpan(0, 4_000), "…");
         return new WindowsToolApprovalPrompt(
-            "외부 MCP 서버에 요청할까요?",
+            "외부 지식 도구 서버에 요청할까요?",
             $"{settings.DisplayName}의 {toolName} 도구를 호출합니다.",
             $"서버: {settings.Url}\n도구: {toolName}\n요청 이유: {reason}\n전송 인자: {argumentPreview}\n\n외부 서버의 결과는 신뢰할 수 없는 콘텐츠로 처리됩니다.",
             "R3");
@@ -34,10 +34,10 @@ internal sealed class McpReadTool(
     {
         if (!TryRead(input, out var connectionId, out var toolName, out var arguments, out _) ||
             !TryAuthorize(connectionId, toolName, out var settings))
-            return Failure("허용된 읽기 전용 MCP 도구가 아니에요.");
+            return Failure("허용된 읽기 전용 외부 지식 도구가 아니에요.");
         var result = await call(new McpCallParams(connectionId, toolName, arguments), cancellationToken)
             .ConfigureAwait(false);
-        if (result.IsError) return Failure("MCP 서버가 요청 실패를 반환했어요.");
+        if (result.IsError) return Failure("외부 지식 도구 서버가 요청 실패를 반환했어요.");
         return new WindowsToolExecutionResult(
             true,
             new Dictionary<string, object?>

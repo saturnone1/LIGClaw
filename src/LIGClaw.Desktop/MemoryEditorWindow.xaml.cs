@@ -7,7 +7,7 @@ using ComboBoxItem = System.Windows.Controls.ComboBoxItem;
 
 namespace LIGClaw.Desktop;
 
-public partial class MemoryEditorWindow : Window
+public partial class MemoryEditorWindow : Wpf.Ui.Controls.FluentWindow
 {
     private readonly IMemoryRepository _memories;
 
@@ -54,7 +54,7 @@ public partial class MemoryEditorWindow : Window
             kind, KeyBox.Text.Trim(), ValueBox.Text.Trim(), sensitivity, "local-management", expiry);
         if (!PersonalMemoryPolicy.IsValid(draft, now))
         {
-            ValidationMessage.Text = "입력 길이와 만료일을 확인해 주세요. 비밀번호·API 키·토큰은 기억에 저장할 수 없습니다.";
+            ValidationMessage.Text = "입력 길이와 만료일을 확인해 주세요. 비밀번호·접속 키·토큰은 기억에 저장할 수 없습니다.";
             return;
         }
         try

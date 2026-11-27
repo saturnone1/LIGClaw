@@ -19,7 +19,7 @@ internal sealed class SubagentRunTool(Func<ILocalSubagentOrchestrator?> getOrche
         if (parsed is null) return null;
         var tasks = string.Join("\n", parsed.Tasks.Select((task, index) => $"{index + 1}. {task.Title}: {task.Prompt}"));
         return new WindowsToolApprovalPrompt(
-            "로컬 하위 Agent를 실행할까요?",
+            "이 PC에서 하위 도우미를 실행할까요?",
             $"최대 {parsed.Tasks.Count}개 로컬 모델 작업을 병렬 실행합니다.",
             $"{tasks}\n\n권한 상한: {parsed.MaxRisk}\n작업별 최대 실행: {parsed.MaxRuntimeSeconds}초\n결과 상한: {parsed.ResultMaxCharacters:N0}자\n\n각 Windows 동작은 실행 시점에 별도 정책과 승인을 통과합니다.");
     }
@@ -29,9 +29,9 @@ internal sealed class SubagentRunTool(Func<ILocalSubagentOrchestrator?> getOrche
         CancellationToken cancellationToken)
     {
         var context = ReadDesktopContext(input);
-        if (context is null) return Failure("하위 Agent 작업 정보가 올바르지 않습니다.");
+        if (context is null) return Failure("하위 도우미 작업 정보가 올바르지 않습니다.");
         var orchestrator = getOrchestrator();
-        if (orchestrator is null) return Failure("하위 Agent 실행 서비스가 준비되지 않았습니다.");
+        if (orchestrator is null) return Failure("하위 도우미 실행 기능이 준비되지 않았습니다.");
         try
         {
             var result = await orchestrator.ExecuteAsync(context, cancellationToken).ConfigureAwait(false);
@@ -52,15 +52,15 @@ internal sealed class SubagentRunTool(Func<ILocalSubagentOrchestrator?> getOrche
                     ["succeeded"] = succeeded,
                     ["failed"] = result.Tasks.Count - succeeded,
                 },
-                ActivitySummary: $"로컬 하위 Agent {result.Tasks.Count}개를 실행했어요.");
+                ActivitySummary: $"이 PC에서 하위 도우미 {result.Tasks.Count}개를 실행했어요.");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return Failure("부모 요청이 중단되어 하위 Agent도 중단했어요.");
+            return Failure("원래 요청이 중단되어 하위 도우미도 중단했어요.");
         }
         catch
         {
-            return Failure("로컬 하위 Agent 작업을 완료하지 못했어요.");
+            return Failure("이 PC의 하위 도우미 작업을 완료하지 못했어요.");
         }
     }
 

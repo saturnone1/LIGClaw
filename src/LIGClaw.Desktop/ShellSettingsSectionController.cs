@@ -51,7 +51,7 @@ internal sealed class ShellSettingsSectionController(
         }
         catch (Exception)
         {
-            failures.Add("Windows 자동 실행 설정을 저장하지 못했어요.");
+            failures.Add("윈도우 자동 실행 설정을 저장하지 못했어요.");
         }
         return new ShellSettingsSaveResult(shortcut, available, failures);
     }

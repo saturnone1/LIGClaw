@@ -5,18 +5,39 @@ using System.IO.Pipes;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
+using LIGClaw.Application.Capabilities;
 using LIGClaw.Contracts.Generated;
 using LIGClaw.Contracts.Protocol;
+using LIGClaw.Domain;
 
 namespace LIGClaw.Desktop.Infrastructure.Sidecar;
 
-public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
+public sealed class SidecarSupervisor : IConversationSidecar, IFeatureBuilderRuntimeClient, IAsyncDisposable
 {
+    private static readonly IReadOnlyList<string> RequiredCapabilities = Array.AsReadOnly(
+    [
+        "health.ping",
+        "conversation.start",
+        "conversation.cancel",
+        "agent.events",
+        "provider.configure",
+        "provider.test",
+        "mcp.configure",
+        "mcp.status",
+        "mcp.call",
+        "tool.invoke",
+        "tool.result",
+        "capability.runtime.snapshot.v2",
+        "capability.proposal.generate",
+        "workflow.invoke",
+        "workflow.result",
+        "workflow.runtime.v1",
+        "runtime.cline.0.0.65",
+    ]);
     private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan HeartbeatTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan StableRunThreshold = TimeSpan.FromSeconds(30);
-    private const int MaximumDiagnosticLength = 2_048;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ConcurrentDictionary<string, long> _eventSequences = new();
     private readonly object _sync = new();
@@ -29,6 +50,7 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
     public event EventHandler<string>? DiagnosticMessage;
     public event EventHandler<AgentEvent>? AgentEventReceived;
     public event EventHandler<ToolInvokeParams>? ToolInvocationReceived;
+    public event EventHandler<WorkflowInvokeParams>? WorkflowInvocationReceived;
 
     public void Start()
     {
@@ -53,10 +75,18 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
         string runtime,
         IReadOnlyList<IReadOnlyDictionary<string, object?>>? history = null,
         CancellationToken cancellationToken = default,
-        IReadOnlyDictionary<string, object?>? providerRouting = null) =>
+        IReadOnlyDictionary<string, object?>? providerRouting = null,
+        LIGClaw.Contracts.Generated.CapabilityRuntimeSnapshot? capabilitySnapshot = null) =>
         GetConnectedClient().InvokeAsync<ConversationStartResult>(
             "conversation.start",
-            new ConversationStartParams(conversationId, runId, input, runtime, history, providerRouting),
+            new ConversationStartParams(
+                conversationId,
+                runId,
+                input,
+                runtime,
+                history,
+                providerRouting,
+                capabilitySnapshot),
             cancellationToken);
 
     public Task<ConversationCancelResult> CancelConversationAsync(
@@ -98,6 +128,77 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
         CancellationToken cancellationToken = default) =>
         GetConnectedClient().InvokeAsync<ToolResultResult>("tool.result", result, cancellationToken);
 
+    public Task<WorkflowResultResult> SubmitWorkflowResultAsync(
+        WorkflowResultParams result,
+        CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<WorkflowResultResult>("workflow.result", result, cancellationToken);
+
+    public Task<CapabilityProposalGenerateResult> GenerateCapabilityProposalAsync(
+        CapabilityProposalGenerateParams request,
+        CancellationToken cancellationToken = default) =>
+        GetConnectedClient().InvokeAsync<CapabilityProposalGenerateResult>(
+            "capability.proposal.generate",
+            request,
+            cancellationToken);
+
+    public async Task<FeatureBuilderRuntimeResult> GenerateAsync(
+        FeatureBuilderRuntimeRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var result = await GenerateCapabilityProposalAsync(
+            new CapabilityProposalGenerateParams(
+                request.SchemaVersion,
+                request.GenerationId,
+                request.RequestHash.Value,
+                request.SessionId,
+                request.SessionRevision,
+                request.InventoryHash.Value,
+                request.DeadlineUtc,
+                request.Requirement,
+                request.Answers.Select(answer => new CapabilityProposalAnswer(
+                    answer.QuestionId,
+                    answer.Value)).ToArray(),
+                new CapabilityProposalInventory(
+                    1,
+                    request.Inventory.Tools,
+                    request.Inventory.ConnectionKinds,
+                    request.Inventory.CapabilityIds)),
+            cancellationToken).ConfigureAwait(false);
+
+        return new FeatureBuilderRuntimeResult(
+            checked((int)result.SchemaVersion),
+            result.GenerationId,
+            CapabilityContentHash.Parse(result.RequestHash),
+            result.SessionId,
+            result.SessionRevision,
+            CapabilityContentHash.Parse(result.InventoryHash),
+            result.DeadlineUtc,
+            result.Outcome switch
+            {
+                "needs_information" => FeatureBuilderRuntimeOutcome.NeedsInformation,
+                "proposal" => FeatureBuilderRuntimeOutcome.Proposal,
+                "refused" => FeatureBuilderRuntimeOutcome.Refused,
+                _ => throw new InvalidDataException("Sidecar returned an unsupported Capability proposal outcome."),
+            },
+            result.Questions?.Select(question => new FeatureBuilderQuestion(
+                question.QuestionId,
+                question.Prompt,
+                question.AnswerKind switch
+                {
+                    "text" => FeatureBuilderAnswerKind.Text,
+                    "single_choice" => FeatureBuilderAnswerKind.SingleChoice,
+                    _ => throw new InvalidDataException("Sidecar returned an unsupported Feature Builder answer kind."),
+                },
+                question.Choices ?? [])).ToArray(),
+            result.Artifacts?.Select(artifact => new FeatureBuilderRawProposalArtifact(
+                artifact.Path,
+                artifact.MediaType,
+                artifact.Content)).ToArray(),
+            result.Limitations?.ToArray(),
+            result.RefusalCode);
+    }
+
     private async Task SuperviseAsync(CancellationToken cancellationToken)
     {
         var consecutiveFailures = 0;
@@ -127,10 +228,14 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
                 {
                     consecutiveFailures++;
                 }
-                PublishDiagnostic($"Sidecar attempt failed: {exception.Message}");
+                PublishDiagnostic($"Sidecar attempt failed: {exception.GetType().Name}");
                 if (consecutiveFailures >= 5)
                 {
                     Publish(SidecarState.Faulted, "Sidecar entered crash-loop protection. Retrying slowly.");
+                }
+                else
+                {
+                    Publish(SidecarState.Restarting, "Agent sidecar disconnected. Restarting.");
                 }
             }
 
@@ -159,6 +264,7 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
 
         var stdout = DrainAsync(process.StandardOutput, "sidecar", cancellationToken);
         var stderr = DrainAsync(process.StandardError, "sidecar error", cancellationToken);
+        var connected = false;
 
         try
         {
@@ -167,7 +273,7 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
                 .ConfigureAwait(false);
 
             await using var client = new RpcClient(pipe);
-            client.NotificationReceived += Client_NotificationReceived;
+            client.NotificationReceived += HandleNotification;
             var hostVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.1.0";
             var initialized = await client.InvokeAsync<InitializeResult>(
                 "initialize",
@@ -180,6 +286,7 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
 
             ValidateHandshake(initialized);
             lock (_sync) _client = client;
+            connected = true;
             Publish(SidecarState.Connected, $"Agent sidecar {initialized.SidecarVersion} connected.");
 
             while (!cancellationToken.IsCancellationRequested && !process.HasExited)
@@ -203,6 +310,8 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
                 if (ReferenceEquals(_process, process)) _process = null;
                 _client = null;
             }
+            if (connected && !cancellationToken.IsCancellationRequested)
+                Publish(SidecarState.Restarting, "Agent sidecar disconnected. Restarting.");
 
             TryTerminate(process);
             await Task.WhenAll(IgnoreCancellation(stdout), IgnoreCancellation(stderr)).ConfigureAwait(false);
@@ -217,7 +326,7 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
         }
     }
 
-    private void Client_NotificationReceived(object? sender, RpcNotification notification)
+    internal void HandleNotification(object? sender, RpcNotification notification)
     {
         if (notification.Params is null) return;
         try
@@ -235,13 +344,28 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
                 ToolInvocationReceived?.Invoke(this, invocation);
                 return;
             }
+            if (StringComparer.Ordinal.Equals(notification.Method, "workflow.invoke"))
+            {
+                var invocation = notification.Params.Value.Deserialize<WorkflowInvokeParams>(
+                    ContentLengthMessageStream.SerializerOptions)
+                    ?? throw new InvalidDataException("Workflow invocation was empty.");
+                if (!IsExactIdentifier(invocation.WorkflowCallId, "wfinv_", 48) ||
+                    !IsExactIdentifier(invocation.IdempotencyKey, "wfid_", 64) ||
+                    string.IsNullOrWhiteSpace(invocation.ConversationId) ||
+                    string.IsNullOrWhiteSpace(invocation.RunId) ||
+                    !StringComparer.Ordinal.Equals(invocation.Name, "workflow.invoke.v1") ||
+                    invocation.CapabilityContext is null || invocation.Input is null)
+                    throw new InvalidDataException("Workflow invocation fields were invalid.");
+                WorkflowInvocationReceived?.Invoke(this, invocation);
+                return;
+            }
             if (!StringComparer.Ordinal.Equals(notification.Method, "agent.event")) return;
             var agentEvent = notification.Params.Value.Deserialize<AgentEvent>(ContentLengthMessageStream.SerializerOptions)
                 ?? throw new InvalidDataException("Agent event was empty.");
             if (string.IsNullOrWhiteSpace(agentEvent.ConversationId) ||
                 string.IsNullOrWhiteSpace(agentEvent.RunId) ||
                 agentEvent.Sequence < 0 ||
-                agentEvent.Type is not ("run_started" or "text_delta" or "run_completed" or "run_cancelled" or "run_failed"))
+                agentEvent.Type is not ("run_started" or "routing_changed" or "text_delta" or "run_completed" or "run_cancelled" or "run_failed"))
                 throw new InvalidDataException("Agent event fields were invalid.");
             var expected = _eventSequences.TryGetValue(agentEvent.RunId, out var last) ? last + 1 : 0;
             if (agentEvent.Sequence != expected)
@@ -256,7 +380,7 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
         }
         catch (Exception exception)
         {
-            PublishDiagnostic($"Ignored invalid Sidecar notification: {exception.Message}");
+            PublishDiagnostic($"Ignored invalid Sidecar notification: {exception.GetType().Name}");
         }
     }
 
@@ -302,24 +426,39 @@ public sealed class SidecarSupervisor : IConversationSidecar, IAsyncDisposable
         throw new FileNotFoundException("Sidecar build was not found. Run scripts/verify.ps1 first.");
     }
 
-    private static void ValidateHandshake(InitializeResult result)
+    internal static void ValidateHandshake(InitializeResult result)
     {
         if (!StringComparer.Ordinal.Equals(result.ProtocolVersion, ProtocolConstants.ProtocolVersion))
             throw new InvalidDataException($"Unsupported sidecar protocol version '{result.ProtocolVersion}'.");
         if (!StringComparer.Ordinal.Equals(result.ContractHash, ProtocolConstants.ContractHash))
             throw new InvalidDataException("Desktop and sidecar contract hashes do not match.");
+
+        var advertisedCapabilities = new HashSet<string>(result.Capabilities ?? [], StringComparer.Ordinal);
+        var missingCapabilities = RequiredCapabilities
+            .Where(capability => !advertisedCapabilities.Contains(capability))
+            .ToArray();
+        if (missingCapabilities.Length > 0)
+        {
+            throw new InvalidDataException(
+                $"Sidecar is missing required capabilities: {string.Join(", ", missingCapabilities)}.");
+        }
     }
+
+    private static bool IsExactIdentifier(string value, string prefix, int hexadecimalLength) =>
+        value is not null && value.Length == prefix.Length + hexadecimalLength &&
+        value.StartsWith(prefix, StringComparison.Ordinal) &&
+        value.AsSpan(prefix.Length).ContainsAnyExcept("0123456789abcdef") == false;
 
     private async Task DrainAsync(StreamReader reader, string source, CancellationToken cancellationToken)
     {
+        var reportedSuppression = false;
         while (!cancellationToken.IsCancellationRequested)
         {
             var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
             if (line is null) return;
-            var safeLine = line.Length <= MaximumDiagnosticLength
-                ? line
-                : string.Concat(line.AsSpan(0, MaximumDiagnosticLength), "… [truncated]");
-            PublishDiagnostic($"{source}: {safeLine}");
+            if (reportedSuppression) continue;
+            reportedSuppression = true;
+            PublishDiagnostic($"{source}: output suppressed by diagnostic content policy.");
         }
     }
 

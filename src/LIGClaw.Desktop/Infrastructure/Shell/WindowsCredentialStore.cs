@@ -4,6 +4,20 @@ namespace LIGClaw.Desktop.Infrastructure.Shell;
 
 internal static class WindowsCredentialStore
 {
+    public static bool Exists(string target)
+    {
+        if (!CredRead(target, 1, 0, out var pointer)) return false;
+        try
+        {
+            var credential = Marshal.PtrToStructure<Credential>(pointer);
+            return credential.CredentialBlob != nint.Zero && credential.CredentialBlobSize > 0;
+        }
+        finally
+        {
+            CredFree(pointer);
+        }
+    }
+
     public static string? Read(string target)
     {
         if (!CredRead(target, 1, 0, out var pointer)) return null;

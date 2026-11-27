@@ -27,7 +27,7 @@ internal sealed class McpSettingsSectionController(
         if (!input.UseSampleRag && string.IsNullOrWhiteSpace(input.Url))
         {
             if (input.Enabled)
-                throw new SettingsSectionValidationException("사용할 MCP 서버 주소를 입력해 주세요.");
+                throw new SettingsSectionValidationException("사용할 외부 지식 도구 서버 주소를 입력해 주세요.");
             return null;
         }
 
@@ -49,7 +49,7 @@ internal sealed class McpSettingsSectionController(
         if (input.UseSampleRag && allowedTools.Length == 0)
             allowedTools = ["search_knowledge", "get_document"];
         if (allowedTools.Length > 32 || allowedTools.Any(name => name.Length > 128))
-            throw new SettingsSectionValidationException("허용할 MCP 도구는 이름 32개까지 입력할 수 있어요.");
+            throw new SettingsSectionValidationException("허용할 외부 지식 도구는 이름 32개까지 입력할 수 있어요.");
         var token = string.IsNullOrWhiteSpace(input.AuthorizationToken)
             ? existing?.AuthorizationToken
             : input.AuthorizationToken;

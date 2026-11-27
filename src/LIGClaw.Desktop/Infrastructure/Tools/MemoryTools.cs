@@ -19,7 +19,7 @@ internal sealed class MemoryRememberTool(IMemoryRepository memories) : IWindowsT
         return new WindowsToolApprovalPrompt(
             "이 내용을 기억할까요?",
             "개인 기억 하나를 이 PC에 저장하거나 갱신합니다.",
-            $"종류: {draft.Kind}\n키: {draft.Key}\n내용: {draft.Value}\n민감도: {draft.Sensitivity}\n만료: {draft.ExpiresAtUtc?.ToLocalTime().ToString("yyyy-MM-dd") ?? "없음"}\n\nAPI 키와 비밀번호 같은 인증정보는 저장하지 않습니다.",
+            $"종류: {draft.Kind}\n키: {draft.Key}\n내용: {draft.Value}\n민감도: {draft.Sensitivity}\n만료: {draft.ExpiresAtUtc?.ToLocalTime().ToString("yyyy-MM-dd") ?? "없음"}\n\n접속 키와 비밀번호 같은 로그인 정보는 저장하지 않습니다.",
             GrantScope: StableGrantScope(input));
     }
 

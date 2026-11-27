@@ -5,7 +5,7 @@ using LIGClaw.Domain;
 
 namespace LIGClaw.Desktop;
 
-public partial class AgentJobHistoryWindow : Window
+public partial class AgentJobHistoryWindow : Wpf.Ui.Controls.FluentWindow
 {
     internal AgentJobHistoryWindow(ScheduledAgentJob job, IReadOnlyList<AgentJobRunRecord> runs)
     {

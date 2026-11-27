@@ -287,7 +287,7 @@ public sealed class ConversationStoreTests : IDisposable
             var command = connection.CreateCommand();
             command.CommandText =
                 "CREATE TABLE schema_migrations(version INTEGER NOT NULL PRIMARY KEY, applied_at_utc TEXT NOT NULL); " +
-                "INSERT INTO schema_migrations VALUES (12, '2026-08-01T00:00:00.0000000+00:00');";
+                "INSERT INTO schema_migrations VALUES (22, '2026-08-01T00:00:00.0000000+00:00');";
             _ = await command.ExecuteNonQueryAsync();
         }
 

@@ -1,3 +1,4 @@
+using LIGClaw.Application.Capabilities;
 using LIGClaw.Application.Tools;
 using LIGClaw.Desktop.Infrastructure.Shell;
 
@@ -50,5 +51,32 @@ public sealed class ConversationRunControllerTests
         Assert.False(controller.CompleteActiveRun());
         Assert.False(controller.IsRunning);
         Assert.False(controller.IsCancelling);
+    }
+
+    [Fact]
+    public void CapabilityAuthorizationUsesTheSameRunLifecycle()
+    {
+        var ids = new Queue<string>(["conversation", "run"]);
+        var controller = new ConversationRunController(new ToolInvocationPolicy(), ids.Dequeue);
+        var identity = controller.BeginRun();
+        controller.BindCapabilitySnapshot(
+            identity.ConversationId,
+            identity.RunId,
+            CapabilityRuntimeSnapshot.Empty);
+
+        Assert.True(controller.AuthorizeCapabilityTool(
+            identity.ConversationId,
+            identity.RunId,
+            "system.get_status.v1",
+            "R0",
+            null).Allowed);
+
+        Assert.True(controller.CompleteActiveRun());
+        Assert.Equal("capability.run.not_active", controller.AuthorizeCapabilityTool(
+            identity.ConversationId,
+            identity.RunId,
+            "system.get_status.v1",
+            "R0",
+            null).ErrorCode);
     }
 }

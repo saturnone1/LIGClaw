@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/workflow-result-params.schema.json",
+  "title": "WorkflowResultParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workflowCallId", "success"],
+  "properties": {
+    "workflowCallId": {
+      "type": "string",
+      "pattern": "^wfinv_[0-9a-f]{48}$"
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "output": {
+      "$ref": "./workflow-invoke-v1-result.schema.json"
+    },
+    "error": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._][a-z0-9]+)+$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "success": { "const": true } },
+        "required": ["success"]
+      },
+      "then": {
+        "required": ["output"],
+        "not": { "required": ["error"] }
+      }
+    },
+    {
+      "if": {
+        "properties": { "success": { "const": false } },
+        "required": ["success"]
+      },
+      "then": {
+        "required": ["error"],
+        "not": { "required": ["output"] }
+      }
+    }
+  ]
+}

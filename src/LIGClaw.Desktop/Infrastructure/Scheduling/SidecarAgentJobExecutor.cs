@@ -132,7 +132,7 @@ internal sealed class SidecarAgentJobExecutor(
         catch
         {
             execution = new WindowsToolExecutionResult(
-                false, new Dictionary<string, object?>(), "백그라운드 Windows 기능을 안전하게 처리하지 못했어요.");
+                false, new Dictionary<string, object?>(), "백그라운드 윈도우 기능을 안전하게 처리하지 못했어요.");
         }
 
         try

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/connection.http.request.v1.schema.json",
+  "title": "ConnectionHttpRequestV1",
+  "description": "Sends one approved GET request through an exact Desktop-owned Connection binding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["connectionSlot", "method", "pathTemplate", "reason"],
+  "properties": {
+    "connectionSlot": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "method": { "type": "string", "const": "GET" },
+    "pathTemplate": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "pathParameters": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "value"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "value": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        }
+      }
+    },
+    "queryParameters": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "value"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "value": { "type": "string", "minLength": 0, "maxLength": 2048 }
+        }
+      }
+    }
+  }
+}

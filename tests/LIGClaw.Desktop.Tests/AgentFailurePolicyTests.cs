@@ -5,7 +5,7 @@ namespace LIGClaw.Desktop.Tests;
 public sealed class AgentFailurePolicyTests
 {
     [Theory]
-    [InlineData("runtime.provider_authentication", "API 키 인증")]
+    [InlineData("runtime.provider_authentication", "접속 키 인증")]
     [InlineData("runtime.provider_rate_limited", "요청 한도")]
     [InlineData("runtime.network_unavailable", "네트워크")]
     [InlineData("runtime.context_limit", "컨텍스트")]

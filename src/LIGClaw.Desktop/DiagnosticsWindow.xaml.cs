@@ -4,7 +4,7 @@ using System.Windows;
 
 namespace LIGClaw.Desktop;
 
-public partial class DiagnosticsWindow : Window
+public partial class DiagnosticsWindow : Wpf.Ui.Controls.FluentWindow
 {
     private readonly ObservableCollection<string> _diagnostics;
 

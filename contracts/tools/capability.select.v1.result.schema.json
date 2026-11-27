@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/capability.select.v1.result.schema.json",
+  "title": "CapabilitySelectV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["selected", "context"],
+  "properties": {
+    "selected": {
+      "type": "boolean",
+      "const": true
+    },
+    "context": {
+      "$ref": "../rpc/capability-invocation-context.schema.json"
+    }
+  }
+}

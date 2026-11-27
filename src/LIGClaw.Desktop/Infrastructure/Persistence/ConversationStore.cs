@@ -1,6 +1,9 @@
 using System.Globalization;
 using System.IO;
 using LIGClaw.Application.Agents;
+using LIGClaw.Application.Capabilities;
+using LIGClaw.Application.Connections;
+using LIGClaw.Application.Mail;
 using LIGClaw.Application.Memory;
 using LIGClaw.Application.Scheduling;
 using LIGClaw.Contracts.Generated;
@@ -26,9 +29,19 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
     private readonly ScheduleRepository _schedules;
     private readonly AgentJobRepository _agentJobs;
     private readonly LocalSubagentRepository _subagents;
+    private readonly CapabilityCatalogRepository _capabilities;
+    private readonly ConnectionProfileRepository _connections;
+    private readonly MailGatewayConnectionRepository _mailGatewayConnections;
+    private readonly SmtpConnectionRepository _smtpConnections;
+    private readonly WorkflowLedgerRepository _workflowLedger;
+    private readonly MailOutboxRepository _mailOutbox;
+    private readonly TimeProvider _timeProvider;
+    private readonly SemaphoreSlim _desktopStartupGate = new(1, 1);
+    private WorkflowStartupRecoveryResult? _desktopStartupRecovery;
 
-    public ConversationStore(string databasePath)
+    public ConversationStore(string databasePath, TimeProvider? timeProvider = null)
     {
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _database = new ConversationDatabase(databasePath);
         _conversations = new ConversationRepository(_database);
         _operations = new OperationalAuditRepository(_database);
@@ -36,6 +49,12 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
         _schedules = new ScheduleRepository(_database);
         _agentJobs = new AgentJobRepository(_database);
         _subagents = new LocalSubagentRepository(_database);
+        _capabilities = new CapabilityCatalogRepository(_database);
+        _connections = new ConnectionProfileRepository(_database);
+        _mailGatewayConnections = new MailGatewayConnectionRepository(_database);
+        _smtpConnections = new SmtpConnectionRepository(_database);
+        _workflowLedger = new WorkflowLedgerRepository(_database, _timeProvider);
+        _mailOutbox = new MailOutboxRepository(_database);
     }
 
     public string DatabasePath => _database.DatabasePath;
@@ -45,6 +64,15 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
     public IScheduleRepository Schedules => _schedules;
     public IAgentJobRepository AgentJobs => _agentJobs;
     public ILocalSubagentRepository Subagents => _subagents;
+    public ICapabilityCatalogRepository Capabilities => _capabilities;
+    public ICapabilityCandidateRepository CapabilityCandidates => _capabilities;
+    public ICapabilityRuntimeCandidateSource CapabilityRuntimeCandidates => _capabilities;
+    public IFeatureBuilderRepository FeatureBuilder => _capabilities;
+    public IConnectionProfileRepository Connections => _connections;
+    public IMailGatewayConnectionRepository MailGatewayConnections => _mailGatewayConnections;
+    public ISmtpConnectionRepository SmtpConnections => _smtpConnections;
+    public WorkflowLedgerRepository WorkflowLedger => _workflowLedger;
+    public IMailOutboxRepository MailOutbox => _mailOutbox;
 
     public static ConversationStore CreateDefault()
     {
@@ -57,6 +85,31 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
 
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         _database.InitializeAsync(cancellationToken);
+
+    public async Task<WorkflowStartupRecoveryResult> InitializeForDesktopStartupAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await _desktopStartupGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_desktopStartupRecovery is not null) return _desktopStartupRecovery;
+            await _database.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            await _capabilities.RecoverFeatureBuilderOnStartupAsync(
+                _timeProvider.GetUtcNow(), cancellationToken).ConfigureAwait(false);
+            var recoveredAtUtc = _timeProvider.GetUtcNow();
+            _ = await _mailOutbox.RecoverOnStartupAsync(
+                recoveredAtUtc,
+                cancellationToken).ConfigureAwait(false);
+            _desktopStartupRecovery = await _workflowLedger.RecoverOnStartupAsync(
+                recoveredAtUtc,
+                cancellationToken).ConfigureAwait(false);
+            return _desktopStartupRecovery;
+        }
+        finally
+        {
+            _desktopStartupGate.Release();
+        }
+    }
 
     public Task StartRunAsync(string conversationId, string runId, string userInput, DateTimeOffset startedAtUtc, CancellationToken cancellationToken = default) =>
         _conversations.StartRunAsync(conversationId, runId, userInput, startedAtUtc, cancellationToken);
@@ -138,6 +191,12 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
     public Task<IReadOnlyList<ConversationTurn>> GetConversationTurnsAsync(string conversationId, CancellationToken cancellationToken = default) =>
         _conversations.GetConversationTurnsAsync(conversationId, cancellationToken);
 
+    public Task<PersistedConversationRunInput?> GetPersistedRunInputAsync(
+        string conversationId,
+        string runId,
+        CancellationToken cancellationToken = default) =>
+        _conversations.GetPersistedRunInputAsync(conversationId, runId, cancellationToken);
+
     public Task<IReadOnlyList<CompletedUserInput>> GetRecentCompletedUserInputsAsync(DateTimeOffset sinceUtc, int limit = 200, CancellationToken cancellationToken = default) =>
         _conversations.GetRecentCompletedUserInputsAsync(sinceUtc, limit, cancellationToken);
 
@@ -216,5 +275,9 @@ internal sealed partial class ConversationStore : IConversationRepository, ITool
         return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public void Dispose() => _database.Dispose();
+    public void Dispose()
+    {
+        _database.Dispose();
+        _desktopStartupGate.Dispose();
+    }
 }

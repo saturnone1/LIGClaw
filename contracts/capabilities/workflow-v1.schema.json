@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/capabilities/workflow-v1.schema.json",
+  "title": "WorkflowV1Definition",
+  "description": "A bounded, forward-only Desktop-owned declarative Workflow definition.",
+  "$comment": "The Desktop parser additionally enforces the 256 KiB document, template depth 8, template node 2048, strict UTF-8, and canonical numeric representation limits that JSON Schema cannot express portably.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "entryStepId", "steps"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "entryStepId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+      "maxLength": 64
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "oneOf": [
+          { "$ref": "#/$defs/inputMapStep" },
+          { "$ref": "#/$defs/toolCallStep" },
+          { "$ref": "#/$defs/conditionStep" },
+          { "$ref": "#/$defs/transformStep" },
+          { "$ref": "#/$defs/needsInformationStep" },
+          { "$ref": "#/$defs/outputStep" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+      "maxLength": 64
+    },
+    "canonicalToolName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?=.*\\.)[a-z][a-z0-9_.]*$"
+    },
+    "jsonPointer": {
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^(?:/(?:[^~/]|~[01])*){0,32}$"
+    },
+    "nonRootJsonPointer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?:/(?:[^~/]|~[01])*){1,32}$"
+    },
+    "valueString": {
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^(?![\\s\\S]*[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F])(?![\\s\\S]*\\p{Cf})[\\s\\S]*$"
+    },
+    "literalPropertyName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^(?!\\$)(?![\\s\\S]*[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F])(?![\\s\\S]*\\p{Cf})[\\s\\S]*$"
+    },
+    "inputBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "path"],
+      "properties": {
+        "source": { "type": "string", "const": "input" },
+        "path": { "$ref": "#/$defs/jsonPointer" }
+      }
+    },
+    "stepBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "stepId", "path"],
+      "properties": {
+        "source": { "type": "string", "const": "step" },
+        "stepId": { "$ref": "#/$defs/identifier" },
+        "path": { "$ref": "#/$defs/jsonPointer" }
+      }
+    },
+    "variableBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "name", "path"],
+      "properties": {
+        "source": { "type": "string", "const": "variable" },
+        "name": { "$ref": "#/$defs/identifier" },
+        "path": { "$ref": "#/$defs/jsonPointer" }
+      }
+    },
+    "binding": {
+      "oneOf": [
+        { "$ref": "#/$defs/inputBinding" },
+        { "$ref": "#/$defs/stepBinding" },
+        { "$ref": "#/$defs/variableBinding" }
+      ]
+    },
+    "bindingValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$bind"],
+      "properties": {
+        "$bind": { "$ref": "#/$defs/binding" }
+      }
+    },
+    "literalObject": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": { "$ref": "#/$defs/literalPropertyName" },
+      "additionalProperties": { "$ref": "#/$defs/value" }
+    },
+    "value": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "$ref": "#/$defs/valueString" },
+        {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/value" }
+        },
+        { "$ref": "#/$defs/literalObject" },
+        { "$ref": "#/$defs/bindingValue" }
+      ]
+    },
+    "inputMapStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "value", "saveAs", "next"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string", "const": "input.map" },
+        "value": { "$ref": "#/$defs/value" },
+        "saveAs": { "$ref": "#/$defs/identifier" },
+        "next": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "toolCallStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "tool", "arguments", "next"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string", "const": "tool.call" },
+        "tool": { "$ref": "#/$defs/canonicalToolName" },
+        "arguments": { "$ref": "#/$defs/literalObject" },
+        "maxRetries": { "type": "integer", "minimum": 0, "maximum": 3, "default": 0 },
+        "next": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "binaryConditionStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "left", "operator", "right", "then", "else"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string", "const": "condition" },
+        "left": { "$ref": "#/$defs/value" },
+        "operator": { "type": "string", "enum": ["equals", "notEquals"] },
+        "right": { "$ref": "#/$defs/value" },
+        "then": { "$ref": "#/$defs/identifier" },
+        "else": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "unaryConditionStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "left", "operator", "then", "else"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string", "const": "condition" },
+        "left": { "$ref": "#/$defs/value" },
+        "operator": { "type": "string", "enum": ["exists", "isTrue", "isFalse"] },
+        "then": { "$ref": "#/$defs/identifier" },
+        "else": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "conditionStep": {
+      "oneOf": [
+        { "$ref": "#/$defs/binaryConditionStep" },
+        { "$ref": "#/$defs/unaryConditionStep" }
+      ]
+    },
+    "concatTransformStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "operation", "operands", "saveAs", "next"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string", "const": "transform" },
+        "operation": { "type": "string", "const": "concat" },
+        "operands": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/value" }
+        },
+        "saveAs": { "$ref": "#/$defs/identifier" },
+        "next": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "unaryTransformStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "operation", "operands", "saveAs", "next"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string", "const": "transform" },
+        "operation": {
+          "type": "string",
+          "enum": ["trim", "lowerInvariant", "upperInvariant", "toNumber", "toDate"]
+        },
+        "operands": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/value" }
+        },
+        "saveAs": { "$ref": "#/$defs/identifier" },
+        "next": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "transformStep": {
+      "oneOf": [
+        { "$ref": "#/$defs/concatTransformStep" },
+        { "$ref": "#/$defs/unaryTransformStep" }
+      ]
+    },
+    "needsInformationStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "requiredInputs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string", "const": "needs_information" },
+        "requiredInputs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonRootJsonPointer" }
+        }
+      }
+    },
+    "outputStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "value"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string", "const": "output" },
+        "value": { "$ref": "#/$defs/literalObject" }
+      }
+    }
+  }
+}

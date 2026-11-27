@@ -11,7 +11,8 @@ public interface IConversationSidecar
         string runtime,
         IReadOnlyList<IReadOnlyDictionary<string, object?>>? history = null,
         CancellationToken cancellationToken = default,
-        IReadOnlyDictionary<string, object?>? providerRouting = null);
+        IReadOnlyDictionary<string, object?>? providerRouting = null,
+        CapabilityRuntimeSnapshot? capabilitySnapshot = null);
 
     Task<ConversationCancelResult> CancelConversationAsync(
         string conversationId,

@@ -1,0 +1,224 @@
+<UserControl x:Class="LIGClaw.Desktop.ConnectionsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             AutomationProperties.Name="연결 설정 관리 페이지">
+    <Grid Margin="{DynamicResource PagePadding}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="외부 서비스 연결 / 이 PC에 저장" />
+            <TextBlock Style="{StaticResource PageTitleStyle}" Text="연결 설정" />
+            <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                       Text="사내 웹 서버, 사내 메일 중계 서버와 표준 메일 서버 연결을 이 PC에서 관리합니다. 인증정보는 윈도우 자격 증명에만 저장되며 화면에 다시 표시되지 않습니다."
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Margin="0,17,0,0" Style="{StaticResource CommandBarStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="NewProfileButton" Style="{StaticResource PrimaryButtonStyle}"
+                        AutomationProperties.Name="새 연결 설정"
+                        Click="NewProfile_Click" Content="새 연결" />
+                <TextBlock x:Name="PageStatusText" Grid.Column="1" Margin="12,0"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Style="{StaticResource CaptionTextStyle}"
+                           AutomationProperties.LiveSetting="Polite" />
+                <Button x:Name="RefreshButton" Grid.Column="2"
+                        Style="{StaticResource CompactButtonStyle}"
+                        AutomationProperties.Name="연결 설정 목록 새로 고침"
+                        Click="Refresh_Click" Content="새로 고침" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="5*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="6*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource DataSurfaceStyle}">
+                <Grid>
+                    <ListBox x:Name="ConnectionList" BorderThickness="0" Background="Transparent"
+                             ItemContainerStyle="{StaticResource ListRowStyle}"
+                             SelectionChanged="ConnectionList_SelectionChanged"
+                             AutomationProperties.Name="저장된 연결 설정 목록"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,4,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName, Mode=OneWay}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,4,0,0" Style="{StaticResource CaptionTextStyle}"
+                                                   Text="{Binding IdentityText, Mode=OneWay}" TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,5,0,0" Text="{Binding EndpointText, Mode=OneWay}"
+                                                   TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,5,0,0" Style="{StaticResource CaptionTextStyle}"
+                                                   Text="{Binding SecurityText, Mode=OneWay}" TextWrapping="Wrap" />
+                                        <ui:Badge Margin="0,7,0,0" HorizontalAlignment="Left"
+                                                  Appearance="Secondary">
+                                            <TextBlock Style="{StaticResource StatusTagTextStyle}"
+                                                       Text="{Binding ReadinessText, Mode=OneWay}" />
+                                        </ui:Badge>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Top"
+                                            Tag="{Binding}" Style="{StaticResource CompactButtonStyle}"
+                                            Click="EditProfile_Click" Content="수정" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock x:Name="EmptyMessage" Style="{StaticResource EmptyStateTextStyle}"
+                               Text="저장된 연결 설정이 없습니다." />
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="EditorPanel">
+                        <TextBlock x:Name="EditorKindEyebrow" Style="{StaticResource EyebrowTextStyle}"
+                                   Text="연결 설정 / 웹 서버" />
+                        <TextBlock x:Name="EditorTitleText" Style="{StaticResource CardTitleStyle}"
+                                   Text="새 연결 설정" />
+                        <TextBlock Margin="0,4,0,14" Style="{StaticResource CaptionTextStyle}"
+                                   Text="연결 식별자와 종류는 만든 뒤 변경할 수 없습니다." />
+
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="프로필 종류" />
+                        <ComboBox x:Name="ProfileKindBox" Margin="0,5,0,11"
+                                  DisplayMemberPath="Label" SelectedValuePath="Value"
+                                  SelectionChanged="ProfileKindBox_SelectionChanged"
+                                  AutomationProperties.Name="연결 종류" />
+
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="연결 식별자" />
+                        <TextBox x:Name="ProfileIdTextBox" Margin="0,5,0,11" IsReadOnly="True"
+                                 AutomationProperties.Name="연결 식별자" />
+
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="표시 이름" />
+                        <TextBox x:Name="DisplayNameTextBox" Margin="0,5,0,11" MaxLength="80"
+                                 AutomationProperties.Name="연결 표시 이름" />
+
+                        <StackPanel x:Name="BaseUrlPanel">
+                            <TextBlock x:Name="BaseUrlLabelText" Style="{StaticResource FieldLabelStyle}"
+                                       Text="서버 기본 주소" />
+                            <TextBox x:Name="BaseUrlTextBox" Margin="0,5,0,5"
+                                     AutomationProperties.Name="연결 서버 기본 주소" />
+                            <TextBlock x:Name="BaseUrlHelpText" Margin="0,0,0,11"
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       Text="세부 경로와 검색 조건은 기능이 안전한 범위에서 덧붙입니다. 이 주소는 모델에 전달되지 않습니다."
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel x:Name="SmtpEndpointPanel" Visibility="Collapsed">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="메일 서버 주소" />
+                            <TextBox x:Name="SmtpHostTextBox" Margin="0,5,0,11" MaxLength="253"
+                                     AutomationProperties.Name="메일 서버 주소" />
+                            <Grid Margin="0,0,0,11">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="포트" />
+                                    <TextBox x:Name="SmtpPortTextBox" Margin="0,5,0,0" MaxLength="5"
+                                             AutomationProperties.Name="메일 서버 포트" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="보안 연결 방식" />
+                                    <ComboBox x:Name="SmtpTlsModeBox" Margin="0,5,0,0"
+                                              DisplayMemberPath="Label" SelectedValuePath="Value"
+                                              AutomationProperties.Name="메일 서버 보안 연결 방식" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel x:Name="SenderPanel" Visibility="Collapsed">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="고정 발신자" />
+                            <TextBox x:Name="SenderTextBox" Margin="0,5,0,5" MaxLength="254"
+                                     AutomationProperties.Name="사내 메일 중계 서버 고정 발신자" />
+                            <TextBlock x:Name="SenderHelpText" Margin="0,0,0,11" Style="{StaticResource CaptionTextStyle}"
+                                       Text="메일 서버에 등록된 영문 이메일 주소를 입력합니다. 실제 전송 때는 변경할 수 없습니다."
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <Grid Margin="0,0,0,11">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel x:Name="HttpAuthenticationPanel">
+                                <TextBlock x:Name="AuthenticationLabelText"
+                                           Style="{StaticResource FieldLabelStyle}" Text="인증 방식" />
+                                <ComboBox x:Name="AuthenticationBox" Margin="0,5,0,0" MinWidth="132"
+                                          DisplayMemberPath="Label" SelectedValuePath="Value"
+                                          SelectionChanged="AuthenticationBox_SelectionChanged"
+                                          AutomationProperties.Name="연결 인증 방식" />
+                            </StackPanel>
+                            <StackPanel x:Name="SmtpSecurityPanel" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="메일 서버 보안 · 고정" />
+                                <TextBlock Margin="0,7,0,0" Text="사용자명·암호 인증 · 윈도우 인증서 신뢰"
+                                           AutomationProperties.Name="메일 서버 사용자명 암호 인증과 윈도우 인증서 신뢰" />
+                            </StackPanel>
+                            <ui:ToggleSwitch x:Name="EnabledCheckBox" Grid.Column="2"
+                                             VerticalAlignment="Bottom" Margin="0,0,0,8"
+                                             OffContent="사용 안 함" OnContent="사용"
+                                             AutomationProperties.Name="연결 설정 사용" />
+                        </Grid>
+
+                        <TextBlock x:Name="SecretLabelText" Style="{StaticResource FieldLabelStyle}"
+                                   Text="접속 토큰 처리" />
+                        <ComboBox x:Name="SecretMutationBox" Margin="0,5,0,5"
+                                  DisplayMemberPath="Label" SelectedValuePath="Value"
+                                  SelectionChanged="SecretMutationBox_SelectionChanged"
+                                  AutomationProperties.Name="접속 토큰 변경 방식" />
+                        <PasswordBox x:Name="BearerTokenBox" Margin="0,0,0,5" Padding="12,10"
+                                     MaxLength="1280"
+                                     AutomationProperties.Name="새 접속 토큰" />
+                        <StackPanel x:Name="SmtpCredentialPanel" Visibility="Collapsed">
+                            <PasswordBox x:Name="SmtpUsernameBox" Margin="0,0,0,5" Padding="12,10"
+                                         MaxLength="128"
+                                         AutomationProperties.Name="새 메일 서버 사용자명" />
+                            <PasswordBox x:Name="SmtpPasswordBox" Margin="0,0,0,5" Padding="12,10"
+                                         MaxLength="224"
+                                         AutomationProperties.Name="새 메일 서버 암호" />
+                        </StackPanel>
+                        <TextBlock x:Name="CredentialStatusText" Margin="0,0,0,14"
+                                   Style="{StaticResource CaptionTextStyle}" TextWrapping="Wrap"
+                                   Text="인증 없음을 사용합니다." />
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="ProbeButton" Grid.Column="1" Margin="0,0,8,0"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    AutomationProperties.Name="실제 연결 확인"
+                                    Click="Probe_Click" Content="연결 확인" />
+                            <Button x:Name="SaveButton" Grid.Column="2"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    AutomationProperties.Name="연결 설정 저장"
+                                    Click="Save_Click" Content="저장" />
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

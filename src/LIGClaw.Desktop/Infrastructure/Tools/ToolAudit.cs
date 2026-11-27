@@ -56,6 +56,10 @@ internal sealed record ToolActivitySummary(
         "failed" => "실패",
         "denied" => "허용 안 함",
         "cancelled" => "중단",
+        "needs_information" => "정보 필요",
+        "running" => "실행 중",
+        "attention_required" => "검토 필요",
+        "interrupted" => "재시작 필요",
         _ => Status,
     };
 

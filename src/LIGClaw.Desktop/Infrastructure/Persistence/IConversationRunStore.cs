@@ -27,7 +27,25 @@ internal interface IConversationRunStore
         CancellationToken cancellationToken = default);
 }
 
-internal interface IConversationRepository : IConversationRunStore
+internal sealed record PersistedConversationRunInput(
+    string ConversationId,
+    string RunId,
+    string UserInput,
+    string Status)
+{
+    public override string ToString() =>
+        $"{nameof(PersistedConversationRunInput)} {{ Status = {Status}, HasUserInput = True }}";
+}
+
+internal interface IConversationRunInputSource
+{
+    Task<PersistedConversationRunInput?> GetPersistedRunInputAsync(
+        string conversationId,
+        string runId,
+        CancellationToken cancellationToken = default);
+}
+
+internal interface IConversationRepository : IConversationRunStore, IConversationRunInputSource
 {
     Task MarkRunningConversationsInterruptedAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ConversationSummary>> GetRecentConversationsAsync(int limit = 12, CancellationToken cancellationToken = default);

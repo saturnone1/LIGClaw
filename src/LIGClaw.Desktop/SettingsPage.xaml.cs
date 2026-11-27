@@ -66,7 +66,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         }
         catch (Exception)
         {
-            SetStatus("Windows 자동 실행 설정을 불러오지 못했어요.", "DangerBrush");
+            SetStatus("윈도우 자동 실행 설정을 불러오지 못했어요.", "DangerBrush");
         }
 
         try
@@ -109,7 +109,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         }
         catch (Exception)
         {
-            SetStatus("저장된 MCP 연결 정보를 불러오지 못했어요.", "DangerBrush");
+            SetStatus("저장된 외부 지식 도구 연결 정보를 불러오지 못했어요.", "DangerBrush");
         }
 
         try
@@ -126,7 +126,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             }
             else
             {
-                SavedKeyHint.Text = "API 키는 Windows 자격 증명 관리자에 안전하게 저장됩니다.";
+                SavedKeyHint.Text = "접속 키는 윈도우 보안 저장소에 안전하게 저장됩니다.";
             }
         }
         catch (Exception)
@@ -291,7 +291,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
                     McpStatusText.Foreground = (System.Windows.Media.Brush)FindResource(
                         result.Status.IsConnected ? "SuccessBrush" : result.Settings.Enabled ? "DangerBrush" : "TextSecondaryBrush");
                     if (result.Settings.Enabled && !result.Status.IsConnected)
-                        failures.Add("MCP 서버에 연결하지 못했어요. 모델 연결과 다른 기능은 계속 사용할 수 있습니다.");
+                        failures.Add("외부 지식 도구 서버에 연결하지 못했어요. 인공지능 모델과 다른 기능은 계속 사용할 수 있습니다.");
                 }
             }
             catch (SettingsSectionValidationException exception)
@@ -300,11 +300,11 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             }
             catch (OperationCanceledException)
             {
-                failures.Add("MCP 연결 적용을 중단했어요.");
+                failures.Add("외부 지식 도구 연결 적용을 중단했어요.");
             }
             catch (Exception)
             {
-                failures.Add("MCP 연결 정보를 저장하거나 적용하지 못했어요.");
+                failures.Add("외부 지식 도구 연결 정보를 저장하거나 적용하지 못했어요.");
             }
 
             SetStatus(
@@ -466,7 +466,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             if (exception.Field == ModelProfileField.Model)
                 ShowFieldError(ModelErrorText, "사용할 모델 이름을 입력해 주세요.");
             if (exception.Field == ModelProfileField.ApiKey)
-                ShowFieldError(ApiKeyErrorText, "API Key를 입력해 주세요.");
+                ShowFieldError(ApiKeyErrorText, "접속 키를 입력해 주세요.");
             throw;
         }
     }

@@ -22,6 +22,10 @@ try {
     $sidecarId = Wait-Sidecar $desktop.Id
     $observed = [System.Collections.Generic.List[int]]::new()
     $observed.Add($sidecarId)
+    # A connected Sidecar can precede completion of the Desktop's asynchronous
+    # SQLite, tray, WPF and settings initialization. Measure restart growth only
+    # after that one-time startup work has settled.
+    Start-Sleep -Seconds 10
     $desktop.Refresh()
     $initialMemory = $desktop.PrivateMemorySize64
     $initialHandles = $desktop.HandleCount

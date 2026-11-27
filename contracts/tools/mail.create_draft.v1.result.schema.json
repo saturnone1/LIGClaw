@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/tools/mail.create_draft.v1.result.schema.json",
+  "title": "MailCreateDraftV1Result",
+  "description": "Returns bounded metadata for a prepared mail draft without exposing its content.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ready", "draftHash", "recipientCount", "subjectLength", "bodyLength"],
+  "properties": {
+    "ready": { "type": "boolean", "const": true },
+    "draftHash": { "type": "string", "minLength": 71, "maxLength": 71 },
+    "recipientCount": { "type": "integer", "minimum": 1, "maximum": 16 },
+    "subjectLength": { "type": "integer", "minimum": 1, "maximum": 200 },
+    "bodyLength": { "type": "integer", "minimum": 1, "maximum": 8192 }
+  }
+}

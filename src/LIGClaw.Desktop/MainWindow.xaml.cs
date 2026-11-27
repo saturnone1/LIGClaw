@@ -12,15 +12,19 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using LIGClaw.Application.Agents;
+using LIGClaw.Application.Capabilities;
+using LIGClaw.Application.Connections;
 using LIGClaw.Application.Scheduling;
 using LIGClaw.Application.Tools;
 using LIGClaw.Contracts.Generated;
+using LIGClaw.Desktop.Infrastructure.Capabilities;
 using LIGClaw.Desktop.Infrastructure.Persistence;
 using LIGClaw.Desktop.Infrastructure.Platform;
 using LIGClaw.Desktop.Infrastructure.Scheduling;
 using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Sidecar;
 using LIGClaw.Desktop.Infrastructure.Tools;
+using LIGClaw.Desktop.Infrastructure.Workflows;
 using LIGClaw.Domain;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
@@ -30,7 +34,7 @@ using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 namespace LIGClaw.Desktop;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 {
     private readonly SidecarSupervisor _sidecar = new();
     private readonly QuickAccessHotkey _quickAccessHotkey = new();
@@ -43,6 +47,7 @@ public partial class MainWindow : Window
     private readonly IScreenCapturePicker _screenCapturePicker = new WindowsScreenCapturePicker();
     private readonly IScreenTextRecognizer _screenTextRecognizer = new WindowsOcrScreenTextRecognizer();
     private readonly PreparedSensitiveContextStore _sensitiveContextStore = new();
+    private readonly WindowsConnectionCredentialStore _connectionCredentials = new();
     private readonly IVoiceSettingsStore _voiceSettingsStore = new VoiceSettingsStore();
     private readonly IRoutineSuggestionSettingsStore _routineSuggestionSettingsStore = new RoutineSuggestionSettingsStore();
     private readonly IPushToTalkRecognizer _pushToTalkRecognizer = new WindowsPushToTalkRecognizer();
@@ -59,9 +64,18 @@ public partial class MainWindow : Window
     private readonly SemanticMemoryRepository _memories;
     private readonly ToolInvocationPolicy _toolInvocationPolicy = new();
     private readonly ConversationRunController _conversationRun;
+    private readonly CapabilityBuilderOpenController _capabilityBuilderOpenController;
     private readonly ConversationOrchestrationController _conversationOrchestration;
     private readonly ConversationToolInvocationController _conversationTools;
+    private ConversationWorkflowInvocationController? _conversationWorkflows;
     private readonly IUserNotificationService _notifications;
+    private ICapabilityManagementService? _capabilityManagement;
+    private IFeatureBuilderManagementService? _featureBuilderManagement;
+    private DesktopFeatureBuilderTestRunner? _featureBuilderTestRunner;
+    private ConnectionManagementService? _connectionManagement;
+    private MailGatewayConnectionManagementService? _mailGatewayManagement;
+    private SmtpConnectionManagementService? _smtpManagement;
+    private ICapabilityConnectionReadinessResolver? _connectionReadiness;
     private QuickAccessShortcut _configuredQuickAccessShortcut = QuickAccessShortcutCatalog.Default;
     private WindowsPlatformProfile? _platformProfile;
     private WindowsToolHost? _windowsToolHost;
@@ -74,8 +88,10 @@ public partial class MainWindow : Window
     private bool _persistenceAvailable;
     private bool _isConnected;
     private bool _isModelConfigured;
+    private bool _capabilityMcpReadAvailable;
     private bool _refreshingConversations;
     private bool _isPreparingScreenContext;
+    private bool _isOpeningFeatureBuilder;
     private bool _voiceInputEnabled;
     private VoiceSettings _voiceSettings = new(false, false);
     private readonly StringBuilder _currentAssistantResponse = new();
@@ -88,6 +104,9 @@ public partial class MainWindow : Window
     private bool _pendingTranscriptFollowOutput;
     private double? _pendingTranscriptVerticalOffset;
     private ActivityView? _activityView;
+    private CapabilitiesPage? _capabilitiesPage;
+    private FeatureBuilderPage? _featureBuilderPage;
+    private ConnectionsPage? _connectionsPage;
     private MemoryPage? _memoryPage;
     private SchedulePage? _schedulePage;
     private AgentJobsPage? _agentJobsPage;
@@ -107,6 +126,9 @@ public partial class MainWindow : Window
         _agentJobRepository = _conversationStore.AgentJobs;
         _subagentRepository = _conversationStore.Subagents;
         _conversationRun = new ConversationRunController(_toolInvocationPolicy);
+        _capabilityBuilderOpenController = new CapabilityBuilderOpenController(
+            _conversationRun,
+            _conversationStore.Conversations);
         _conversationOrchestration = new ConversationOrchestrationController(
             _conversationRun,
             _sidecar,
@@ -142,6 +164,7 @@ public partial class MainWindow : Window
         _sidecar.DiagnosticMessage += Sidecar_DiagnosticMessage;
         _sidecar.AgentEventReceived += Sidecar_AgentEventReceived;
         _sidecar.ToolInvocationReceived += Sidecar_ToolInvocationReceived;
+        _sidecar.WorkflowInvocationReceived += Sidecar_WorkflowInvocationReceived;
         _quickAccessHotkey.Pressed += QuickAccessHotkey_Pressed;
         Loaded += (_, _) =>
         {
@@ -174,12 +197,69 @@ public partial class MainWindow : Window
             _platformProfile = WindowsPlatformDetector.Detect();
             AddDiagnostic($"플랫폼: {_platformProfile.DisplayName}");
             if (!_platformProfile.IsSupported)
-                AddDiagnostic($"이 Windows 빌드는 공식 지원 기준 {WindowsPlatformProfile.MinimumSupportedBuild}보다 낮거나 클라이언트 OS가 아닙니다.");
+                AddDiagnostic($"이 윈도우 버전은 공식 지원 기준 {WindowsPlatformProfile.MinimumSupportedBuild}보다 낮거나 일반 PC용 운영체제가 아닙니다.");
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"Windows 플랫폼 감지 실패: {exception.Message}");
+            AddDiagnostic($"윈도우 환경 확인 실패: {exception.GetType().Name}");
         }
+        DesktopWorkflowToolMetadataCatalog? workflowTools = null;
+        var httpConnectionReadiness = new ConnectionReadinessResolver(
+            _conversationStore.Connections,
+            _connectionCredentials);
+        var mailGatewayReadiness = new MailGatewayConnectionReadinessResolver(
+            _conversationStore.MailGatewayConnections,
+            _connectionCredentials);
+        var smtpReadiness = new SmtpConnectionReadinessResolver(
+            _conversationStore.SmtpConnections,
+            _connectionCredentials);
+        _connectionReadiness = new CompositeConnectionReadinessResolver(
+            httpConnectionReadiness,
+            mailGatewayReadiness,
+            smtpReadiness);
+        var connectionProbe = new ConnectionHttpProbe(_connectionCredentials.ReadAsync);
+        var connectionExecutionLeases = new ConnectionExecutionLeaseCoordinator();
+        _connectionManagement = new ConnectionManagementService(
+            _conversationStore.Connections,
+            _connectionCredentials,
+            httpProbe: connectionProbe,
+            executionLeases: connectionExecutionLeases);
+        var connectionHttpResolver = new DesktopConnectionHttpExecutionResolver(
+            _conversationStore.Capabilities,
+            _conversationStore.Connections,
+            _connectionReadiness,
+            _connectionCredentials.ReadAsync,
+            connectionExecutionLeases);
+        var mailGatewayWireClient = new MailGatewayWireClient();
+        var mailGatewayProbe = new MailGatewayProbeAdapter(
+            _connectionCredentials.ReadAsync,
+            mailGatewayWireClient);
+        _mailGatewayManagement = new MailGatewayConnectionManagementService(
+            _conversationStore.MailGatewayConnections,
+            _connectionCredentials,
+            probe: mailGatewayProbe,
+            executionLeaseCoordinator: connectionExecutionLeases);
+        var mailGatewayResolver = new DesktopMailGatewayExecutionResolver(
+            _conversationStore.Capabilities,
+            _conversationStore.MailGatewayConnections,
+            _connectionReadiness,
+            _connectionCredentials.ReadAsync,
+            connectionExecutionLeases);
+        var smtpWireClient = new SmtpWireClient();
+        var smtpProbe = new SmtpConnectionProbeAdapter(
+            _connectionCredentials.ReadSmtpAsync,
+            smtpWireClient.ProbeAsync);
+        _smtpManagement = new SmtpConnectionManagementService(
+            _conversationStore.SmtpConnections,
+            _connectionCredentials,
+            probe: smtpProbe,
+            executionLeaseCoordinator: connectionExecutionLeases);
+        var smtpResolver = new DesktopSmtpExecutionResolver(
+            _conversationStore.Capabilities,
+            _conversationStore.SmtpConnections,
+            _connectionReadiness,
+            _connectionCredentials.ReadSmtpAsync,
+            connectionExecutionLeases);
         if (_platformProfile is not null)
         {
             _windowsToolHost = new WindowsToolHost(
@@ -191,18 +271,69 @@ public partial class MainWindow : Window
                 agentJobs: _agentJobRepository,
                 getSubagentOrchestrator: () => _subagentOrchestrator,
                 loadMcpSettings: _mcpSettingsStore.Load,
-                callMcp: _sidecar.CallMcpAsync);
+                callMcp: _sidecar.CallMcpAsync,
+                connectionHttpResolver: connectionHttpResolver,
+                mailGatewayResolver: mailGatewayResolver,
+                mailOutbox: _conversationStore.MailOutbox,
+                mailGatewayWireClient: mailGatewayWireClient,
+                smtpResolver: smtpResolver,
+                smtpWireClient: smtpWireClient);
             _toolInvocationCoordinator = new ToolInvocationCoordinator(
                 _toolInvocationPolicy,
                 _windowsToolHost,
                 RequestToolApprovalAsync,
                 _operationalRepository,
                 _operationalRepository);
+            workflowTools = new DesktopWorkflowToolMetadataCatalog(_windowsToolHost);
+            _conversationWorkflows = new ConversationWorkflowInvocationController(
+                _conversationRun,
+                new DesktopWorkflowOrchestrator(
+                    _conversationStore.Capabilities,
+                    _conversationStore.WorkflowLedger,
+                    workflowTools,
+                    _windowsToolHost,
+                    policy => new ToolInvocationCoordinator(
+                        policy,
+                        _windowsToolHost,
+                        RequestToolApprovalAsync,
+                        _operationalRepository,
+                        _operationalRepository)));
         }
+        var capabilityTools = _windowsToolHost is null
+            ? []
+            : _windowsToolHost.Descriptors.Select(descriptor =>
+                new CapabilityToolDependency(descriptor.Name, descriptor.Risk)).ToArray();
+        var capabilityDependencies = new CapabilityToolDependencyCatalog(
+            capabilityTools,
+            name => !StringComparer.Ordinal.Equals(name, "mcp.read.v1") ||
+                    Volatile.Read(ref _capabilityMcpReadAvailable));
+        _capabilityManagement = new CapabilityManagementService(
+            new CapabilityCatalogService(
+                _conversationStore.Capabilities,
+                capabilityDependencies,
+                workflowTools,
+                _connectionReadiness),
+            new ZipLigcapPackageCodec());
+        var featureBuilderScanner = new DesktopFeatureBuilderProposalScanner(
+            capabilityDependencies,
+            workflowTools);
+        _featureBuilderManagement = new FeatureBuilderManagementService(
+            _conversationStore.FeatureBuilder,
+            _sidecar,
+            featureBuilderScanner);
+        _featureBuilderTestRunner = new DesktopFeatureBuilderTestRunner(
+            _featureBuilderManagement,
+            _conversationStore.FeatureBuilder,
+            featureBuilderScanner);
+        var capabilityRuntime = new CapabilityRuntimeSnapshotBuilder(
+            _conversationStore.CapabilityRuntimeCandidates,
+            capabilityDependencies,
+            _connectionReadiness);
+        _conversationOrchestration.ConfigureCapabilitySnapshotFactory(capabilityRuntime.BuildAsync);
 
         var handle = new WindowInteropHelper(this).EnsureHandle();
         if (_platformProfile is not null && !WindowsWindowAppearance.Apply(this, _platformProfile))
-            AddDiagnostic("현재 Windows의 창 모양 최적화를 적용하지 못했습니다.");
+            AddDiagnostic("현재 윈도우의 창 모양 최적화를 적용하지 못했습니다.");
         QuickAccessShortcut preferredShortcut;
         try
         {
@@ -211,7 +342,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             preferredShortcut = QuickAccessShortcutCatalog.Default;
-            AddDiagnostic($"빠른 호출 설정을 불러오지 못해 기본값을 사용합니다: {exception.Message}");
+            AddDiagnostic($"빠른 호출 설정을 불러오지 못해 기본값을 사용합니다: {exception.GetType().Name}");
         }
         _configuredQuickAccessShortcut = preferredShortcut;
         var canUseGlobalHotkey = _platformProfile?.Supports(WindowsCapability.GlobalHotkey) ?? true;
@@ -221,7 +352,7 @@ public partial class MainWindow : Window
         }
         else if (!canUseGlobalHotkey)
         {
-            AddDiagnostic("현재 Windows에서는 전역 단축키 capability를 사용할 수 없습니다.");
+            AddDiagnostic("현재 윈도우에서는 전체 화면에서 동작하는 단축키 기능을 사용할 수 없습니다.");
         }
         _persistenceInitialization = InitializePersistenceAsync();
         _sidecar.Start();
@@ -231,7 +362,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            await _conversationStore.InitializeAsync();
+            await _conversationStore.InitializeForDesktopStartupAsync();
             await _conversationRepository.MarkRunningConversationsInterruptedAsync();
             await _subagentRepository.ReconcileSubagentTasksOnStartupAsync(DateTimeOffset.UtcNow, CancellationToken.None);
             _persistenceAvailable = true;
@@ -277,14 +408,14 @@ public partial class MainWindow : Window
                     }
                 }
                 _scheduler = null;
-                AddDiagnostic($"예약 실행 서비스 초기화 실패: {exception.Message}");
+                AddDiagnostic($"예약 실행 서비스 초기화 실패: {exception.GetType().Name}");
             }
             await RefreshRecentConversationsAsync();
         }
         catch (Exception exception)
         {
             _persistenceAvailable = false;
-            AddDiagnostic($"대화 기록 저장소 초기화 실패: {exception.Message}");
+            AddDiagnostic($"대화 기록 저장소 초기화 실패: {exception.GetType().Name}");
         }
     }
 
@@ -351,6 +482,7 @@ public partial class MainWindow : Window
         McpConnectionSettings? settings,
         CancellationToken cancellationToken = default)
     {
+        Volatile.Write(ref _capabilityMcpReadAvailable, false);
         IReadOnlyList<IReadOnlyDictionary<string, object?>> connections = settings is null
             ? []
             : [new Dictionary<string, object?>
@@ -368,8 +500,13 @@ public partial class MainWindow : Window
         if (settings?.Transport == "streamable_http" && !string.IsNullOrWhiteSpace(settings.AuthorizationToken))
             ((Dictionary<string, object?>)connections[0])["authorization"] = settings.AuthorizationToken;
         var result = await _sidecar.ConfigureMcpAsync(connections, cancellationToken);
-        if (result.Connections.Count == 0) return new McpConnectionStatus("disabled", 0, [], []);
-        return ReadMcpStatus(result.Connections[0]);
+        var status = result.Connections.Count == 0
+            ? new McpConnectionStatus("disabled", 0, [], [])
+            : ReadMcpStatus(result.Connections[0]);
+        Volatile.Write(
+            ref _capabilityMcpReadAvailable,
+            status.IsConnected && status.AllowedTools.Count > 0);
+        return status;
     }
 
     internal bool ApplyQuickAccessShortcut(QuickAccessShortcut shortcut)
@@ -406,9 +543,9 @@ public partial class MainWindow : Window
             var settings = _modelSettingsStore.Load();
             if (settings is null)
             {
-                SetRunStatus("설정에서 모델 API를 연결해 주세요.");
+                SetRunStatus("설정에서 인공지능 모델 서버를 연결해 주세요.");
                 ShowConnectionBanner(
-                    "대화를 시작하려면 먼저 모델 API를 연결해 주세요.",
+                    "대화를 시작하려면 먼저 인공지능 모델 서버를 연결해 주세요.",
                     "Settings",
                     "설정 열기",
                     isDanger: false);
@@ -419,7 +556,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"모델 설정 적용 실패: {exception.Message}");
+            AddDiagnostic($"모델 설정 적용 실패: {exception.GetType().Name}");
             SetRunStatus("모델 연결을 확인해 주세요.");
             ShowConnectionBanner(
                 "저장된 모델 연결을 적용하지 못했어요. 설정을 확인해 주세요.",
@@ -437,12 +574,12 @@ public partial class MainWindow : Window
             if (settings is null) return;
             var status = await ApplyMcpAsync(settings);
             AddDiagnostic(status.IsConnected
-                ? $"MCP 연결됨: {settings.DisplayName}, 도구 {status.ToolCount}개"
-                : $"MCP 연결 실패: {settings.DisplayName}");
+                ? $"외부 지식 도구 연결됨: {settings.DisplayName}, 도구 {status.ToolCount}개"
+                : $"외부 지식 도구 연결 실패: {settings.DisplayName}");
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"MCP 설정 적용 실패: {exception.Message}");
+            AddDiagnostic($"외부 지식 도구 설정 적용 실패: {exception.GetType().Name}");
         }
     }
 
@@ -569,6 +706,8 @@ public partial class MainWindow : Window
                      HomeNavigationButton,
                      SettingsNavigationButton,
                      ActivityNavigationButton,
+                     CapabilitiesNavigationButton,
+                     ConnectionsNavigationButton,
                      MemoryNavigationButton,
                      ScheduleNavigationButton,
                      AgentJobsNavigationButton,
@@ -585,7 +724,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"설정 화면 오류: {exception.Message}");
+            AddDiagnostic($"설정 화면 오류: {exception.GetType().Name}");
             System.Windows.MessageBox.Show(this, "설정 화면을 열지 못했습니다.", "LIGClaw", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -608,8 +747,187 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"실행 활동 불러오기 실패: {exception.Message}");
+            AddDiagnostic($"실행 활동 불러오기 실패: {exception.GetType().Name}");
             System.Windows.MessageBox.Show(this, "실행 활동 화면을 열지 못했습니다.", "LIGClaw", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void Capabilities_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await _persistenceInitialization;
+            if (!_persistenceAvailable || _capabilityManagement is null)
+            {
+                AddDiagnostic("기능 저장소를 사용할 수 없습니다.");
+                return;
+            }
+            _capabilitiesPage ??= CreateCapabilitiesPage();
+            ShowShellPage(_capabilitiesPage, CapabilitiesNavigationButton);
+            await _capabilitiesPage.RefreshAsync();
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"Capabilities 관리 화면 오류: {exception.GetType().Name}");
+            System.Windows.MessageBox.Show(
+                this,
+                "Capabilities 관리 화면을 열지 못했습니다.",
+                "LIGClaw",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private CapabilitiesPage CreateCapabilitiesPage()
+    {
+        if (_capabilityManagement is null)
+            throw new InvalidOperationException("Capability management is unavailable.");
+        var page = new CapabilitiesPage(
+            _capabilityManagement,
+            _connectionManagement,
+            _connectionManagement is null ? null : _conversationStore.Connections,
+            _connectionReadiness,
+            _mailGatewayManagement,
+            _mailGatewayManagement is null ? null : _conversationStore.MailGatewayConnections,
+            _smtpManagement,
+            _smtpManagement is null ? null : _conversationStore.SmtpConnections);
+        page.BuilderRequested += CapabilitiesPage_BuilderRequested;
+        return page;
+    }
+
+    private async void CapabilitiesPage_BuilderRequested(object? sender, EventArgs e)
+    {
+        if (!await OpenFeatureBuilderAsync())
+            AddDiagnostic("기능 만들기 서비스를 사용할 수 없습니다.");
+    }
+
+    private async Task<bool> OpenFeatureBuilderAsync(
+        string? initialRequirement = null,
+        Func<bool>? stillAuthorized = null)
+    {
+        try
+        {
+            await _persistenceInitialization;
+            if (stillAuthorized is not null && !stillAuthorized()) return false;
+            if (!_persistenceAvailable || _capabilityManagement is null ||
+                _featureBuilderManagement is null || _featureBuilderTestRunner is null)
+                return false;
+
+            _capabilitiesPage ??= CreateCapabilitiesPage();
+            _featureBuilderPage = new FeatureBuilderPage(
+                _featureBuilderManagement,
+                BuildFeatureBuilderInventoryAsync,
+                _featureBuilderTestRunner.RunRequiredTestsAsync,
+                initialRequirement);
+            _featureBuilderPage.BackRequested += FeatureBuilderPage_BackRequested;
+            _featureBuilderPage.DraftReadyForReview += FeatureBuilderPage_DraftReadyForReview;
+            ShowShellPage(_featureBuilderPage, CapabilitiesNavigationButton);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"기능 만들기 화면 오류: {exception.GetType().Name}");
+            return false;
+        }
+    }
+
+    private async void FeatureBuilderPage_BackRequested(object? sender, EventArgs e)
+    {
+        await ReturnToCapabilitiesFromBuilderAsync();
+    }
+
+    private async void FeatureBuilderPage_DraftReadyForReview(
+        object? sender,
+        CapabilityVersionRef exactVersion)
+    {
+        await ReturnToCapabilitiesFromBuilderAsync(
+            "검토 초안이 준비됐습니다. 내용을 확인한 뒤 활성화하세요.",
+            exactVersion);
+    }
+
+    private async Task ReturnToCapabilitiesFromBuilderAsync(
+        string? completionMessage = null,
+        CapabilityVersionRef? focusVersion = null)
+    {
+        if (_capabilitiesPage is null) return;
+        ShowShellPage(_capabilitiesPage, CapabilitiesNavigationButton);
+        try
+        {
+            await _capabilitiesPage.RefreshAsync(completionMessage, focusVersion);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"Capabilities 목록 복귀 실패: {exception.GetType().Name}");
+        }
+    }
+
+    private async Task<FeatureBuilderInventory> BuildFeatureBuilderInventoryAsync(
+        CancellationToken cancellationToken)
+    {
+        var tools = _windowsToolHost is null
+            ? []
+            : _windowsToolHost.Descriptors
+                .Where(descriptor =>
+                    !StringComparer.Ordinal.Equals(descriptor.Name, "mcp.read.v1") ||
+                    Volatile.Read(ref _capabilityMcpReadAvailable))
+                .Select(descriptor => descriptor.Name)
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+        var summaries = await _conversationStore.Capabilities.ListAsync(
+            null,
+            0,
+            100,
+            cancellationToken);
+        var capabilityIds = summaries
+            .Select(summary => summary.Id.Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        return new FeatureBuilderInventory(
+            tools,
+            CapabilityConnectionKindPolicy.SupportedKinds,
+            capabilityIds);
+    }
+
+    private async void Connections_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await _persistenceInitialization;
+            if (!_persistenceAvailable || _connectionManagement is null ||
+                _mailGatewayManagement is null || _smtpManagement is null)
+            {
+                AddDiagnostic("연결 설정 저장소를 사용할 수 없습니다.");
+                return;
+            }
+            _connectionsPage ??= new ConnectionsPage(
+                _connectionManagement,
+                _conversationStore.Connections,
+                _connectionCredentials,
+                _mailGatewayManagement,
+                _conversationStore.MailGatewayConnections,
+                _smtpManagement,
+                _conversationStore.SmtpConnections);
+            ShowShellPage(_connectionsPage, ConnectionsNavigationButton);
+            await _connectionsPage.RefreshAsync();
+        }
+        catch (Exception exception)
+        {
+            AddDiagnostic($"연결 설정 관리 화면 오류: {exception.GetType().Name}");
+            System.Windows.MessageBox.Show(
+                this,
+                "연결 설정 관리 화면을 열지 못했습니다.",
+                "LIGClaw",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -635,7 +953,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"파일 되돌리기 화면 갱신 실패: {exception.Message}");
+            AddDiagnostic($"파일 되돌리기 화면 갱신 실패: {exception.GetType().Name}");
             _activityView?.SetFeedback("파일 작업을 되돌리지 못했습니다.", isError: true);
         }
     }
@@ -656,7 +974,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"기억 관리 화면 오류: {exception.Message}");
+            AddDiagnostic($"기억 관리 화면 오류: {exception.GetType().Name}");
             System.Windows.MessageBox.Show(this, "기억 관리 화면을 열지 못했습니다.", "LIGClaw", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -677,7 +995,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"예약 관리 화면 오류: {exception.Message}");
+            AddDiagnostic($"예약 관리 화면 오류: {exception.GetType().Name}");
             System.Windows.MessageBox.Show(this, "예약 관리 화면을 열지 못했습니다.", "LIGClaw", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -762,6 +1080,44 @@ public partial class MainWindow : Window
         FocusRequestInput();
     }
 
+    private async void MakeCapability_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isOpeningFeatureBuilder) return;
+        var requirement = ConversationInput.Text.Trim();
+        if (requirement.Length == 0)
+        {
+            SetRunStatus("기능으로 만들 요청을 먼저 입력해 주세요.");
+            ConversationInput.Focus();
+            return;
+        }
+
+        var validation = FeatureBuilderPolicy.ValidateRequirement(requirement);
+        if (!validation.IsValid)
+        {
+            SetRunStatus(DescribeFeatureBuilderHandoffFailure(validation.ErrorCode));
+            ConversationInput.Focus();
+            return;
+        }
+
+        _isOpeningFeatureBuilder = true;
+        UpdateCommandState();
+        try
+        {
+            if (!await OpenFeatureBuilderAsync(requirement))
+                SetRunStatus("기능 만들기를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+        finally
+        {
+            _isOpeningFeatureBuilder = false;
+            UpdateCommandState();
+        }
+    }
+
+    private static string DescribeFeatureBuilderHandoffFailure(string? errorCode) =>
+        errorCode == "feature_builder.requirement.secret_detected"
+            ? "비밀값처럼 보이는 내용을 제거한 뒤 기능으로 만들어 주세요."
+            : "기능 요구사항은 공백이 아닌 8,192자 이내의 텍스트여야 합니다.";
+
     private void NewContentIndicator_Click(object sender, RoutedEventArgs e)
     {
         Transcript.ScrollToEnd();
@@ -815,7 +1171,7 @@ public partial class MainWindow : Window
         {
             AddDiagnostic($"답변 자동 읽기 실패: {exception.GetType().Name}");
             ResetReadSelectionState();
-            SetRunStatus("Windows에서 새 답변을 자동으로 읽지 못했어요.");
+            SetRunStatus("윈도우에서 새 답변을 자동으로 읽지 못했어요.");
         }
     }
 
@@ -863,7 +1219,7 @@ public partial class MainWindow : Window
         {
             AddDiagnostic($"답변 읽기 시작 실패: {exception.GetType().Name}");
             ResetReadSelectionState();
-            SetRunStatus("Windows에서 선택한 답변을 읽지 못했어요.");
+            SetRunStatus("윈도우에서 선택한 답변을 읽지 못했어요.");
         }
     }
 
@@ -873,7 +1229,7 @@ public partial class MainWindow : Window
             if (!_isSpeaking) return;
             ResetReadSelectionState();
             SetRunStatus(e.Failed
-                ? "Windows에서 선택한 답변을 끝까지 읽지 못했어요."
+                ? "윈도우에서 선택한 답변을 끝까지 읽지 못했어요."
                 : "선택한 답변을 모두 읽었어요.");
         });
 
@@ -958,7 +1314,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"요청 시작 실패: {exception.Message}");
+            AddDiagnostic($"요청 시작 실패: {exception.GetType().Name}");
             ShowRunFailure("요청을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.");
         }
     }
@@ -969,7 +1325,7 @@ public partial class MainWindow : Window
         _isPreparingScreenContext = true;
         ScreenCapturePickerResult? capture = null;
         ScreenTextRecognitionResult? recognition = null;
-        SetRunStatus("Windows에서 공유할 화면을 선택해 주세요.");
+        SetRunStatus("윈도우에서 공유할 화면을 선택해 주세요.");
         UpdateCommandState();
         try
         {
@@ -1130,7 +1486,7 @@ public partial class MainWindow : Window
         catch (Exception exception) when (exception is COMException or InvalidOperationException or ObjectDisposedException)
         {
             AddDiagnostic($"음성 입력 시작 실패: {exception.GetType().Name}");
-            SetRunStatus("Windows 음성 입력을 시작하지 못했어요.");
+            SetRunStatus("윈도우 음성 입력을 시작하지 못했어요.");
             ResetVoiceInputState();
         }
     }
@@ -1267,7 +1623,7 @@ public partial class MainWindow : Window
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                AddDiagnostic($"Agent 이벤트 처리 실패: {exception.Message}");
+                AddDiagnostic($"인공지능 도우미 이벤트 처리 실패: {exception.GetType().Name}");
                 if (_conversationRun.IsRunning)
                     ShowRunFailure("응답을 표시하는 중 문제가 발생했어요. 다시 시도해 주세요.");
             });
@@ -1278,7 +1634,7 @@ public partial class MainWindow : Window
     {
         if (!_conversationRun.IsActiveRun(agentEvent.ConversationId, agentEvent.RunId))
         {
-            AddDiagnostic("현재 요청과 일치하지 않는 Agent 이벤트를 무시했습니다.");
+            AddDiagnostic("현재 요청과 일치하지 않는 인공지능 도우미 이벤트를 무시했습니다.");
             return;
         }
         var decision = ConversationAgentEventPolicy.Evaluate(agentEvent);
@@ -1352,7 +1708,7 @@ public partial class MainWindow : Window
         if (candidate is null || !_persistenceAvailable) return;
         var editor = new AgentJobEditorWindow(_agentJobRepository, candidate) { Owner = this };
         if (editor.ShowDialog() == true)
-            SetRunStatus("반복 Agent 작업을 예약했어요. Agent 작업에서 확인할 수 있습니다.");
+            SetRunStatus("반복 자동 작업을 예약했어요. 자동 작업 화면에서 확인할 수 있습니다.");
     }
 
     private void DismissRoutineSuggestion_Click(object sender, RoutedEventArgs e) => HideRoutineSuggestion();
@@ -1386,12 +1742,20 @@ public partial class MainWindow : Window
             await _agentJobExecutor.TryHandleToolInvocationAsync(invocation)) return;
         if (_subagentOrchestrator is not null &&
             await _subagentOrchestrator.TryHandleToolInvocationAsync(invocation)) return;
+        if (StringComparer.Ordinal.Equals(
+                invocation.Name,
+                CapabilityBuilderOpenController.CanonicalToolName))
+        {
+            await HandleCapabilityBuilderOpenInvocationAsync(invocation);
+            return;
+        }
+
         await Dispatcher.InvokeAsync(() => SetRunStatus(_conversationTools.PreparingStatus));
         var outcome = await _conversationTools.ExecuteAsync(
             invocation,
             _toolInvocationCoordinator is null
                 ? null
-                : _toolInvocationCoordinator.ExecuteAsync);
+                : _toolInvocationCoordinator.ExecutePreparedAsync);
         var execution = outcome.Execution;
         await Dispatcher.InvokeAsync(() =>
         {
@@ -1399,6 +1763,57 @@ public partial class MainWindow : Window
             if (outcome.Diagnostic is not null) AddDiagnostic(outcome.Diagnostic);
         });
 
+        await SubmitToolExecutionResultAsync(invocation, execution);
+    }
+
+    private async Task HandleCapabilityBuilderOpenInvocationAsync(ToolInvokeParams invocation)
+    {
+        await Dispatcher.InvokeAsync(() =>
+            SetRunStatus("기능 만들기 요청을 안전하게 확인하고 있어요…"));
+
+        CapabilityBuilderOpenControllerOutcome outcome;
+        try
+        {
+            outcome = await _capabilityBuilderOpenController.ExecuteAsync(invocation);
+        }
+        catch (Exception exception)
+        {
+            outcome = new CapabilityBuilderOpenControllerOutcome(
+                new WindowsToolExecutionResult(
+                    false,
+                    new Dictionary<string, object?>(),
+                    "기능 만들기 요청을 안전하게 처리하지 못했어요.",
+                    ErrorCode: "capability.builder.unavailable"));
+            await Dispatcher.InvokeAsync(() =>
+                AddDiagnostic($"기능 만들기 제어 요청 실패: {exception.GetType().Name}"));
+        }
+
+        var execution = outcome.Execution;
+        var acknowledged = await SubmitToolExecutionResultAsync(invocation, execution);
+        if (acknowledged is null || !acknowledged.Accepted || !execution.Success ||
+            outcome.RequestAfterAcknowledgement is not { } request)
+            return;
+        if (!_capabilityBuilderOpenController.CanOpenAfterAcknowledgement(request)) return;
+
+        var opened = await Dispatcher
+            .InvokeAsync(() => OpenFeatureBuilderAsync(
+                request.Requirement,
+                () => _capabilityBuilderOpenController.CanOpenAfterAcknowledgement(request)))
+            .Task
+            .Unwrap();
+        if (opened || !_capabilityBuilderOpenController.CanOpenAfterAcknowledgement(request)) return;
+
+        await Dispatcher.InvokeAsync(() =>
+        {
+            SetRunStatus("기능 만들기를 열지 못했습니다. 기능 화면에서 다시 시도해 주세요.");
+            AddDiagnostic("요청 확인 후 기능 만들기 화면을 열지 못했습니다.");
+        });
+    }
+
+    private async Task<ToolResultResult?> SubmitToolExecutionResultAsync(
+        ToolInvokeParams invocation,
+        WindowsToolExecutionResult execution)
+    {
         try
         {
             var acknowledged = await _sidecar.SubmitToolResultAsync(new ToolResultParams(
@@ -1407,13 +1822,62 @@ public partial class MainWindow : Window
                 execution.Output,
                 execution.Error));
             if (!acknowledged.Accepted)
-                await Dispatcher.InvokeAsync(() => AddDiagnostic("Sidecar가 만료된 Tool 결과를 거부했습니다."));
+                await Dispatcher.InvokeAsync(() => AddDiagnostic("보조 실행기가 만료된 작업 도구 결과를 거부했습니다."));
             else if (execution.ActivitySummary is not null)
                 await Dispatcher.InvokeAsync(() => AddDiagnostic(execution.ActivitySummary));
+            return acknowledged;
         }
         catch (Exception exception)
         {
-            await Dispatcher.InvokeAsync(() => AddDiagnostic($"Tool 결과 전달 실패: {exception.Message}"));
+            await Dispatcher.InvokeAsync(() =>
+                AddDiagnostic($"작업 도구 결과 전달 실패: {exception.GetType().Name}"));
+            return null;
+        }
+    }
+
+    private async void Sidecar_WorkflowInvocationReceived(object? sender, WorkflowInvokeParams invocation)
+    {
+        await Dispatcher.InvokeAsync(() => SetRunStatus("작업 흐름을 안전하게 준비하고 있어요…"));
+        WorkflowResultParams result;
+        try
+        {
+            result = _conversationWorkflows is null
+                ? new WorkflowResultParams(
+                    invocation.WorkflowCallId,
+                    false,
+                    Error: "workflow.runtime.unavailable")
+                : await _conversationWorkflows.ExecuteAsync(invocation);
+        }
+        catch (Exception exception)
+        {
+            result = new WorkflowResultParams(
+                invocation.WorkflowCallId,
+                false,
+                Error: "workflow.runtime.unavailable");
+            await Dispatcher.InvokeAsync(() =>
+                AddDiagnostic($"작업 흐름 실행 경계 오류: {exception.GetType().Name}"));
+        }
+
+        await Dispatcher.InvokeAsync(() => SetRunStatus(result.Output?.Status switch
+        {
+            "succeeded" => "작업 흐름을 완료했어요.",
+            "needs_information" => "작업 흐름에 추가 정보가 필요해요.",
+            "cancelled" => "작업 흐름 실행을 중단했어요.",
+            "attention_required" => "작업 흐름 결과를 확인해 주세요.",
+            "failed" => "작업 흐름을 완료하지 못했어요.",
+            _ => result.Success ? "작업 흐름 결과를 확인하고 있어요…" : "작업 흐름 요청을 실행하지 않았어요.",
+        }));
+
+        try
+        {
+            var acknowledged = await _sidecar.SubmitWorkflowResultAsync(result);
+            if (!acknowledged.Accepted)
+                await Dispatcher.InvokeAsync(() => AddDiagnostic("보조 실행기가 만료된 작업 흐름 결과를 거부했습니다."));
+        }
+        catch (Exception exception)
+        {
+            await Dispatcher.InvokeAsync(() =>
+                AddDiagnostic($"작업 흐름 결과 전달 실패: {exception.GetType().Name}"));
         }
     }
 
@@ -1450,7 +1914,7 @@ public partial class MainWindow : Window
             await _persistenceInitialization;
             if (!_persistenceAvailable)
             {
-                AddDiagnostic("Agent 작업 저장소를 사용할 수 없습니다.");
+                AddDiagnostic("자동 작업 저장소를 사용할 수 없습니다.");
                 return;
             }
             _agentJobsPage ??= new AgentJobsPage(_agentJobRepository);
@@ -1459,8 +1923,8 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"Agent 작업 관리 화면 오류: {exception.Message}");
-            System.Windows.MessageBox.Show(this, "Agent 작업 관리 화면을 열지 못했습니다.", "LIGClaw", MessageBoxButton.OK, MessageBoxImage.Error);
+            AddDiagnostic($"자동 작업 관리 화면 오류: {exception.GetType().Name}");
+            System.Windows.MessageBox.Show(this, "자동 작업 관리 화면을 열지 못했습니다.", "LIGClaw", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -1489,9 +1953,9 @@ public partial class MainWindow : Window
         CancellationToken cancellationToken)
     {
         var message = result.Succeeded
-            ? "작업이 완료되었습니다. LIGClaw의 Agent 작업에서 결과를 확인하세요."
-            : "작업을 완료하지 못했습니다. LIGClaw의 Agent 작업에서 오류와 재시도를 확인하세요.";
-        await _notifications.ShowAsync($"Agent 작업 · {claim.Job.Title}", message, cancellationToken).ConfigureAwait(false);
+            ? "작업이 완료되었습니다. LIGClaw의 자동 작업 화면에서 결과를 확인하세요."
+            : "작업을 완료하지 못했습니다. LIGClaw의 자동 작업 화면에서 오류와 재시도를 확인하세요.";
+        await _notifications.ShowAsync($"자동 작업 · {claim.Job.Title}", message, cancellationToken).ConfigureAwait(false);
         Task? refresh = null;
         await Dispatcher.InvokeAsync(() =>
         {
@@ -1704,7 +2168,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             if (!request.IsCurrent) return;
-            AddDiagnostic($"최근 대화 불러오기 실패: {exception.Message}");
+            AddDiagnostic($"최근 대화 불러오기 실패: {exception.GetType().Name}");
             ConversationSearchStatus.Text = "대화를 불러오지 못했습니다.";
         }
     }
@@ -1740,7 +2204,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            AddDiagnostic($"대화 내용 불러오기 실패: {exception.Message}");
+            AddDiagnostic($"대화 내용 불러오기 실패: {exception.GetType().Name}");
         }
     }
 
@@ -1754,6 +2218,8 @@ public partial class MainWindow : Window
         NewConversationButton.IsEnabled = !_conversationRun.IsRunning && !_pushToTalk.IsActive;
         ScreenContextButton.IsEnabled = !_conversationRun.IsRunning && !_isPreparingScreenContext && !_pushToTalk.IsActive;
         VoiceInputButton.IsEnabled = _voiceInputEnabled && !_conversationRun.IsRunning && !_isPreparingScreenContext;
+        MakeCapabilityButton.IsEnabled = !_conversationRun.IsRunning && !_isPreparingScreenContext &&
+                                         !_pushToTalk.IsActive && !_isOpeningFeatureBuilder;
     }
 
     private void SetRunStatus(string status)
@@ -1883,21 +2349,29 @@ public partial class MainWindow : Window
         BrandCopy.Visibility = labelVisibility;
         HomeNavigationLabel.Visibility = labelVisibility;
         ActivityNavigationLabel.Visibility = labelVisibility;
+        CapabilitiesNavigationLabel.Visibility = labelVisibility;
+        ConnectionsNavigationLabel.Visibility = labelVisibility;
         MemoryNavigationLabel.Visibility = labelVisibility;
         ScheduleNavigationLabel.Visibility = labelVisibility;
         AgentJobsNavigationLabel.Visibility = labelVisibility;
         SettingsNavigationLabel.Visibility = labelVisibility;
         SidebarFooter.Visibility = labelVisibility;
+        PrimaryNavigation.Margin = layout.IsCompact
+            ? new Thickness(0, 20, 0, 0)
+            : new Thickness(0, 38, 0, 0);
         foreach (var button in new[]
                  {
                      HomeNavigationButton,
                      ActivityNavigationButton,
+                     CapabilitiesNavigationButton,
+                     ConnectionsNavigationButton,
                      MemoryNavigationButton,
                      ScheduleNavigationButton,
                      AgentJobsNavigationButton,
                      SettingsNavigationButton,
                  })
         {
+            button.Height = layout.IsCompact ? 42 : 48;
             button.HorizontalContentAlignment = layout.ShowRailLabels
                 ? System.Windows.HorizontalAlignment.Left
                 : System.Windows.HorizontalAlignment.Center;
@@ -1928,6 +2402,7 @@ public partial class MainWindow : Window
         _sidecar.DiagnosticMessage -= Sidecar_DiagnosticMessage;
         _sidecar.AgentEventReceived -= Sidecar_AgentEventReceived;
         _sidecar.ToolInvocationReceived -= Sidecar_ToolInvocationReceived;
+        _sidecar.WorkflowInvocationReceived -= Sidecar_WorkflowInvocationReceived;
         _quickAccessHotkey.Pressed -= QuickAccessHotkey_Pressed;
         _textToSpeech.PlaybackEnded -= TextToSpeech_PlaybackEnded;
         _quickAccessHotkey.Dispose();

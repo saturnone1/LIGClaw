@@ -2,6 +2,7 @@
 param(
     [Parameter(Mandatory)][string]$InitialPackage,
     [Parameter(Mandatory)][string]$StageDirectory,
+    [Parameter(Mandatory)][ValidatePattern('^[0-9A-Fa-f]{40}$')][string]$CertificateThumbprint,
     [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')][string]$UpdateVersion = '0.5.0.4'
 )
 
@@ -26,43 +27,37 @@ $makeAppx = Get-ChildItem $sdkRoot -Recurse -Filter makeappx.exe | Where-Object 
 $signTool = Get-ChildItem $sdkRoot -Recurse -Filter signtool.exe | Where-Object FullName -Match '\\x64\\' | Sort-Object FullName -Descending | Select-Object -First 1
 if (-not $makeAppx -or -not $signTool) { throw 'Windows SDK packaging tools were not found.' }
 
-$certificate = $null
-try {
-    $certificate = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=LIGClaw Development' `
-        -KeyUsage DigitalSignature -FriendlyName 'LIGClaw temporary MSIX lifecycle test' `
-        -CertStoreLocation 'Cert:\CurrentUser\My' -NotAfter (Get-Date).AddDays(2)
-    $trusted = New-Object System.Security.Cryptography.X509Certificates.X509Store('TrustedPeople', 'CurrentUser')
-    try { $trusted.Open('ReadWrite'); $trusted.Add($certificate) } finally { $trusted.Close() }
-    $root = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'CurrentUser')
-    try { $root.Open('ReadWrite'); $root.Add($certificate) } finally { $root.Close() }
-
-    & $signTool.FullName sign /fd SHA256 /sha1 $certificate.Thumbprint $initial
-    if ($LASTEXITCODE -ne 0) { throw 'Initial package signing failed.' }
-
-    if (-not $reuseUpdate) {
-        $manifestPath = Join-Path $stage 'AppxManifest.xml'
-        $manifest = Get-Content -Raw -LiteralPath $manifestPath
-        $manifest = [regex]::Replace($manifest, 'Version="\d+\.\d+\.\d+\.\d+"', "Version=`"$UpdateVersion`"", 1)
-        Set-Utf8NoBom -LiteralPath $manifestPath -Value $manifest
-        & $makeAppx.FullName pack /d $stage /p $update
-        if ($LASTEXITCODE -ne 0) { throw 'Update package creation failed.' }
-    }
-    & $signTool.FullName sign /fd SHA256 /sha1 $certificate.Thumbprint $update
-    if ($LASTEXITCODE -ne 0) { throw 'Update package signing failed.' }
-    & $signTool.FullName verify /pa $initial
-    if ($LASTEXITCODE -ne 0) { throw 'Initial signature verification failed.' }
-    & $signTool.FullName verify /pa $update
-    if ($LASTEXITCODE -ne 0) { throw 'Update signature verification failed.' }
-
-    & (Join-Path $PSScriptRoot 'test-msix-lifecycle.ps1') -InitialPackage $initial -UpdatePackage $update
-    if ($LASTEXITCODE -ne 0) { throw 'MSIX lifecycle test failed.' }
+$normalizedThumbprint = $CertificateThumbprint.ToUpperInvariant()
+$certificate = Get-Item -LiteralPath "Cert:\CurrentUser\My\$normalizedThumbprint" -ErrorAction Stop
+if (-not $certificate.HasPrivateKey) { throw 'The MSIX test certificate must have an accessible private key.' }
+$codeSigningOid = '1.3.6.1.5.5.7.3.3'
+$hasCodeSigningUsage = $null -ne ($certificate.EnhancedKeyUsageList | Where-Object {
+    $_.ObjectId.Value -eq $codeSigningOid
+} | Select-Object -First 1)
+if (-not $hasCodeSigningUsage) { throw 'The MSIX test certificate must permit code signing.' }
+$chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+$chain.ChainPolicy.RevocationMode = [System.Security.Cryptography.X509Certificates.X509RevocationMode]::NoCheck
+if (-not $chain.Build($certificate)) {
+    throw 'The MSIX test certificate chain must already be trusted on this disposable test machine.'
 }
-finally {
-    if ($certificate) {
-        $trusted = New-Object System.Security.Cryptography.X509Certificates.X509Store('TrustedPeople', 'CurrentUser')
-        try { $trusted.Open('ReadWrite'); $trusted.Remove($certificate) } finally { $trusted.Close() }
-        $root = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'CurrentUser')
-        try { $root.Open('ReadWrite'); $root.Remove($certificate) } finally { $root.Close() }
-        Remove-Item -LiteralPath "Cert:\CurrentUser\My\$($certificate.Thumbprint)" -Force -ErrorAction SilentlyContinue
-    }
+
+& $signTool.FullName sign /fd SHA256 /sha1 $certificate.Thumbprint $initial
+if ($LASTEXITCODE -ne 0) { throw 'Initial package signing failed.' }
+
+if (-not $reuseUpdate) {
+    $manifestPath = Join-Path $stage 'AppxManifest.xml'
+    $manifest = Get-Content -Raw -LiteralPath $manifestPath
+    $manifest = [regex]::Replace($manifest, 'Version="\d+\.\d+\.\d+\.\d+"', "Version=`"$UpdateVersion`"", 1)
+    Set-Utf8NoBom -LiteralPath $manifestPath -Value $manifest
+    & $makeAppx.FullName pack /d $stage /p $update
+    if ($LASTEXITCODE -ne 0) { throw 'Update package creation failed.' }
 }
+& $signTool.FullName sign /fd SHA256 /sha1 $certificate.Thumbprint $update
+if ($LASTEXITCODE -ne 0) { throw 'Update package signing failed.' }
+& $signTool.FullName verify /pa $initial
+if ($LASTEXITCODE -ne 0) { throw 'Initial signature verification failed.' }
+& $signTool.FullName verify /pa $update
+if ($LASTEXITCODE -ne 0) { throw 'Update signature verification failed.' }
+
+& (Join-Path $PSScriptRoot 'test-msix-lifecycle.ps1') -InitialPackage $initial -UpdatePackage $update
+if ($LASTEXITCODE -ne 0) { throw 'MSIX lifecycle test failed.' }

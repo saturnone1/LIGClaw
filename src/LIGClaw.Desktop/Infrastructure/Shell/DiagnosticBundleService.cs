@@ -8,6 +8,8 @@ namespace LIGClaw.Desktop.Infrastructure.Shell;
 
 internal sealed partial class DiagnosticBundleService
 {
+    internal const string SmtpMailDiagnosticPlaceholder = "[REDACTED SMTP/MAIL DIAGNOSTIC]";
+
     public async Task CreateAsync(
         string destinationPath,
         string platform,
@@ -61,6 +63,9 @@ internal sealed partial class DiagnosticBundleService
 
     internal static string Redact(string value)
     {
+        if (SmtpMailSensitiveKeyPattern().IsMatch(value))
+            return SmtpMailDiagnosticPlaceholder;
+
         var redacted = JsonCredentialPattern().Replace(value, "$1[REDACTED]");
         redacted = AuthorizationPattern().Replace(redacted, "$1[REDACTED]");
         redacted = CredentialPattern().Replace(redacted, "$1[REDACTED]");
@@ -70,6 +75,11 @@ internal sealed partial class DiagnosticBundleService
             redacted = redacted.Replace(profile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
         return redacted.Length <= 2_048 ? redacted : string.Concat(redacted.AsSpan(0, 2_048), "… [truncated]");
     }
+
+    [GeneratedRegex(
+        """(?<![A-Za-z0-9_])(?:(?:\\)*["']\s*)?(?:smtp[_ -]?(?:username|password|content|body|recipient|to|cc|bcc|subject|sender|server[_ -]?(?:text|reply))|mail[_ -]?(?:username|password|content|body|recipient|to|cc|bcc|subject|sender|server[_ -]?(?:text|reply))|username|password|recipient|to|cc|bcc|subject|sender|from|body|server[_ -]?(?:text|reply))\s*(?:(?:\\)*["'])?\s*[:=]""",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex SmtpMailSensitiveKeyPattern();
 
     [GeneratedRegex("(?i)([\"'](?:authorization|api[_ -]?key|token|password)[\"']\\s*:\\s*[\"'])[^\"']+")]
     private static partial Regex JsonCredentialPattern();

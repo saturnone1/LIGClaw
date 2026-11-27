@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/capability-proposal-generate-params.schema.json",
+  "title": "CapabilityProposalGenerateParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generationId",
+    "requestHash",
+    "sessionId",
+    "sessionRevision",
+    "inventoryHash",
+    "deadlineUtc",
+    "requirement",
+    "answers",
+    "inventory"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "generationId": {
+      "type": "string",
+      "pattern": "^fbgen_[0-9a-f]{32}$"
+    },
+    "requestHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "sessionId": {
+      "type": "string",
+      "pattern": "^fbs_[0-9a-f]{32}$"
+    },
+    "sessionRevision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "inventoryHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "deadlineUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "requirement": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64000
+    },
+    "answers": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "$ref": "./capability-proposal-answer.schema.json" }
+    },
+    "inventory": {
+      "$ref": "./capability-proposal-inventory.schema.json"
+    }
+  }
+}

@@ -15,7 +15,7 @@ internal sealed class LocalSubagentRepository(ConversationDatabase database) : I
     {
         if (batchId.Length != 32 || !batchId.All(char.IsAsciiHexDigitLower))
             throw new ArgumentException("Batch ID가 올바르지 않습니다.", nameof(batchId));
-        if (!SubagentPolicy.IsValid(draft)) throw new ArgumentException("하위 Agent 작업이 올바르지 않습니다.", nameof(draft));
+        if (!SubagentPolicy.IsValid(draft)) throw new ArgumentException("하위 도우미 작업이 올바르지 않습니다.", nameof(draft));
         var records = draft.Tasks.Select((task, ordinal) => new SubagentTaskRecord(
             batchId, Guid.NewGuid().ToString("N"), ordinal, task.Title, task.Prompt,
             "running", null, null, nowUtc, nowUtc)).ToArray();

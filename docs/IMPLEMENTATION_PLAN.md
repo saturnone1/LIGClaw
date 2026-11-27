@@ -1,7 +1,7 @@
 # LIGClaw 구현 계획
 
-> 문서 상태: living plan for v0.6.0
-> 작성 기준일: 2026-07-25
+> 문서 상태: living plan for v0.6.0 release candidate
+> 작성 기준일: 2026-08-12
 > 제품 정의: Windows 사용자 세션에 상주하며 반복 작업을 대신하는 로컬 우선 개인 비서
 
 ## 1. 결론
@@ -101,6 +101,8 @@ SQLite 파일을 두 프로세스가 공유하지 않는다. 이 규칙으로 �
 ### 3.2 UI 기술 선택
 
 MVP는 **WPF on .NET 10**을 선택한다. 트레이, 전역 단축키, HWND/Win32, UI Automation과의 통합이 성숙하고 자동화 테스트 자료가 풍부하기 때문이다. Windows App SDK는 알림 등 필요한 기능만 점진적으로 사용한다. UI를 `View → ViewModel → Application Port`로 분리해 향후 WinUI 3로 옮겨도 도메인과 Tool 구현은 유지한다.
+
+2026-08-12 UI 현대화에서는 `WPF-UI 4.3.0`의 Fluent 테마·FluentWindow·Card·Badge·InfoBar·ToggleSwitch를 도입했다. 라이브러리 전용 내비게이션에 업무 구조를 결합하지 않고 기존 View/ViewModel 경계를 유지한다. Windows 10 폐쇄망 배포를 위해 런타임 DLL과 라이선스 고지를 설치물에 포함하고 Windows 11 전용 backdrop이나 시스템 아이콘 글꼴을 필수 조건으로 삼지 않는다. 상세 인수 기준은 `docs/UI_MODERNIZATION_ACCEPTANCE.md`를 따른다.
 
 ### 3.3 에이전트 런타임 선택
 
@@ -398,6 +400,16 @@ Phase 5 착수 전 제품 작업인 **UI/UX 전면 개선 목표**는 완료했�
 - C-3: Windows 10/11, production 서명, 실제 UIA 외부 gate
 - C-4: 최소 데이터 기반 일상 진단 기능
 - C-5: 별도 개인정보 경계를 갖춘 화면·OCR·음성
+
+### Phase 9 — D/E단계 범용 기능 카드 플랫폼과 설치 후보
+
+**상태: 진행 중 (2026-08-11).** D-0~D-7에서 Cline Sidecar를 유지한 채 Desktop 소유 Capability Catalog, 선언형 Workflow, Connection, Feature Builder와 메일 기준 수직 사례를 구현·인수했다. 현재 출시 목표는 이메일 클라이언트 확대가 아니라 비개발자가 자연어로 기능 카드를 추가하고 검토·활성화·실행·rollback할 수 있는 native WPF 대시보드다. 실제 안정화와 설치 인수 순서는 `docs/E_STAGE_PLAN.md`를 따른다.
+
+- 기능 카드 대시보드와 자연어 Feature Builder
+- exact-version 선택, 정적 검사·dry-run, Connection readiness와 사용자 활성화
+- Desktop 정책·승인·Workflow ledger를 통과하는 범용 실행
+- 계약/의존성/전체 회귀/UI smoke와 재현 가능한 MSIX 산출물
+- D-8~D-10 사내 pack·공유·Remote Runner는 안정된 플랫폼 위의 후속 수직 슬라이스
 
 ## 11. 테스트 전략
 

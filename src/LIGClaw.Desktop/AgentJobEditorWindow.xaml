@@ -1,25 +1,29 @@
-<Window x:Class="LIGClaw.Desktop.AgentJobEditorWindow"
+<ui:FluentWindow x:Class="LIGClaw.Desktop.AgentJobEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="새 Agent 작업 · LIGClaw" Height="740" Width="650"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="새 자동 작업 · LIGClaw" Height="740" Width="650"
         MinHeight="600" MinWidth="540" Icon="Assets/ligclaw.ico"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip">
-    <Grid Margin="28">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <ui:TitleBar Grid.Row="0" Height="32" Title="새 자동 작업 · LIGClaw" />
+        <Grid Grid.Row="1" Margin="28">
         <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="AGENT JOB / DURABLE" />
-                <TextBlock Style="{StaticResource PageTitleStyle}" Text="새 Agent 작업" />
+                <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="자동 작업 / 안전하게 저장" />
+                <TextBlock Style="{StaticResource PageTitleStyle}" Text="새 자동 작업" />
                 <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                           Text="모델 요청은 지정 시각에 실행됩니다. Windows 효과는 실행 시점에 다시 승인합니다." />
+                           Text="모델 요청은 지정 시각에 실행됩니다. 윈도우에서 실제 작업을 수행할 때는 다시 승인을 받습니다." />
                 <TextBlock Margin="0,18,0,5" Text="제목" />
-                <TextBox x:Name="TitleBox" MaxLength="80" AutomationProperties.Name="Agent 작업 제목" />
+                <TextBox x:Name="TitleBox" MaxLength="80" AutomationProperties.Name="자동 작업 제목" />
                 <TextBlock Margin="0,14,0,5" Text="실행할 지시" />
                 <TextBox x:Name="PromptBox" MaxLength="8000" MinHeight="110" AcceptsReturn="True"
-                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Agent 작업 지시" />
-                <TextBlock Margin="0,14,0,5" Text="시작 현지 시각 (yyyy-MM-ddTHH:mm:ss)" />
+                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="자동 작업 지시" />
+                <TextBlock Margin="0,14,0,5" Text="처음 실행할 날짜와 시각 (예: 2026-08-03 14:30)" />
                 <TextBox x:Name="StartLocalBox" AutomationProperties.Name="첫 실행 시각" />
-                <TextBlock Margin="0,14,0,5" Text="시간대 ID" />
+                <TextBlock Margin="0,14,0,5" Text="시간대 식별자" />
                 <TextBox x:Name="TimeZoneBox" MaxLength="128" AutomationProperties.Name="시간대" />
                 <Grid Margin="0,14,0,0">
                     <Grid.ColumnDefinitions>
@@ -29,15 +33,15 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock Margin="0,0,0,5" Text="반복" />
-                        <ComboBox x:Name="RecurrenceBox" AutomationProperties.Name="Agent 작업 반복"><ComboBoxItem Tag="once" Content="한 번" /><ComboBoxItem Tag="daily" Content="매일" /><ComboBoxItem Tag="weekly" Content="매주" /></ComboBox>
+                        <ComboBox x:Name="RecurrenceBox" AutomationProperties.Name="자동 작업 반복"><ComboBoxItem Tag="once" Content="한 번" /><ComboBoxItem Tag="daily" Content="매일" /><ComboBoxItem Tag="weekly" Content="매주" /></ComboBox>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Margin="0,0,0,5" Text="간격" />
-                        <TextBox x:Name="IntervalBox" Text="1" AutomationProperties.Name="Agent 작업 반복 간격" />
+                        <TextBox x:Name="IntervalBox" Text="1" AutomationProperties.Name="자동 작업 반복 간격" />
                     </StackPanel>
                     <StackPanel Grid.Column="4">
                         <TextBlock Margin="0,0,0,5" Text="놓친 실행" />
-                        <ComboBox x:Name="MisfireBox" AutomationProperties.Name="놓친 Agent 작업 처리"><ComboBoxItem Tag="skip" Content="건너뛰기" /><ComboBoxItem Tag="run_once_on_resume" Content="재개 시 1회" /><ComboBoxItem Tag="ask" Content="확인" /></ComboBox>
+                        <ComboBox x:Name="MisfireBox" AutomationProperties.Name="놓친 자동 작업 처리"><ComboBoxItem Tag="skip" Content="건너뛰기" /><ComboBoxItem Tag="run_once_on_resume" Content="재개 시 1회" /><ComboBoxItem Tag="ask" Content="확인" /></ComboBox>
                     </StackPanel>
                 </Grid>
                 <Grid Margin="0,14,0,0">
@@ -50,8 +54,8 @@
                     <StackPanel Grid.Column="2"><TextBlock Margin="0,0,0,5" Text="최대 시도" /><TextBox x:Name="AttemptsBox" Text="3" AutomationProperties.Name="최대 실행 시도" /></StackPanel>
                     <StackPanel Grid.Column="4"><TextBlock Margin="0,0,0,5" Text="결과 최대 글자" /><TextBox x:Name="ResultLimitBox" Text="20000" AutomationProperties.Name="결과 최대 글자 수" /></StackPanel>
                 </Grid>
-                <TextBlock Margin="0,14,0,5" Text="모델 프로필 ID (선택)" />
-                <TextBox x:Name="ModelProfileBox" MaxLength="64" AutomationProperties.Name="Agent 작업 모델 프로필 ID" />
+                <TextBlock Margin="0,14,0,5" Text="사용할 모델 설정 이름 (선택)" />
+                <TextBox x:Name="ModelProfileBox" MaxLength="64" AutomationProperties.Name="자동 작업 모델 설정 이름" />
                 <TextBlock x:Name="ValidationMessage" Margin="0,13,0,0"
                            Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" />
             </StackPanel>
@@ -60,5 +64,6 @@
             <Button Width="92" Style="{StaticResource SecondaryButtonStyle}" Click="Cancel_Click" Content="취소" />
             <Button Width="92" Margin="9,0,0,0" Style="{StaticResource PrimaryButtonStyle}" Click="Save_Click" Content="예약" />
         </StackPanel>
+        </Grid>
     </Grid>
-</Window>
+</ui:FluentWindow>

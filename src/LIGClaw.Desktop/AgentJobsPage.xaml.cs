@@ -15,7 +15,7 @@ public partial class AgentJobsPage : System.Windows.Controls.UserControl
     {
         _jobs = jobs;
         InitializeComponent();
-        Loaded += async (_, _) => await ExecuteUiAsync(() => RefreshAsync(), "Agent 작업을 불러오지 못했습니다.");
+        Loaded += async (_, _) => await ExecuteUiAsync(() => RefreshAsync(), "자동 작업을 불러오지 못했습니다.");
         Unloaded += (_, _) => Interlocked.Exchange(ref _refreshCancellation, null)?.Cancel();
     }
 
@@ -24,14 +24,14 @@ public partial class AgentJobsPage : System.Windows.Controls.UserControl
     private async void Create_Click(object sender, RoutedEventArgs e)
     {
         var editor = new AgentJobEditorWindow(_jobs) { Owner = OwnerWindow };
-        if (editor.ShowDialog() == true) await RefreshAsync("Agent 작업을 예약했어요.");
+        if (editor.ShowDialog() == true) await RefreshAsync("자동 작업을 예약했어요.");
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) =>
-        await ExecuteUiAsync(() => RefreshAsync(), "Agent 작업을 새로 고치지 못했습니다.");
+        await ExecuteUiAsync(() => RefreshAsync(), "자동 작업을 새로 고치지 못했습니다.");
 
     private async void IncludeInactive_Changed(object sender, RoutedEventArgs e) =>
-        await ExecuteUiAsync(() => RefreshAsync(), "Agent 작업을 불러오지 못했습니다.");
+        await ExecuteUiAsync(() => RefreshAsync(), "자동 작업을 불러오지 못했습니다.");
 
     private async void Cancel_Click(object sender, RoutedEventArgs e)
     {
@@ -41,26 +41,26 @@ public partial class AgentJobsPage : System.Windows.Controls.UserControl
             if (job is null) return;
             if (System.Windows.MessageBox.Show(
                     OwnerWindow,
-                    $"‘{job.Title}’ Agent 작업을 취소할까요?\n이미 저장된 실행 이력은 유지됩니다.",
-                    "Agent 작업 취소",
+                    $"‘{job.Title}’ 자동 작업을 취소할까요?\n이미 저장된 실행 이력은 유지됩니다.",
+                    "자동 작업 취소",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning,
                     MessageBoxResult.No) != MessageBoxResult.Yes) return;
             _ = await _jobs.CancelAgentJobAsync(job.Id, DateTimeOffset.UtcNow, CancellationToken.None);
-            await RefreshAsync("Agent 작업을 취소했어요.");
-        }, "Agent 작업을 취소하지 못했습니다.");
+            await RefreshAsync("자동 작업을 취소했어요.");
+        }, "자동 작업을 취소하지 못했습니다.");
     }
 
     private async void RunMissed_Click(object sender, RoutedEventArgs e)
     {
-        await ResolveMissedAsync(sender, true, "놓친 Agent 작업을 실행 대기로 바꿨어요.");
+        await ResolveMissedAsync(sender, true, "놓친 자동 작업을 실행 대기로 바꿨어요.");
     }
 
     private async void Pause_Click(object sender, RoutedEventArgs e) =>
-        await SetPausedAsync(sender, true, "Agent 작업을 일시정지했어요.");
+        await SetPausedAsync(sender, true, "자동 작업을 일시정지했어요.");
 
     private async void Resume_Click(object sender, RoutedEventArgs e) =>
-        await SetPausedAsync(sender, false, "Agent 작업을 재개했어요.");
+        await SetPausedAsync(sender, false, "자동 작업을 재개했어요.");
 
     private async Task SetPausedAsync(object sender, bool paused, string message)
     {
@@ -69,7 +69,7 @@ public partial class AgentJobsPage : System.Windows.Controls.UserControl
             if (sender is FrameworkElement { Tag: string id })
                 _ = await _jobs.SetAgentJobPausedAsync(id, paused, DateTimeOffset.UtcNow, CancellationToken.None);
             await RefreshAsync(message);
-        }, paused ? "Agent 작업을 일시정지하지 못했습니다." : "Agent 작업을 재개하지 못했습니다.");
+        }, paused ? "자동 작업을 일시정지하지 못했습니다." : "자동 작업을 재개하지 못했습니다.");
     }
 
     private async void Retry_Click(object sender, RoutedEventArgs e)
@@ -78,13 +78,13 @@ public partial class AgentJobsPage : System.Windows.Controls.UserControl
         {
             if (sender is FrameworkElement { Tag: string id })
                 _ = await _jobs.RetryAgentJobNowAsync(id, DateTimeOffset.UtcNow, CancellationToken.None);
-            await RefreshAsync("Agent 작업을 즉시 재시도하도록 예약했어요.");
-        }, "Agent 작업을 다시 실행하지 못했습니다.");
+            await RefreshAsync("자동 작업을 즉시 재시도하도록 예약했어요.");
+        }, "자동 작업을 다시 실행하지 못했습니다.");
     }
 
     private async void SkipMissed_Click(object sender, RoutedEventArgs e)
     {
-        await ResolveMissedAsync(sender, false, "놓친 Agent 작업을 건너뛰었어요.");
+        await ResolveMissedAsync(sender, false, "놓친 자동 작업을 건너뛰었어요.");
     }
 
     private async Task ResolveMissedAsync(object sender, bool runNow, string message)
@@ -94,7 +94,7 @@ public partial class AgentJobsPage : System.Windows.Controls.UserControl
             if (sender is FrameworkElement { Tag: string id })
                 _ = await _jobs.ResolveAgentJobMisfireAsync(id, runNow, DateTimeOffset.UtcNow, CancellationToken.None);
             await RefreshAsync(message);
-        }, "놓친 Agent 작업을 처리하지 못했습니다.");
+        }, "놓친 자동 작업을 처리하지 못했습니다.");
     }
 
     private async void History_Click(object sender, RoutedEventArgs e)
@@ -120,7 +120,7 @@ public partial class AgentJobsPage : System.Windows.Controls.UserControl
         using var cancellation = new CancellationTokenSource();
         Interlocked.Exchange(ref _refreshCancellation, cancellation)?.Cancel();
         var includeInactive = IncludeInactive.IsChecked == true;
-        SetStatus("Agent 작업을 불러오고 있어요…", false);
+        SetStatus("자동 작업을 불러오고 있어요…", false);
         var jobs = await _jobs.ListAgentJobsAsync(includeInactive, 0, 500, cancellation.Token);
         Interlocked.CompareExchange(ref _refreshCancellation, null, cancellation);
         cancellation.Token.ThrowIfCancellationRequested();
@@ -128,7 +128,7 @@ public partial class AgentJobsPage : System.Windows.Controls.UserControl
         var items = jobs.Select(AgentJobListItem.Create).ToArray();
         AgentJobList.ItemsSource = items;
         EmptyMessage.Visibility = items.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        SetStatus(completionMessage ?? $"Agent 작업 {items.Length}개", false);
+        SetStatus(completionMessage ?? $"자동 작업 {items.Length}개", false);
     }
 
     private async Task ExecuteUiAsync(Func<Task> action, string failure)

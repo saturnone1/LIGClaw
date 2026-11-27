@@ -339,6 +339,38 @@ internal sealed class ConversationRepository(ConversationDatabase database) : IC
         return turns;
     }
 
+    public async Task<PersistedConversationRunInput?> GetPersistedRunInputAsync(
+        string conversationId,
+        string runId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(runId);
+        PersistedConversationRunInput? result = null;
+        await WithConnectionAsync(async connection =>
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                """
+                SELECT conversation_id, run_id, user_input, status
+                FROM conversation_runs
+                WHERE conversation_id = $conversationId AND run_id = $runId;
+                """;
+            command.Parameters.AddWithValue("$conversationId", conversationId);
+            command.Parameters.AddWithValue("$runId", runId);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                result = new PersistedConversationRunInput(
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.GetString(3));
+            }
+        }, cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
     public async Task<IReadOnlyList<CompletedUserInput>> GetRecentCompletedUserInputsAsync(
         DateTimeOffset sinceUtc,
         int limit = 200,

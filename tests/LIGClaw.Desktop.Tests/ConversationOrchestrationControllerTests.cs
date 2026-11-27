@@ -1,8 +1,12 @@
+using LIGClaw.Application.Capabilities;
 using LIGClaw.Application.Tools;
 using LIGClaw.Contracts.Generated;
 using LIGClaw.Desktop.Infrastructure.Persistence;
 using LIGClaw.Desktop.Infrastructure.Shell;
 using LIGClaw.Desktop.Infrastructure.Sidecar;
+using LIGClaw.Domain;
+using ApplicationCapabilityRuntimeSnapshot = LIGClaw.Application.Capabilities.CapabilityRuntimeSnapshot;
+using ContractCapabilityRuntimeSnapshot = LIGClaw.Contracts.Generated.CapabilityRuntimeSnapshot;
 
 namespace LIGClaw.Desktop.Tests;
 
@@ -25,6 +29,8 @@ public sealed class ConversationOrchestrationControllerTests
         Assert.Null(outcome.Diagnostic);
         Assert.Equal("user", sidecar.History![0]["role"]);
         Assert.Equal("이전 요청", sidecar.History[0]["content"]);
+        Assert.NotNull(sidecar.CapabilitySnapshot);
+        Assert.Empty(sidecar.CapabilitySnapshot.Candidates);
     }
 
     [Fact]
@@ -42,6 +48,60 @@ public sealed class ConversationOrchestrationControllerTests
         Assert.False(outcome.RefreshConversations);
         Assert.Contains(nameof(InvalidOperationException), outcome.Diagnostic, StringComparison.Ordinal);
         Assert.Null(sidecar.History);
+    }
+
+    [Fact]
+    public async Task FreezesAndProjectsTheCapabilitySnapshotBeforeStartingTheSidecar()
+    {
+        var calls = new List<string>();
+        var store = new FakeStore(calls);
+        var sidecar = new FakeSidecar(calls);
+        var ids = new Queue<string>(["conversation", "run"]);
+        var snapshot = Snapshot();
+        var controller = Create(store, sidecar, ids.Dequeue);
+        controller.ConfigureCapabilitySnapshotFactory((input, cancellationToken) =>
+        {
+            Assert.Equal("기능 요청", input);
+            Assert.False(cancellationToken.IsCancellationRequested);
+            calls.Add("snapshot.create");
+            return Task.FromResult(snapshot);
+        });
+
+        var outcome = await controller.StartAsync(
+            controller.BeginRun(),
+            "기능 요청",
+            persistenceAvailable: true);
+
+        Assert.Equal(["store.start", "store.context", "snapshot.create", "sidecar.start"], calls);
+        Assert.Null(outcome.Diagnostic);
+        var projected = Assert.Single(sidecar.CapabilitySnapshot!.Candidates);
+        Assert.Equal(snapshot.SnapshotHash.Value, sidecar.CapabilitySnapshot.SnapshotHash);
+        Assert.Equal(snapshot.Candidates[0].ExactVersion.Id.Value, projected.Id);
+        Assert.Equal("prompt", projected.Kind);
+        Assert.Equal(snapshot.Candidates[0].Instructions, projected.Instructions);
+    }
+
+    [Fact]
+    public async Task SnapshotFailureStartsGeneralChatWithAnEmptySnapshotAndFixedDiagnostic()
+    {
+        var sidecar = new FakeSidecar([]);
+        var ids = new Queue<string>(["conversation", "run"]);
+        var controller = Create(new FakeStore([]), sidecar, ids.Dequeue);
+        controller.ConfigureCapabilitySnapshotFactory((_, _) =>
+            Task.FromException<ApplicationCapabilityRuntimeSnapshot>(
+                new InvalidOperationException("sensitive candidate identity")));
+
+        var outcome = await controller.StartAsync(
+            controller.BeginRun(),
+            "사용자 입력 원문",
+            persistenceAvailable: false);
+
+        Assert.Equal(
+            ConversationOrchestrationController.CapabilitySnapshotFallbackDiagnostic,
+            outcome.Diagnostic);
+        Assert.DoesNotContain("sensitive", outcome.Diagnostic, StringComparison.Ordinal);
+        Assert.NotNull(sidecar.CapabilitySnapshot);
+        Assert.Empty(sidecar.CapabilitySnapshot.Candidates);
     }
 
     [Fact]
@@ -71,6 +131,28 @@ public sealed class ConversationOrchestrationControllerTests
             () => null,
             () => DateTimeOffset.UnixEpoch);
 
+    private static ApplicationCapabilityRuntimeSnapshot Snapshot()
+    {
+        var exactVersion = new CapabilityVersionRef(
+            CapabilityId.Parse("desktop.status"),
+            CapabilitySemanticVersion.Parse("1.0.0"),
+            CapabilityContentHash.Parse($"sha256:{new string('a', 64)}"));
+        var candidate = new LIGClaw.Application.Capabilities.CapabilityRuntimeCandidate(
+            exactVersion,
+            7,
+            CapabilityRuntimeHasher.ComputeModelToolName(exactVersion),
+            "상태 확인",
+            "현재 상태를 확인합니다.",
+            CapabilityKind.Prompt,
+            ["상태 알려 줘"],
+            "필요한 상태 도구만 사용합니다.",
+            "{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}",
+            ["system.get_status.v1"],
+            $"sha256:{new string('b', 64)}",
+            "R0");
+        return ApplicationCapabilityRuntimeSnapshot.Create([candidate]);
+    }
+
     private sealed class FakeStore(List<string> calls) : IConversationRunStore
     {
         public bool FailStart { get; init; }
@@ -95,11 +177,13 @@ public sealed class ConversationOrchestrationControllerTests
     {
         public bool FailCancel { get; init; }
         public IReadOnlyList<IReadOnlyDictionary<string, object?>>? History { get; private set; }
+        public ContractCapabilityRuntimeSnapshot? CapabilitySnapshot { get; private set; }
 
-        public Task<ConversationStartResult> StartConversationAsync(string conversationId, string runId, string input, string runtime, IReadOnlyList<IReadOnlyDictionary<string, object?>>? history = null, CancellationToken cancellationToken = default, IReadOnlyDictionary<string, object?>? providerRouting = null)
+        public Task<ConversationStartResult> StartConversationAsync(string conversationId, string runId, string input, string runtime, IReadOnlyList<IReadOnlyDictionary<string, object?>>? history = null, CancellationToken cancellationToken = default, IReadOnlyDictionary<string, object?>? providerRouting = null, ContractCapabilityRuntimeSnapshot? capabilitySnapshot = null)
         {
             calls.Add("sidecar.start");
             History = history;
+            CapabilitySnapshot = capabilitySnapshot;
             return Task.FromResult(new ConversationStartResult(true, runId));
         }
 

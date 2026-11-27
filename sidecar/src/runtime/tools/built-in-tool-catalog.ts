@@ -4,6 +4,7 @@ import { BUILT_IN_TOOL_REGISTRATIONS, desktopToolName } from "./tool-registratio
 import { createAgentTools } from "./agent-tools.js";
 import { createAppTools } from "./app-tools.js";
 import { createAutomationTools } from "./automation-tools.js";
+import { createBuilderTools } from "./builder-tools.js";
 import { createContextTools } from "./context-tools.js";
 import { createFileTools } from "./file-tools.js";
 import { createScheduleTools } from "./schedule-tools.js";
@@ -30,6 +31,7 @@ export function createDesktopTools(
   mcpTools: readonly McpToolCatalogEntry[] = [],
 ): readonly AgentTool[] {
   const tools = [
+    ...createBuilderTools(bridge, conversationId, runId),
     ...createSystemTools(bridge, conversationId, runId),
     ...createAppTools(bridge, conversationId, runId),
     ...createFileTools(bridge, conversationId, runId),

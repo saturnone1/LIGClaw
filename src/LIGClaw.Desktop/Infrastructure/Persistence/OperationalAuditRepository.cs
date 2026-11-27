@@ -168,10 +168,134 @@ internal sealed class OperationalAuditRepository(ConversationDatabase database) 
             await using var command = connection.CreateCommand();
             command.CommandText =
                 """
-                SELECT e.id, e.tool_name, e.risk, e.status, e.summary, a.approved, e.created_at_utc
-                FROM tool_executions e
-                LEFT JOIN approval_decisions a ON a.tool_call_id = e.tool_call_id
-                ORDER BY e.created_at_utc DESC, e.id DESC
+                WITH activity AS (
+                    SELECT
+                        e.id,
+                        e.tool_name,
+                        e.risk,
+                        e.status,
+                        e.summary,
+                        a.approved,
+                        e.created_at_utc AS occurred_at_utc,
+                        1 AS source_order
+                    FROM tool_executions AS e
+                    LEFT JOIN approval_decisions AS a ON a.tool_call_id = e.tool_call_id
+
+                    UNION ALL
+
+                    SELECT
+                        -w.rowid AS id,
+                        'Workflow · ' || w.capability_id || '@' || w.capability_version AS tool_name,
+                        w.actual_maximum_risk AS risk,
+                        CASE w.status
+                            WHEN 'succeeded' THEN 'succeeded'
+                            WHEN 'failed' THEN 'failed'
+                            WHEN 'attention_required' THEN 'attention_required'
+                            WHEN 'interrupted' THEN 'interrupted'
+                            WHEN 'cancelled' THEN 'cancelled'
+                            WHEN 'needs_information' THEN 'needs_information'
+                            ELSE 'running'
+                        END AS status,
+                        COALESCE(NULLIF(w.redacted_summary, ''), '작업 흐름 실행')
+                        || CASE WHEN w.status IN ('failed', 'attention_required', 'interrupted') THEN
+                            ' · 실패 단계: '
+                            || COALESCE(failed_step.step_id || ' (' || failed_step.tool_name || ')', '실행 전')
+                           ELSE '' END
+                        || CASE WHEN w.status = 'attention_required'
+                            AND failed_step.tool_name = 'mail.send.v1'
+                            AND failed_step.status = 'outcome_unknown'
+                            AND failed_step.disposition = 'unknown'
+                            AND failed_step.fixed_error_code = 'mail.send.outcome_unknown'
+                            AND length(failed_step.redacted_summary) =
+                                length('메일 서버의 접수 여부를 확인해야 해요. 메시지 식별자: ') + 90
+                            AND substr(
+                                failed_step.redacted_summary,
+                                1,
+                                length('메일 서버의 접수 여부를 확인해야 해요. 메시지 식별자: ')) =
+                                '메일 서버의 접수 여부를 확인해야 해요. 메시지 식별자: '
+                            AND substr(
+                                failed_step.redacted_summary,
+                                length('메일 서버의 접수 여부를 확인해야 해요. 메시지 식별자: ') + 1,
+                                9) = '<ligclaw.'
+                            AND substr(
+                                failed_step.redacted_summary,
+                                length('메일 서버의 접수 여부를 확인해야 해요. 메시지 식별자: ') + 10,
+                                64) NOT GLOB '*[^0-9a-f]*'
+                            AND substr(
+                                failed_step.redacted_summary,
+                                length('메일 서버의 접수 여부를 확인해야 해요. 메시지 식별자: ') + 74,
+                                17) = '@ligclaw.invalid>' THEN
+                            ' · ' || failed_step.redacted_summary
+                           ELSE '' END
+                        || CASE WHEN w.status = 'attention_required'
+                            AND w.fixed_next_action = 'review_outcome'
+                            AND w.fixed_error_code = 'workflow.desktop_restart.effect_outcome_unknown'
+                            THEN COALESCE((
+                                SELECT
+                                    ' · 메일 서버의 접수 여부를 확인해야 해요. 메시지 식별자: '
+                                    || restart_outbox.smtp_message_id
+                                FROM mail_outbox_operations AS restart_outbox
+                                JOIN workflow_step_runs AS restart_step
+                                  ON restart_step.workflow_run_id = restart_outbox.workflow_run_id
+                                 AND restart_step.tool_call_id = restart_outbox.tool_call_id
+                                WHERE restart_outbox.workflow_run_id = w.id
+                                  AND restart_step.tool_name = 'mail.send.v1'
+                                  AND restart_step.effect_class = 'effect'
+                                  AND restart_step.status = 'outcome_unknown'
+                                  AND restart_step.disposition = 'unknown'
+                                  AND restart_step.fixed_error_code =
+                                      'workflow.desktop_restart.effect_outcome_unknown'
+                                  AND restart_outbox.transport_kind = 'smtp'
+                                  AND restart_outbox.smtp_phase = 'data_started'
+                                  AND restart_outbox.submission_state = 'outcome_unknown'
+                                  AND restart_outbox.delivery_state = 'unknown'
+                                  AND length(restart_outbox.smtp_message_id) = 90
+                                  AND substr(restart_outbox.smtp_message_id, 1, 9) = '<ligclaw.'
+                                  AND substr(restart_outbox.smtp_message_id, 10, 64)
+                                      NOT GLOB '*[^0-9a-f]*'
+                                  AND substr(restart_outbox.smtp_message_id, 74, 17) =
+                                      '@ligclaw.invalid>'
+                                  AND substr(restart_outbox.smtp_message_id, 10, 64) =
+                                      substr(restart_outbox.operation_id, 5, 64)
+                                ORDER BY restart_step.step_sequence DESC,
+                                         restart_step.attempt DESC,
+                                         restart_outbox.operation_id
+                                LIMIT 1
+                            ), '')
+                           ELSE '' END
+                        || ' · 다음 행동: '
+                        || CASE w.fixed_next_action
+                            WHEN 'provide_information' THEN '추가 정보 제공'
+                            WHEN 'retry_from_start' THEN '처음부터 다시 실행'
+                            WHEN 'review_outcome' THEN '실행 결과 검토'
+                            ELSE COALESCE(w.fixed_next_action, '없음')
+                        END AS summary,
+                        CAST(NULL AS INTEGER) AS approved,
+                        w.updated_at_utc AS occurred_at_utc,
+                        0 AS source_order
+                    FROM workflow_runs AS w
+                    LEFT JOIN workflow_step_runs AS failed_step
+                      ON failed_step.tool_call_id = (
+                          SELECT step.tool_call_id
+                          FROM workflow_step_runs AS step
+                          WHERE step.workflow_run_id = w.id
+                            AND step.status IN (
+                                'retryable_failed', 'not_started', 'failed_known',
+                                'interrupted', 'outcome_unknown')
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM workflow_step_runs AS later_attempt
+                                WHERE later_attempt.workflow_run_id = step.workflow_run_id
+                                  AND later_attempt.step_sequence = step.step_sequence
+                                  AND later_attempt.attempt > step.attempt
+                            )
+                          ORDER BY step.step_sequence DESC, step.attempt DESC
+                          LIMIT 1
+                      )
+                )
+                SELECT id, tool_name, risk, status, summary, approved, occurred_at_utc
+                FROM activity
+                ORDER BY occurred_at_utc DESC, source_order, id DESC
                 LIMIT $limit;
                 """;
             command.Parameters.AddWithValue("$limit", limit);

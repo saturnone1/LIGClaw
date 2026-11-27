@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/workflow-invoke-v1-result.schema.json",
+  "title": "WorkflowInvokeV1Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workflowRunId", "status", "nextAction"],
+  "properties": {
+    "workflowRunId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "status": {
+      "type": "string",
+      "enum": ["succeeded", "needs_information", "failed", "cancelled", "attention_required"]
+    },
+    "nextAction": {
+      "type": "string",
+      "enum": ["none", "provide_information", "retry_from_start", "review_outcome"]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "requiredInputs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512,
+        "pattern": "^(?:/(?:[^~/]|~[01])*)+$"
+      }
+    },
+    "result": {
+      "type": "object",
+      "description": "Bounded final Workflow output."
+    },
+    "errorCode": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._][a-z0-9]+)+$"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "succeeded" } }, "required": ["status"] },
+      "then": { "properties": { "nextAction": { "const": "none" } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "needs_information" } }, "required": ["status"] },
+      "then": {
+        "properties": { "nextAction": { "const": "provide_information" } },
+        "required": ["requiredInputs"]
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failed" } }, "required": ["status"] },
+      "then": { "properties": { "nextAction": { "const": "retry_from_start" } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "cancelled" } }, "required": ["status"] },
+      "then": { "properties": { "nextAction": { "const": "retry_from_start" } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "attention_required" } }, "required": ["status"] },
+      "then": { "properties": { "nextAction": { "const": "review_outcome" } } }
+    }
+  ]
+}

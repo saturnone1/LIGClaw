@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/capability-proposal-generate-result.schema.json",
+  "title": "CapabilityProposalGenerateResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generationId",
+    "requestHash",
+    "sessionId",
+    "sessionRevision",
+    "inventoryHash",
+    "deadlineUtc",
+    "outcome"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "generationId": {
+      "type": "string",
+      "pattern": "^fbgen_[0-9a-f]{32}$"
+    },
+    "requestHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "sessionId": {
+      "type": "string",
+      "pattern": "^fbs_[0-9a-f]{32}$"
+    },
+    "sessionRevision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "inventoryHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "deadlineUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["needs_information", "proposal", "refused"]
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": { "$ref": "./capability-proposal-question.schema.json" }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": { "$ref": "./capability-proposal-artifact.schema.json" }
+    },
+    "limitations": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "refusalCode": {
+      "type": "string",
+      "enum": [
+        "capability.requirement_unsafe",
+        "capability.requirement_unsupported",
+        "capability.requirement_conflict"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "outcome": { "const": "needs_information" } },
+        "required": ["outcome"]
+      },
+      "then": {
+        "required": ["questions"],
+        "properties": {
+          "questions": {},
+          "artifacts": false,
+          "refusalCode": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "outcome": { "const": "proposal" } },
+        "required": ["outcome"]
+      },
+      "then": {
+        "required": ["artifacts", "limitations"],
+        "properties": {
+          "artifacts": {},
+          "limitations": {},
+          "questions": false,
+          "refusalCode": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "outcome": { "const": "refused" } },
+        "required": ["outcome"]
+      },
+      "then": {
+        "required": ["limitations", "refusalCode"],
+        "properties": {
+          "limitations": { "type": "array", "minItems": 1 },
+          "refusalCode": {},
+          "questions": false,
+          "artifacts": false
+        }
+      }
+    }
+  ]
+}

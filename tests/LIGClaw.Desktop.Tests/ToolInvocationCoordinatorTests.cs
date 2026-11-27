@@ -97,6 +97,148 @@ public sealed class ToolInvocationCoordinatorTests
         Assert.Equal(3, tool.ExecutionCount);
     }
 
+    [Fact]
+    public async Task CapabilityPreflightDenialIsAuditedWithoutApprovalOrExecution()
+    {
+        var policy = new ToolInvocationPolicy();
+        policy.BeginRun("conversation", "run");
+        var tool = new FakeR1Tool();
+        var audit = new FakeAuditSink();
+        var approvalCount = 0;
+        var coordinator = new ToolInvocationCoordinator(
+            policy,
+            new WindowsToolHost(WindowsPlatformProfile.Classify(10, 0, 22631, true), [tool]),
+            (_, _) =>
+            {
+                approvalCount++;
+                return Task.FromResult(true);
+            },
+            audit);
+        var invocation = R1Invocation("call", "run", "계산기");
+        Assert.True(policy.Prepare(
+            invocation.ConversationId,
+            invocation.RunId,
+            invocation.ToolCallId,
+            invocation.Risk).RequiresApproval);
+
+        var result = await coordinator.ExecutePreparedAsync(
+            invocation,
+            ToolInvocationPreflight.Deny(
+                "Capability 정책에 따라 실행하지 않았어요.",
+                "capability.context.stale"));
+
+        Assert.False(result.Success);
+        Assert.Equal(0, approvalCount);
+        Assert.Equal(0, tool.ExecutionCount);
+        var denial = Assert.Single(audit.Executions);
+        Assert.Equal("denied", denial.Status);
+        Assert.Equal("capability.context.stale", denial.Summary);
+        Assert.False((await coordinator.ExecuteAsync(invocation)).Success);
+        Assert.Equal(0, tool.ExecutionCount);
+    }
+
+    [Fact]
+    public async Task ReusableGrantIsBoundToTheExactCapabilityContext()
+    {
+        var policy = new ToolInvocationPolicy();
+        var tool = new FakeR1Tool();
+        var grants = new FakeGrantStore();
+        var promptCount = 0;
+        var coordinator = new ToolInvocationCoordinator(
+            policy,
+            new WindowsToolHost(WindowsPlatformProfile.Classify(10, 0, 22631, true), [tool]),
+            (_, allowAlways, _) =>
+            {
+                promptCount++;
+                Assert.True(allowAlways);
+                return Task.FromResult(ToolApprovalChoice.AllowAlways);
+            },
+            grantStore: grants);
+        var v1 = CapabilityContext("1.0.0", 'a', 'b', 1);
+        var v2 = CapabilityContext("2.0.0", 'c', 'd', 2);
+
+        await ExecuteRunAsync("run-1", "call-1", v1);
+        await ExecuteRunAsync("run-2", "call-2", v1);
+        await ExecuteRunAsync("run-3", "call-3", v2);
+        await ExecuteRunAsync("run-4", "call-4", null);
+
+        Assert.Equal(3, promptCount);
+        Assert.Equal(4, tool.ExecutionCount);
+        Assert.Equal(3, grants.Items.Count);
+
+        async Task ExecuteRunAsync(
+            string runId,
+            string toolCallId,
+            CapabilityInvocationContext? context)
+        {
+            policy.BeginRun("conversation", runId);
+            var invocation = R1Invocation(toolCallId, runId, "계산기") with
+            {
+                CapabilityContext = context,
+            };
+            Assert.True((await coordinator.ExecuteAsync(invocation)).Success);
+            policy.EndRun("conversation", runId);
+        }
+    }
+
+    [Fact]
+    public async Task PreparedWorkflowEffectAcceptsOnlyAllowOnceAndDoesNotExecuteDuringApproval()
+    {
+        var policy = new ToolInvocationPolicy();
+        policy.BeginRun("conversation", "run");
+        var notifications = new FakeNotificationService();
+        var host = new WindowsToolHost(
+            WindowsPlatformProfile.Classify(10, 0, 22631, true),
+            [new SystemShowNotificationTool(notifications)]);
+        var coordinator = new ToolInvocationCoordinator(
+            policy,
+            host,
+            (_, allowReusable, _) =>
+            {
+                Assert.False(allowReusable);
+                return Task.FromResult(ToolApprovalChoice.AllowOnce);
+            });
+        var invocation = NotificationInvocation("workflow-call", "run");
+        var effect = Assert.IsAssignableFrom<IPreparedWorkflowEffect>(
+            (await host.PrepareWorkflowEffectAsync(invocation, DateTimeOffset.UtcNow)).Effect);
+
+        var authorization = await coordinator.AuthorizePreparedWorkflowEffectAsync(invocation, effect);
+
+        Assert.True(authorization.Allowed);
+        Assert.Empty(notifications.Shown);
+        Assert.Equal(
+            WorkflowEffectDisposition.Succeeded,
+            (await effect.ExecuteOnceAsync(DateTimeOffset.UtcNow, CancellationToken.None)).Disposition);
+        Assert.Single(notifications.Shown);
+    }
+
+    [Theory]
+    [InlineData("conversation")]
+    [InlineData("always")]
+    public async Task PreparedWorkflowEffectRejectsReusableApprovalChoices(string scope)
+    {
+        var choice = scope == "conversation"
+            ? ToolApprovalChoice.AllowConversation
+            : ToolApprovalChoice.AllowAlways;
+        var policy = new ToolInvocationPolicy();
+        policy.BeginRun("conversation", "run");
+        var host = new WindowsToolHost(
+            WindowsPlatformProfile.Classify(10, 0, 22631, true),
+            [new SystemShowNotificationTool(new FakeNotificationService())]);
+        var coordinator = new ToolInvocationCoordinator(
+            policy,
+            host,
+            (_, _, _) => Task.FromResult(choice));
+        var invocation = NotificationInvocation("workflow-call", "run");
+        var effect = Assert.IsAssignableFrom<IPreparedWorkflowEffect>(
+            (await host.PrepareWorkflowEffectAsync(invocation, DateTimeOffset.UtcNow)).Effect);
+
+        var authorization = await coordinator.AuthorizePreparedWorkflowEffectAsync(invocation, effect);
+
+        Assert.False(authorization.Allowed);
+        await effect.DisposeAsync();
+    }
+
     private static ToolInvokeParams Invocation() =>
         new(
             "call", "conversation", "run", "fixture.r2.v1", "R2",
@@ -106,6 +248,34 @@ public sealed class ToolInvocationCoordinatorTests
         new(
             callId, "conversation", runId, "fixture.r1.v1", "R1",
             new Dictionary<string, object?> { ["target"] = target });
+
+    private static ToolInvokeParams NotificationInvocation(string callId, string runId) =>
+        new(
+            callId,
+            "conversation",
+            runId,
+            "system.show_notification.v1",
+            "R1",
+            new Dictionary<string, object?>
+            {
+                ["title"] = "Workflow",
+                ["message"] = "완료",
+                ["reason"] = "테스트",
+            });
+
+    private static CapabilityInvocationContext CapabilityContext(
+        string version,
+        char contentHash,
+        char snapshotHash,
+        long revision) =>
+        new(
+            $"sha256:{new string(snapshotHash, 64)}",
+            $"cap_{new string('e', 24)}",
+            "company.fixture.action",
+            version,
+            $"sha256:{new string(contentHash, 64)}",
+            revision,
+            $"sha256:{new string('f', 64)}");
 
     private sealed class FakeR1Tool : IWindowsToolAdapter
     {
@@ -124,6 +294,18 @@ public sealed class ToolInvocationCoordinatorTests
         {
             ExecutionCount++;
             return Task.FromResult(new WindowsToolExecutionResult(true, new Dictionary<string, object?>()));
+        }
+    }
+
+    private sealed class FakeNotificationService : IUserNotificationService
+    {
+        public List<(string Title, string Message)> Shown { get; } = [];
+
+        public Task ShowAsync(string title, string message, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Shown.Add((title, message));
+            return Task.CompletedTask;
         }
     }
 

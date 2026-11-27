@@ -1,0 +1,279 @@
+[
+  {
+    "name": "all six step kinds with recursive bindings",
+    "valid": true,
+    "requiredTools": ["system.get_status.v1"],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "map",
+      "steps": [
+        {
+          "id": "map",
+          "type": "input.map",
+          "value": { "$bind": { "source": "input", "path": "/path" } },
+          "saveAs": "mapped",
+          "next": "check"
+        },
+        {
+          "id": "check",
+          "type": "condition",
+          "left": { "$bind": { "source": "variable", "name": "mapped", "path": "" } },
+          "operator": "exists",
+          "then": "normalize",
+          "else": "ask"
+        },
+        {
+          "id": "normalize",
+          "type": "transform",
+          "operation": "trim",
+          "operands": [
+            { "$bind": { "source": "variable", "name": "mapped", "path": "" } }
+          ],
+          "saveAs": "normalized",
+          "next": "status"
+        },
+        {
+          "id": "ask",
+          "type": "needs_information",
+          "requiredInputs": ["/path"]
+        },
+        {
+          "id": "status",
+          "type": "tool.call",
+          "tool": "system.get_status.v1",
+          "arguments": {},
+          "maxRetries": 1,
+          "next": "done"
+        },
+        {
+          "id": "done",
+          "type": "output",
+          "value": {
+            "windowsRelease": {
+              "$bind": { "source": "step", "stepId": "status", "path": "/windowsRelease" }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "binary condition requires right operand",
+    "valid": true,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "choose",
+      "steps": [
+        {
+          "id": "choose",
+          "type": "condition",
+          "left": true,
+          "operator": "equals",
+          "right": true,
+          "then": "yes",
+          "else": "no"
+        },
+        { "id": "yes", "type": "input.map", "value": true, "saveAs": "yes_value", "next": "done" },
+        { "id": "no", "type": "input.map", "value": false, "saveAs": "no_value", "next": "done" },
+        { "id": "done", "type": "output", "value": {} }
+      ]
+    }
+  },
+  {
+    "name": "tool name must be canonical",
+    "valid": false,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "call",
+      "steps": [
+        { "id": "call", "type": "tool.call", "tool": "system-get-status", "arguments": {}, "next": "done" },
+        { "id": "done", "type": "output", "value": {} }
+      ]
+    }
+  },
+  {
+    "name": "equals condition cannot omit right",
+    "valid": false,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "choose",
+      "steps": [
+        { "id": "choose", "type": "condition", "left": true, "operator": "equals", "then": "yes", "else": "no" },
+        { "id": "yes", "type": "input.map", "value": true, "saveAs": "yes_value", "next": "done" },
+        { "id": "no", "type": "input.map", "value": false, "saveAs": "no_value", "next": "done" },
+        { "id": "done", "type": "output", "value": {} }
+      ]
+    }
+  },
+  {
+    "name": "unary condition cannot include right",
+    "valid": false,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "choose",
+      "steps": [
+        { "id": "choose", "type": "condition", "left": true, "operator": "isTrue", "right": true, "then": "yes", "else": "no" },
+        { "id": "yes", "type": "input.map", "value": true, "saveAs": "yes_value", "next": "done" },
+        { "id": "no", "type": "input.map", "value": false, "saveAs": "no_value", "next": "done" },
+        { "id": "done", "type": "output", "value": {} }
+      ]
+    }
+  },
+  {
+    "name": "binding rejects unknown members",
+    "valid": false,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "done",
+      "steps": [
+        {
+          "id": "done",
+          "type": "output",
+          "value": {
+            "path": { "$bind": { "source": "input", "path": "/path", "extra": true } }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "binding envelope cannot have siblings",
+    "valid": false,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "done",
+      "steps": [
+        {
+          "id": "done",
+          "type": "output",
+          "value": {
+            "path": {
+              "$bind": { "source": "input", "path": "/path" },
+              "fallback": "unknown"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "output root must be an object",
+    "valid": false,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "done",
+      "steps": [
+        { "id": "done", "type": "output", "value": "done" }
+      ]
+    }
+  },
+  {
+    "name": "tool arguments root cannot be a binding",
+    "valid": false,
+    "requiredTools": ["system.get_status.v1"],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "call",
+      "steps": [
+        {
+          "id": "call",
+          "type": "tool.call",
+          "tool": "system.get_status.v1",
+          "arguments": { "$bind": { "source": "input", "path": "" } },
+          "next": "done"
+        },
+        { "id": "done", "type": "output", "value": {} }
+      ]
+    }
+  },
+  {
+    "name": "binding pointer must use RFC 6901 escapes",
+    "valid": false,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "done",
+      "steps": [
+        {
+          "id": "done",
+          "type": "output",
+          "value": {
+            "path": { "$bind": { "source": "input", "path": "/bad~2pointer" } }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "retry bound is three",
+    "valid": false,
+    "requiredTools": ["system.get_status.v1"],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "call",
+      "steps": [
+        {
+          "id": "call",
+          "type": "tool.call",
+          "tool": "system.get_status.v1",
+          "arguments": {},
+          "maxRetries": 4,
+          "next": "done"
+        },
+        { "id": "done", "type": "output", "value": {} }
+      ]
+    }
+  },
+  {
+    "name": "unary transform accepts one operand only",
+    "valid": false,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "normalize",
+      "steps": [
+        {
+          "id": "normalize",
+          "type": "transform",
+          "operation": "trim",
+          "operands": ["first", "second"],
+          "saveAs": "normalized",
+          "next": "done"
+        },
+        { "id": "done", "type": "output", "value": {} }
+      ]
+    }
+  },
+  {
+    "name": "literal object properties cannot use the binding namespace",
+    "valid": false,
+    "requiredTools": [],
+    "maximumRisk": "R0",
+    "document": {
+      "schemaVersion": 1,
+      "entryStepId": "done",
+      "steps": [
+        { "id": "done", "type": "output", "value": { "$secret": "not-a-binding" } }
+      ]
+    }
+  }
+]

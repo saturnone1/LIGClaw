@@ -123,6 +123,11 @@ public sealed class SidecarConversationTests
                             ["failed"] = 0,
                             ["items"] = Array.Empty<object>(),
                         },
+                        "capability.builder.open.v1" => new Dictionary<string, object?>
+                        {
+                            ["accepted"] = true,
+                            ["intent"] = "create",
+                        },
                         _ => new Dictionary<string, object?>(),
                     };
                     _ = client.InvokeAsync<ToolResultResult>(
@@ -149,6 +154,7 @@ public sealed class SidecarConversationTests
                     ProtocolConstants.ContractHash,
                     sessionToken));
             Assert.Contains("agent.events", initialized.Capabilities);
+            Assert.Contains("capability.runtime.snapshot.v2", initialized.Capabilities);
             Assert.Contains("runtime.cline.0.0.65", initialized.Capabilities);
             Assert.Contains("provider.configure", initialized.Capabilities);
             Assert.Contains("provider.test", initialized.Capabilities);
@@ -196,6 +202,7 @@ public sealed class SidecarConversationTests
             Assert.Contains("tool.schedule.list.v1", initialized.Capabilities);
             Assert.Contains("tool.schedule.cancel.v1", initialized.Capabilities);
             Assert.Contains("tool.agent_job.control.v1", initialized.Capabilities);
+            Assert.Contains("tool.capability.builder.open.v1", initialized.Capabilities);
 
             var configured = await client.InvokeAsync<ProviderConfigureResult>(
                 "provider.configure",
@@ -222,6 +229,25 @@ public sealed class SidecarConversationTests
                     output = Array.Empty<object>(),
                 }));
             _ = await client.InvokeAsync<PingResult>("ping", null);
+
+            await RunAndAssertAsync(
+                client,
+                events,
+                terminalEvents,
+                "builder-open-conversation",
+                "cline",
+                "__test_builder_open__",
+                "Feature Builder 열기 요청을 확인했습니다.");
+            var builderInvocation = Assert.Single(
+                toolInvocations,
+                invocation => invocation.Name == "capability.builder.open.v1");
+            Assert.Equal("R0", builderInvocation.Risk);
+            Assert.Equal("builder-open-conversation", builderInvocation.ConversationId);
+            Assert.Equal("builder-open-conversation-run", builderInvocation.RunId);
+            Assert.Equal(
+                ["intent"],
+                builderInvocation.Input.Keys.Order(StringComparer.Ordinal).ToArray());
+            Assert.Equal("create", builderInvocation.Input["intent"]?.ToString());
 
             await RunAndAssertAsync(client, events, terminalEvents, "replay-conversation", "replay", "hello replay", "Replay runtime received: hello replay");
             await RunAndAssertAsync(

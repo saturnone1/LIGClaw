@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ligclaw.local/contracts/rpc/capability-proposal-question.schema.json",
+  "title": "CapabilityProposalQuestion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["questionId", "prompt", "answerKind"],
+  "properties": {
+    "questionId": {
+      "type": "string",
+      "pattern": "^q_[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$"
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "answerKind": {
+      "type": "string",
+      "enum": ["text", "single_choice"]
+    },
+    "choices": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "answerKind": { "const": "single_choice" } },
+        "required": ["answerKind"]
+      },
+      "then": {
+        "properties": { "choices": {} },
+        "required": ["choices"]
+      },
+      "else": { "properties": { "choices": false } }
+    }
+  ]
+}

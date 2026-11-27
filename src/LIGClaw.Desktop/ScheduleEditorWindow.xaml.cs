@@ -7,7 +7,7 @@ using ComboBoxItem = System.Windows.Controls.ComboBoxItem;
 
 namespace LIGClaw.Desktop;
 
-public partial class ScheduleEditorWindow : Window
+public partial class ScheduleEditorWindow : Wpf.Ui.Controls.FluentWindow
 {
     private readonly IScheduleRepository _schedules;
     private readonly ScheduledNotification _job;

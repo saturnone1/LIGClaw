@@ -44,15 +44,33 @@ public sealed class Phase5PackagingTests
     {
         var scripts = Path.Combine(FindRepositoryRoot(), "scripts");
         var build = File.ReadAllText(Path.Combine(scripts, "build-msix.ps1"));
+        var development = File.ReadAllText(Path.Combine(scripts, "test-msix-development.ps1"));
         var lifecycle = File.ReadAllText(Path.Combine(scripts, "test-msix-lifecycle.ps1"));
 
         Assert.Contains("--self-contained true", build, StringComparison.Ordinal);
         Assert.Contains("'node.exe'", build, StringComparison.Ordinal);
+        Assert.Contains("'Wpf.Ui.dll'", build, StringComparison.Ordinal);
+        Assert.Contains("'ThirdPartyNotices.txt'", build, StringComparison.Ordinal);
         Assert.Contains("SignTool", build, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("sha256", build, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Code Signing EKU", build, StringComparison.Ordinal);
+        Assert.Contains("SubjectName.Name", build, StringComparison.Ordinal);
+        Assert.Contains("StringComparison]::OrdinalIgnoreCase", build, StringComparison.Ordinal);
+        Assert.Contains("certificate chain", build, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CertificateStoreLocation", build, StringComparison.Ordinal);
         Assert.Contains("Add-AppxPackage -Path $initial", lifecycle, StringComparison.Ordinal);
         Assert.Contains("Add-AppxPackage -Path $update", lifecycle, StringComparison.Ordinal);
         Assert.Contains("Remove-AppxPackage", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("AddSeconds(15)", lifecycle, StringComparison.Ordinal);
+        Assert.DoesNotContain("New-SelfSignedCertificate", lifecycle, StringComparison.Ordinal);
+        Assert.DoesNotContain("TrustedPeople", lifecycle, StringComparison.Ordinal);
+        Assert.DoesNotContain("CurrentUser\\Root", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("CertificateThumbprint", development, StringComparison.Ordinal);
+        Assert.Contains("must already be trusted", development, StringComparison.Ordinal);
+        Assert.DoesNotContain("New-SelfSignedCertificate", development, StringComparison.Ordinal);
+        Assert.DoesNotContain("X509Store", development, StringComparison.Ordinal);
+        Assert.DoesNotContain("TrustedPeople", development, StringComparison.Ordinal);
+        Assert.DoesNotContain("CurrentUser\\Root", development, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

@@ -6,6 +6,7 @@ import {
   JSON_RPC_VERSION,
   PROTOCOL_VERSION,
   isRpcRequest,
+  type CapabilityProposalGenerateParams,
   type ConversationCancelParams,
   type ConversationStartParams,
   type InitializeParams,
@@ -17,14 +18,21 @@ import {
   type RpcRequest,
   type RpcResponse,
   type ToolResultParams,
+  type WorkflowResultParams,
 } from "./protocol.js";
 import { ClineAgentRuntimeAdapter, createDeterministicSpikeModel } from "./runtime/cline-agent-runtime-adapter.js";
 import { ReplayAgentRuntimeAdapter } from "./runtime/replay-agent-runtime-adapter.js";
 import { RuntimeCoordinator } from "./runtime/runtime-coordinator.js";
 import { DesktopToolBridge } from "./runtime/desktop-tool-bridge.js";
+import { DesktopWorkflowBridge } from "./runtime/workflow-bridge.js";
 import { testProviderConnection } from "./runtime/provider-connection-probe.js";
 import { McpClientManager } from "./mcp/mcp-client-manager.js";
 import { BUILT_IN_TOOL_CAPABILITIES } from "./runtime/tools/tool-registration.js";
+import { workflowRuntimeCapabilities } from "./runtime/runtime-capabilities.js";
+import {
+  CapabilityProposalGenerationError,
+  CapabilityProposalGenerator,
+} from "./runtime/capability-proposal-generator.js";
 
 const RUNTIME_CAPABILITIES = [
   "health.ping",
@@ -38,6 +46,8 @@ const RUNTIME_CAPABILITIES = [
   "mcp.call",
   "tool.invoke",
   "tool.result",
+  "capability.runtime.snapshot.v2",
+  "capability.proposal.generate",
 ] as const;
 
 interface StartupOptions {
@@ -80,7 +90,9 @@ async function handleRequest(
   coordinator: RuntimeCoordinator,
   clineRuntime: ClineAgentRuntimeAdapter,
   toolBridge: DesktopToolBridge,
+  workflowBridge: DesktopWorkflowBridge | undefined,
   mcpManager: McpClientManager,
+  capabilityProposalGenerator: CapabilityProposalGenerator,
   notify: (method: string, parameters: unknown) => void,
 ): Promise<RpcResponse> {
   if (request.method === "initialize") {
@@ -93,13 +105,43 @@ async function handleRequest(
       protocolVersion: PROTOCOL_VERSION,
       sidecarVersion: "0.2.0",
       contractHash: CONTRACT_HASH,
-      capabilities: [...RUNTIME_CAPABILITIES, ...BUILT_IN_TOOL_CAPABILITIES, "runtime.cline.0.0.65"],
+      capabilities: [
+        ...RUNTIME_CAPABILITIES,
+        ...workflowRuntimeCapabilities(workflowBridge !== undefined),
+        ...BUILT_IN_TOOL_CAPABILITIES,
+        "runtime.cline.0.0.65",
+      ],
     };
     return success(request.id, result);
   }
 
   if (!state.initialized) return failure(request.id, -32004, "Sidecar is not initialized.");
   if (request.method === "ping") return success(request.id, { timestampUtc: new Date().toISOString() });
+  if (request.method === "capability.proposal.generate") {
+    try {
+      return success(
+        request.id,
+        await capabilityProposalGenerator.generate(request.params as CapabilityProposalGenerateParams),
+      );
+    } catch (error) {
+      if (!(error instanceof CapabilityProposalGenerationError))
+        return failure(request.id, -32035, "Capability proposal generation failed.");
+      switch (error.code) {
+        case "capability.proposal.invalid_request":
+          return failure(request.id, -32602, "A valid bounded Capability proposal request is required.");
+        case "capability.proposal.tamper_detected":
+          return failure(request.id, -32031, "Capability proposal correlation was rejected.");
+        case "capability.proposal.deadline_exceeded":
+          return failure(request.id, -32032, "Capability proposal deadline expired.");
+        case "capability.proposal.runtime_unavailable":
+          return failure(request.id, -32033, "Capability proposal runtime is not configured.");
+        case "capability.proposal.invalid_response":
+          return failure(request.id, -32034, "Capability proposal response was rejected.");
+        default:
+          return failure(request.id, -32035, "Capability proposal generation failed.");
+      }
+    }
+  }
   if (request.method === "tool.result") {
     const parameters = request.params as ToolResultParams;
     if (!parameters?.toolCallId?.trim() || typeof parameters.success !== "boolean" ||
@@ -108,6 +150,13 @@ async function handleRequest(
       return failure(request.id, -32602, "A valid Desktop tool result is required.");
     }
     return success(request.id, { accepted: toolBridge.complete(parameters) });
+  }
+  if (request.method === "workflow.result") {
+    if (!workflowBridge) return failure(request.id, -32601, "Workflow runtime is not available.");
+    const parameters = request.params as WorkflowResultParams;
+    if (!isWorkflowResult(parameters))
+      return failure(request.id, -32602, "A valid Desktop Workflow result is required.");
+    return success(request.id, { accepted: workflowBridge.complete(parameters) });
   }
   if (request.method === "provider.configure" || request.method === "provider.test") {
     const parameters = request.params as ProviderConfigureParams;
@@ -178,12 +227,18 @@ function main(): void {
     params: parameters,
   }));
   const toolBridge = new DesktopToolBridge(notify);
+  const workflowBridge = new DesktopWorkflowBridge(notify);
   const mcpManager = new McpClientManager();
   const useDeterministicModel = process.env.LIGCLAW_TEST_DETERMINISTIC === "1";
   delete process.env.LIGCLAW_TEST_DETERMINISTIC;
   const clineRuntime = new ClineAgentRuntimeAdapter(
     useDeterministicModel ? createDeterministicSpikeModel() : undefined,
     toolBridge,
+    testProviderConnection,
+    workflowBridge,
+  );
+  const capabilityProposalGenerator = new CapabilityProposalGenerator(
+    (agentId, sessionId, systemPrompt) => clineRuntime.createFeatureBuilderAgent(agentId, sessionId, systemPrompt),
   );
   const coordinator = new RuntimeCoordinator([
     new ReplayAgentRuntimeAdapter(),
@@ -193,12 +248,13 @@ function main(): void {
   socket.on("connect", () => process.stdout.write("sidecar connected\n"));
   socket.on("close", () => {
     toolBridge.dispose();
+    workflowBridge.dispose();
     coordinator.abortAll();
     void closeMcpWithinGracePeriod(mcpManager)
       .finally(() => setImmediate(() => process.exit(process.exitCode ?? 0)));
   });
   socket.on("error", (error) => {
-    process.stderr.write(`sidecar pipe error: ${error.message}\n`);
+    process.stderr.write(`sidecar pipe error: ${error.name}\n`);
     process.exitCode = 1;
     socket.destroy();
   });
@@ -207,16 +263,27 @@ function main(): void {
     let response: RpcResponse;
     try {
       response = isRpcRequest(message)
-        ? await handleRequest(message, options.sessionToken, state, coordinator, clineRuntime, toolBridge, mcpManager, notify)
+        ? await handleRequest(
+          message,
+          options.sessionToken,
+          state,
+          coordinator,
+          clineRuntime,
+          toolBridge,
+          workflowBridge,
+          mcpManager,
+          capabilityProposalGenerator,
+          notify,
+        )
         : failure("unknown", -32600, "Invalid JSON-RPC request.");
     } catch (error) {
-      process.stderr.write(`sidecar request error: ${error instanceof Error ? error.message : String(error)}\n`);
+      process.stderr.write(`sidecar request error: ${error instanceof Error ? error.name : "UnknownError"}\n`);
       response = failure(isRpcRequest(message) ? message.id : "unknown", -32603, "Internal sidecar error.");
     }
     socket.write(frameMessage(response));
   });
   decoder.on("error", (error: Error) => {
-    process.stderr.write(`sidecar protocol error: ${error.message}\n`);
+    process.stderr.write(`sidecar protocol error: ${error.name}\n`);
     socket.destroy();
     process.exitCode = 1;
   });
@@ -255,9 +322,19 @@ function isProviderConfiguration(value: ProviderConfigureParams | undefined): va
   }
 }
 
+function isWorkflowResult(value: WorkflowResultParams | undefined): value is WorkflowResultParams {
+  if (!value || !/^wfinv_[0-9a-f]{48}$/.test(value.workflowCallId) || typeof value.success !== "boolean")
+    return false;
+  if (value.success)
+    return typeof value.output === "object" && value.output !== null && !Array.isArray(value.output) &&
+      value.error === undefined;
+  return value.output === undefined && typeof value.error === "string" && value.error.length <= 128 &&
+    /^[a-z][a-z0-9]*(?:[._][a-z0-9]+)+$/.test(value.error);
+}
+
 try {
   main();
 } catch (error) {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(`sidecar startup error: ${error instanceof Error ? error.name : "UnknownError"}\n`);
   process.exitCode = 1;
 }

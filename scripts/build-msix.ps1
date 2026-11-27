@@ -3,8 +3,11 @@ param(
     [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')]
     [string]$Version = '0.6.0.0',
     [string]$Publisher = 'CN=LIGClaw Development',
+    [ValidatePattern('^[0-9A-Fa-f]{40}$')]
     [string]$CertificateThumbprint,
-    [string]$TimestampUrl,
+    [ValidateSet('CurrentUser', 'LocalMachine')]
+    [string]$CertificateStoreLocation = 'CurrentUser',
+    [uri]$TimestampUrl,
     [uri]$DistributionBaseUri,
     [ValidateSet('passed', 'not-recorded')]
     [string]$VerificationStatus = 'not-recorded',
@@ -14,6 +17,48 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $outputRoot = Join-Path $repositoryRoot "artifacts\msix\$Version"
+$signingCertificate = $null
+if ($TimestampUrl -and -not $CertificateThumbprint) {
+    throw 'TimestampUrl은 CertificateThumbprint와 함께 사용해야 합니다.'
+}
+if ($TimestampUrl -and $TimestampUrl.Scheme -ne 'https') {
+    throw 'TimestampUrl은 HTTPS 주소여야 합니다.'
+}
+if ($CertificateThumbprint) {
+    $normalizedThumbprint = $CertificateThumbprint.ToUpperInvariant()
+    $certificatePath = "Cert:\$CertificateStoreLocation\My\$normalizedThumbprint"
+    $signingCertificate = Get-Item -LiteralPath $certificatePath -ErrorAction Stop
+    if (-not $signingCertificate.HasPrivateKey) {
+        throw 'MSIX 서명 인증서에 접근 가능한 private key가 없습니다.'
+    }
+    $now = Get-Date
+    if ($signingCertificate.NotBefore -gt $now -or $signingCertificate.NotAfter -le $now) {
+        throw 'MSIX 서명 인증서가 아직 유효하지 않거나 만료되었습니다.'
+    }
+    $codeSigningOid = '1.3.6.1.5.5.7.3.3'
+    $hasCodeSigningUsage = $null -ne ($signingCertificate.EnhancedKeyUsageList | Where-Object {
+        $objectId = $_.ObjectId
+        $value = if ($objectId -is [System.Security.Cryptography.Oid]) {
+            $objectId.Value
+        }
+        else {
+            [string]$objectId
+        }
+        $value -eq $codeSigningOid
+    } | Select-Object -First 1)
+    if (-not $hasCodeSigningUsage) {
+        throw 'MSIX 서명 인증서는 Code Signing EKU를 포함해야 합니다.'
+    }
+    $certificateSubject = $signingCertificate.SubjectName.Name.Trim()
+    if (-not [string]::Equals($Publisher.Trim(), $certificateSubject, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'manifest Publisher가 서명 인증서 subject와 일치하지 않습니다.'
+    }
+    $chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+    $chain.ChainPolicy.RevocationMode = [System.Security.Cryptography.X509Certificates.X509RevocationMode]::NoCheck
+    if (-not $chain.Build($signingCertificate)) {
+        throw 'MSIX signing certificate chain is not trusted on this computer.'
+    }
+}
 $sdkRoot = 'C:\Program Files (x86)\Windows Kits\10\bin'
 if (-not (Test-Path -LiteralPath $sdkRoot -PathType Container)) {
     throw "Windows 10/11 SDK packaging tools are required: $sdkRoot"
@@ -70,6 +115,8 @@ Copy-Item -LiteralPath $node -Destination (Join-Path $sidecarStage 'node.exe')
 $requiredStageFiles = @(
     'LIGClaw.Desktop.exe',
     'LIGClaw.Desktop.dll',
+    'Wpf.Ui.dll',
+    'ThirdPartyNotices.txt',
     'sidecar\node.exe',
     'sidecar\dist\index.js',
     'sidecar\package.json',
@@ -121,7 +168,8 @@ if ($LASTEXITCODE -ne 0) { throw 'MSIX packaging failed.' }
 if ($CertificateThumbprint) {
     $signTool = Get-ChildItem $sdkRoot -Recurse -Filter signtool.exe | Where-Object FullName -Match '\\x64\\' | Sort-Object FullName -Descending | Select-Object -First 1
     if (-not $signTool) { throw 'Windows SDK SignTool.exe를 찾지 못했습니다.' }
-    $arguments = @('sign', '/fd', 'SHA256', '/sha1', $CertificateThumbprint)
+    $arguments = @('sign', '/fd', 'SHA256', '/sha1', $signingCertificate.Thumbprint)
+    if ($CertificateStoreLocation -eq 'LocalMachine') { $arguments += '/sm' }
     if ($TimestampUrl) { $arguments += @('/tr', $TimestampUrl, '/td', 'SHA256') }
     $arguments += $package
     & $signTool.FullName @arguments

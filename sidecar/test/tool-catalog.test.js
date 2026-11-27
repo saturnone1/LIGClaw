@@ -36,3 +36,56 @@ test("text fallback allowlist uses registrations explicitly marked for fallback"
     "schedule.create.v1",
   ]);
 });
+
+test("Feature Builder Tool forwards only a bounded intent and validates the Desktop acknowledgement", async () => {
+  const invocations = [];
+  const recordingBridge = {
+    invoke: async (request) => {
+      invocations.push(request);
+      return { accepted: true, intent: request.input.intent };
+    },
+  };
+  const tool = createDesktopTools(recordingBridge, "builder-conversation", "builder-run")
+    .find(candidate => candidate.name === "capability_builder_open");
+  assert.ok(tool);
+  assert.deepEqual(tool.inputSchema, {
+    type: "object",
+    additionalProperties: false,
+    required: ["intent"],
+    properties: { intent: { type: "string", enum: ["create", "revise"] } },
+  });
+
+  const result = await tool.execute({ intent: "create" }, { toolCallId: "builder-call" });
+
+  assert.deepEqual(result, { accepted: true, intent: "create" });
+  assert.deepEqual(invocations, [{
+    toolCallId: "builder-call",
+    conversationId: "builder-conversation",
+    runId: "builder-run",
+    name: "capability.builder.open.v1",
+    risk: "R0",
+    input: { intent: "create" },
+  }]);
+  await assert.rejects(
+    tool.execute(
+      { intent: "revise", requirement: "MODEL_REQUIREMENT_MUST_NOT_CROSS" },
+      { toolCallId: "injected-call" },
+    ),
+    /intent is invalid/,
+  );
+  assert.equal(invocations.length, 1);
+
+  const reflectingTool = createDesktopTools({
+    invoke: async request => ({
+      accepted: true,
+      intent: request.input.intent,
+      requirement: "DESKTOP_REQUIREMENT_MUST_NOT_RETURN",
+    }),
+  }, "builder-conversation", "builder-run")
+    .find(candidate => candidate.name === "capability_builder_open");
+  assert.ok(reflectingTool);
+  await assert.rejects(
+    reflectingTool.execute({ intent: "revise" }, { toolCallId: "reflected-call" }),
+    /invalid Feature Builder acknowledgement/,
+  );
+});

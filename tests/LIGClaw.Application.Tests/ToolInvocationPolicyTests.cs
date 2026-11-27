@@ -51,6 +51,27 @@ public sealed class ToolInvocationPolicyTests
     }
 
     [Fact]
+    public void APreparedInvocationCanBeClaimedOnlyOnce()
+    {
+        var policy = new ToolInvocationPolicy();
+        policy.BeginRun("conversation", "run");
+
+        Assert.True(policy.Prepare("conversation", "run", "call", "R0").Allowed);
+        Assert.True(policy.ClaimPrepared("conversation", "run", "call", "R0").Allowed);
+        Assert.False(policy.ClaimPrepared("conversation", "run", "call", "R0").Allowed);
+    }
+
+    [Fact]
+    public void AnInvalidRiskStillConsumesItsToolCallIdWithinTheActiveRun()
+    {
+        var policy = new ToolInvocationPolicy();
+        policy.BeginRun("conversation", "run");
+
+        Assert.False(policy.Prepare("conversation", "run", "call", "RX").Allowed);
+        Assert.False(policy.Prepare("conversation", "run", "call", "R0").Allowed);
+    }
+
+    [Fact]
     public void EndingARunPreventsLateCallsAndAllowsTheNextRun()
     {
         var policy = new ToolInvocationPolicy();

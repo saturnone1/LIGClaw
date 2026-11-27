@@ -5,6 +5,13 @@ const MINUTE_MS = 60 * SECOND_MS;
 // Keep this policy separate from adapter execution timeouts owned by Desktop.
 export const DESKTOP_TOOL_RESPONSE_TIMEOUT_MS = 10 * MINUTE_MS;
 
+// Workflow approval is included in the Desktop-owned deadline. Keep a clear
+// ordering margin so the Desktop can persist its terminal ledger state before
+// either transport or Cline gives up on the model Tool call.
+export const WORKFLOW_DESKTOP_DEADLINE_MS = 8 * MINUTE_MS + 45 * SECOND_MS;
+export const WORKFLOW_BRIDGE_TIMEOUT_MS = 10 * MINUTE_MS;
+export const WORKFLOW_AGENT_TOOL_TIMEOUT_MS = 11 * MINUTE_MS;
+
 export const RUNTIME_LIMITS = Object.freeze({
   maximumAgentIterations: 16,
   maximumCachedConversations: 24,

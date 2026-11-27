@@ -1,6 +1,7 @@
 <UserControl x:Class="LIGClaw.Desktop.ActivityView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              AutomationProperties.Name="실행 활동 페이지">
     <Grid Margin="{DynamicResource PagePadding}">
         <Grid.RowDefinitions>
@@ -11,10 +12,10 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <StackPanel>
-            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="ACTIVITY / LOCAL AUDIT" />
+            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="실행 기록 / 이 PC에 저장" />
             <TextBlock Style="{StaticResource PageTitleStyle}" Text="실행 활동" />
             <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="승인 여부와 Windows 작업 결과를 이 PC에서만 보관합니다." />
+                       Text="승인 여부, 윈도우 작업과 작업 흐름 결과를 이 PC에서만 보관합니다." />
         </StackPanel>
         <Border Grid.Row="1" Margin="0,18,0,0" Style="{StaticResource CommandBarStyle}">
         <Grid>
@@ -57,12 +58,12 @@
                                     <TextBlock FontWeight="SemiBold" Text="{Binding Summary}" TextWrapping="Wrap" />
                                     <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
                                         <TextBlock VerticalAlignment="Center" Style="{StaticResource CaptionTextStyle}">
-                                            <Run Text="{Binding ToolName, Mode=OneWay}" /><Run Text="  ·  " />
-                                            <Run Text="{Binding Risk, Mode=OneWay}" />
+                                            <Run Text="{Binding ToolDisplay, Mode=OneWay}" /><Run Text="  ·  " />
+                                            <Run Text="{Binding RiskDisplay, Mode=OneWay}" />
                                         </TextBlock>
-                                        <Border Margin="8,0,0,0" Style="{StaticResource StatusBadgeStyle}">
+                                        <ui:Badge Margin="8,0,0,0" Appearance="Secondary">
                                             <TextBlock Style="{StaticResource StatusTagTextStyle}" Text="{Binding StatusDisplay, Mode=OneWay}" />
-                                        </Border>
+                                        </ui:Badge>
                                     </StackPanel>
                                 </StackPanel>
                                 <TextBlock Grid.Column="1" Margin="16,1,0,0"

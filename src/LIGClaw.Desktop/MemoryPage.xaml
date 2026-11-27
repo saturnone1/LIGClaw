@@ -10,7 +10,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <StackPanel>
-            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="MEMORY / LOCAL CONTEXT" />
+            <TextBlock Style="{StaticResource EyebrowTextStyle}" Text="기억 / 이 PC에 저장" />
             <TextBlock Style="{StaticResource PageTitleStyle}" Text="기억 관리" />
             <TextBlock Style="{StaticResource PageSubtitleStyle}"
                        Text="LIGClaw가 이 PC에 저장한 기억을 확인하고 추가·수정·삭제할 수 있습니다." />
@@ -25,7 +25,7 @@
                        Style="{StaticResource CaptionTextStyle}"
                        AutomationProperties.LiveSetting="Polite" />
             <Button Grid.Column="1" Margin="0,0,8,0" Style="{StaticResource SecondaryButtonStyle}"
-                    Click="Export_Click" Content="JSON 내보내기" />
+                        Click="Export_Click" Content="파일로 내보내기" />
             <Button Grid.Column="2" Style="{StaticResource PrimaryButtonStyle}"
                     Click="Add_Click" Content="기억 추가" />
         </Grid>

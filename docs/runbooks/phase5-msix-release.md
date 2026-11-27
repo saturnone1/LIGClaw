@@ -10,6 +10,14 @@ Install the Windows 10/11 SDK packaging tools (`MakeAppx.exe` and `SignTool.exe`
 
 The command first collects automated release evidence, then runs the full repository verification and packaging. Close any user-running LIGClaw instance before starting because the Desktop/Sidecar restart soak intentionally refuses to terminate it. The output folder contains the MSIX, `package-contents.txt`, `release-evidence.json`, `release-manifest.json`, and `SHA256SUMS.txt`. The manifest records the package hash and size, bundled Node version, protocol version, Desktop database schema version, signing state, staged file count, verification result, and the evidence hash. Failed builds remove their incomplete version output so the same command can be retried.
 
+`npm ci` uses the operator-configured package registry. If that Nexus does not implement npm's audit API, provide a separate approved advisory registry when running verification:
+
+```powershell
+./scripts/verify.ps1 -NpmAuditRegistry https://approved-audit-registry.example/npm/
+```
+
+The default advisory registry is the official npm registry. A fully disconnected build must point this parameter at an internal endpoint backed by a synchronized advisory feed. An unavailable or unsupported audit endpoint is never interpreted as zero vulnerabilities.
+
 The evidence pass can be run independently on a machine without the Windows SDK:
 
 ```powershell
@@ -24,13 +32,16 @@ Production packages require a trusted code-signing certificate whose subject exa
 ./scripts/build-msix.ps1 -Version 1.0.0.0 `
   -Publisher "CN=<production publisher>" `
   -CertificateThumbprint <thumbprint> `
+  -CertificateStoreLocation CurrentUser `
   -TimestampUrl https://<trusted-rfc3161-service> `
   -DistributionBaseUri https://<release-host>/ligclaw
 ```
 
+The build fails before publishing if the certificate has no accessible private key, is expired, lacks the Code Signing EKU, has an untrusted chain, or does not match the manifest Publisher. Use `-CertificateStoreLocation LocalMachine` only when the private key is intentionally provisioned there. A signed release-candidate build also requires an HTTPS timestamp URL.
+
 The output contains a self-contained .NET Desktop, the locked production Sidecar dependencies, and a bundled Node runtime. End-user PATH is not used. `LIGClaw.appinstaller` uses the 2021 schema, checks on launch, permits background checks, and does not block activation while downloading.
 
-Do not distribute the development certificate produced by `test-msix-development.ps1`. Production signing should use a CA/enterprise certificate or Azure Artifact Signing. Keep private keys and timestamp credentials out of the repository and logs.
+`test-msix-development.ps1` never creates a certificate or writes `CurrentUser\Root`/`TrustedPeople`. On a disposable acceptance VM, pre-provision an already trusted code-signing certificate with a private key and pass its 40-character thumbprint explicitly. Production signing should use a CA/enterprise certificate or Azure Artifact Signing. Keep private keys and timestamp credentials out of the repository and logs.
 
 ## Clean-user acceptance
 

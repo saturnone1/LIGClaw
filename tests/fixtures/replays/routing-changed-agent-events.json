@@ -1,0 +1,35 @@
+{
+  "name": "provider fallback agent event sequence",
+  "events": [
+    {
+      "conversationId": "fallback-conversation",
+      "runId": "fallback-run",
+      "sequence": 0,
+      "type": "routing_changed",
+      "timestampUtc": "2026-01-01T00:00:00Z",
+      "message": "backup|provider_unavailable"
+    },
+    {
+      "conversationId": "fallback-conversation",
+      "runId": "fallback-run",
+      "sequence": 1,
+      "type": "run_started",
+      "timestampUtc": "2026-01-01T00:00:01Z"
+    },
+    {
+      "conversationId": "fallback-conversation",
+      "runId": "fallback-run",
+      "sequence": 2,
+      "type": "text_delta",
+      "timestampUtc": "2026-01-01T00:00:02Z",
+      "text": "fallback response"
+    },
+    {
+      "conversationId": "fallback-conversation",
+      "runId": "fallback-run",
+      "sequence": 3,
+      "type": "run_completed",
+      "timestampUtc": "2026-01-01T00:00:03Z"
+    }
+  ]
+}

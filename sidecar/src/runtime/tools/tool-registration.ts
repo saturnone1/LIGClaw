@@ -4,6 +4,7 @@ export interface BuiltInToolRegistration {
 }
 
 export const BUILT_IN_TOOL_REGISTRATIONS = {
+  capability_builder_open: { desktopName: "capability.builder.open.v1" },
   system_get_status: { desktopName: "system.get_status.v1" },
   system_get_power_status: { desktopName: "system.get_power_status.v1" },
   system_get_storage_status: { desktopName: "system.get_storage_status.v1" },

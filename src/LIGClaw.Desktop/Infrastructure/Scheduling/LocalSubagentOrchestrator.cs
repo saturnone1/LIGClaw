@@ -29,7 +29,7 @@ internal sealed class LocalSubagentOrchestrator(
         SubagentBatchDraft draft,
         CancellationToken cancellationToken)
     {
-        if (!SubagentPolicy.IsValid(draft)) throw new ArgumentException("하위 Agent 작업이 올바르지 않습니다.");
+        if (!SubagentPolicy.IsValid(draft)) throw new ArgumentException("하위 도우미 작업이 올바르지 않습니다.");
         var routing = loadRouting(draft.ModelProfileId) ??
             throw new InvalidOperationException("사용할 모델 프로필을 찾을 수 없습니다.");
         var batchId = Guid.NewGuid().ToString("N");
@@ -149,11 +149,11 @@ internal sealed class LocalSubagentOrchestrator(
         WindowsToolExecutionResult execution;
         if (invocation.Name == "subagent.run.v1")
         {
-            execution = Failure("하위 Agent는 추가 하위 Agent를 만들 수 없습니다.");
+            execution = Failure("하위 도우미는 추가 하위 도우미를 만들 수 없습니다.");
         }
         else if (RiskRank(invocation.Risk) > RiskRank(run.MaxRisk))
         {
-            execution = Failure($"하위 Agent 권한 상한 {run.MaxRisk}보다 높은 동작을 거부했어요.");
+            execution = Failure($"하위 도우미의 허용 위험 수준보다 높은 동작을 거부했어요.");
         }
         else
         {
@@ -165,9 +165,9 @@ internal sealed class LocalSubagentOrchestrator(
             }
             catch (OperationCanceledException)
             {
-                execution = Failure("부모 요청 또는 하위 Agent가 중단되어 Windows 작업을 실행하지 않았어요.");
+                execution = Failure("원래 요청 또는 하위 도우미가 중단되어 윈도우 작업을 실행하지 않았어요.");
             }
-            catch { execution = Failure("하위 Agent Windows 작업을 안전하게 처리하지 못했어요."); }
+            catch { execution = Failure("하위 도우미의 윈도우 작업을 안전하게 처리하지 못했어요."); }
         }
         try
         {
