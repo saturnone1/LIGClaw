@@ -59,11 +59,12 @@ generated contract drift, TypeScript, Node tests, dependency audit, .NET
 formatting, builds, and tests. The run script builds Sidecar and opens Desktop.
 Closing the window keeps the app in the tray; use the tray menu to exit.
 
-The current dependency audit remains a release blocker: four package findings
-share one upstream Zod advisory in the unused Dify provider dependency path.
-The aggregate verification script reports this failure rather than suppressing
-it. See [the dependency review](docs/adr/0036-reviewed-sidecar-dependency-refresh.md)
-for the exact path, compatible updates, passing functional checks, and limits.
+The unused Dify provider and its Zod 3 dependency have been removed from the
+model SDK through reproducible local packages. The embedded Zod collection
+size guard is also backported into the Agents, Models and Shared SDK bundles.
+Both development and packaged production restores use those packages. See [the dependency decision](docs/adr/0037-remove-unused-dify-provider.md)
+and [vendor provenance](sidecar/vendor/README.md). The dependency audit gate
+remains enabled without advisory suppression.
 
 With no existing LIGClaw instance running, the following exercises the real
 process handshake, heartbeat, restart after a forced Sidecar kill, and cleanup:

@@ -1,7 +1,7 @@
 # ADR 0036: Reviewed Sidecar dependency refresh
 
 Date: 2026-11-27
-Status: Accepted for the development branch; production release gates remain open.
+Status: Accepted for the development branch; the dependency blocker below was resolved by ADR 0037. Other production release gates remain open.
 
 ## Context
 
@@ -48,3 +48,10 @@ production-release approval. Recheck this finding before packaging a release.
 - .NET format and Debug build pass; Contracts 7, Application 20, Desktop 389, and Sidecar integration 1 tests pass.
 - Actual-process Sidecar handshake, heartbeat, restart, and cleanup smoke passes.
 - Clean Windows account installation/signing, Windows 10 hardware, and live-provider testing remain external gates.
+
+## Resolution
+
+[ADR 0037](0037-remove-unused-dify-provider.md) removes the unused Dify provider
+from a reproducible model SDK package and both direct/indirect dependency paths.
+It supersedes the audit blocker described above without suppressing the advisory
+or forcing Zod 3 consumers onto an incompatible major version.

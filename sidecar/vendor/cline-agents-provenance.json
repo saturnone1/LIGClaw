@@ -1,0 +1,12 @@
+{
+  "upstream": "@cline/agents@0.0.65",
+  "upstreamIntegrity": "sha512-g4VfaFlXvFl9tAN0tVF9Zv517XT07fGN3c3Uxgpa0KljkvqPNBMUmx3m8oTPyv6rIQJUv3TLh2DVAPAgGaFgbQ==",
+  "version": "0.0.65-ligclaw.2",
+  "archive": "cline-agents-0.0.65-ligclaw.2.tgz",
+  "sha256": "43439a2ce4b8df45ac5f14341aebd9ab61154134816d48a7fa48b0f910650e19",
+  "modifiedRuntimeFiles": [
+    "dist/index.js"
+  ],
+  "removedDependency": null,
+  "bundledZodBackport": "a0ebf970f2d752e5f58527cd2942ff48be4f46bd"
+}
