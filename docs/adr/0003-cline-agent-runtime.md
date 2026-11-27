@@ -21,3 +21,9 @@ LIGClaw needs a tool-using agent loop but must not inherit coding-agent filesyst
 - Desktop and persisted events are independent of Cline's experimental type shapes.
 - Phase 0 can verify streaming and cancellation without API credentials or nondeterministic network calls.
 - The Cline dependency graph currently carries one low-severity transitive advisory through `dify-ai-provider`. CI fails on moderate-or-higher advisories; the low advisory remains tracked until the pinned upstream package provides a compatible patched dependency.
+
+## Dependency packaging update (2026-11-27)
+
+ADR 0037 retains the pinned agent/runtime API but replaces the model SDK archive
+with a reproducible downstream 0.0.65-ligclaw.1 build that removes unused Dify
+and its Zod 3 dependency. This supersedes the historical advisory note above.

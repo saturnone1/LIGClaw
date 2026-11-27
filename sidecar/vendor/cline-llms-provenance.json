@@ -1,0 +1,15 @@
+{
+  "upstream": "@cline/llms@0.0.65",
+  "upstreamIntegrity": "sha512-gkahUaJ1rRQsvJ2uQ8a24lNhMBQ381GQVI2uz/Q4oxvHOUMOS11v6q7tK8ovAIGD+6uXyYQiOxQ4W4hN00zKkw==",
+  "version": "0.0.65-ligclaw.2",
+  "archive": "cline-llms-0.0.65-ligclaw.2.tgz",
+  "sha256": "dcbddfc8e3442c8f8b75318b8b075d88bec7a63808d22c758effebfd6d72337c",
+  "modifiedRuntimeFiles": [
+    "dist/index.browser.js",
+    "dist/index.js",
+    "dist/models.js",
+    "dist/providers.js"
+  ],
+  "removedDependency": "dify-ai-provider",
+  "bundledZodBackport": "a0ebf970f2d752e5f58527cd2942ff48be4f46bd"
+}

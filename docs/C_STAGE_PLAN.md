@@ -177,7 +177,7 @@ Phase 0~7에서 확보한 기능을 유지하면서 LIGClaw를 실제 사내 배
 ## 의존성과 유지보수
 
 - `@cline/*`는 0.0.x exact pin을 유지하고 계약/replay 전체 통과 없이 올리지 않는다.
-- 2026-11-27 의존성 검토: 호환 MCP/Hono/전이 패키지 갱신 후 미사용 Dify → Zod 3 경로의 high advisory 1종(패키지 보고 4건)이 남는다. 단순 low 경고로 취급하지 않는다. audit/전체 verify는 이를 계속 실패로 보고하며, 배포 전 호환 패치·교체가 필요하다. 근거와 검증 범위는 [ADR 0036](adr/0036-reviewed-sidecar-dependency-refresh.md)을 따른다.
+- 2026-11-27 Dify → Zod 3 의존성 차단 해소: 미사용 Dify 등록·실행 코드와 직접/간접 의존성을 재현 가능한 로컬 SDK 패키지에서 제거했다. 보안 검사 예외를 추가하지 않으며 개발·배포 복원은 같은 패키지를 사용한다. [ADR 0037](adr/0037-remove-unused-dify-provider.md)을 따른다.
 - .NET, Node, MCP SDK와 Windows 지원표는 release candidate마다 공식 지원 상태를 다시 확인한다.
 - dependency 변경과 기능 변경을 같은 커밋에 섞지 않는다.
 

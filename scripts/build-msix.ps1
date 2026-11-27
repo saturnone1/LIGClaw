@@ -62,6 +62,7 @@ New-Item -ItemType Directory -Path $sidecarStage -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'sidecar\dist') -Destination $sidecarStage -Recurse
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'sidecar\package.json') -Destination $sidecarStage
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'sidecar\package-lock.json') -Destination $sidecarStage
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'sidecar\vendor') -Destination $sidecarStage -Recurse
 npm ci --omit=dev --prefix $sidecarStage
 if ($LASTEXITCODE -ne 0) { throw 'Packaged Sidecar dependency restore failed.' }
 $node = (Get-Command node -ErrorAction Stop).Source

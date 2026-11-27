@@ -14,14 +14,17 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@cline/agents": "0.0.65",
-    "@cline/llms": "0.0.65",
-    "@cline/shared": "0.0.65",
+    "@cline/agents": "file:vendor/cline-agents-0.0.65-ligclaw.2.tgz",
+    "@cline/llms": "file:vendor/cline-llms-0.0.65-ligclaw.2.tgz",
+    "@cline/shared": "file:vendor/cline-shared-0.0.65-ligclaw.2.tgz",
     "@modelcontextprotocol/sdk": "1.32.2"
   },
   "overrides": {
     "@hono/node-server": "2.1.11",
-    "undici": "6.29.1"
+    "undici": "6.29.1",
+    "@cline/llms": "$@cline/llms",
+    "@cline/agents": "$@cline/agents",
+    "@cline/shared": "$@cline/shared"
   },
   "devDependencies": {
     "@types/node": "24.0.15",
