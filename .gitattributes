@@ -1,0 +1,6 @@
+/scripts/bundled-zod-size-gate.js text eol=lf
+/scripts/patch-bundled-zod.mjs text eol=lf
+/scripts/vendor-cline-without-dify.py text eol=lf
+/sidecar/vendor/LICENSE.* text eol=lf
+/sidecar/vendor/*-provenance.json text eol=lf
+/sidecar/vendor/*.tgz binary

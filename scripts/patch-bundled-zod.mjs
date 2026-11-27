@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 const require = createRequire(new URL("../sidecar/package.json", import.meta.url));
 const ts = require("typescript");
-const helper = await readFile(new URL("bundled-zod-size-gate.js", import.meta.url), "utf8");
+const helper = (await readFile(new URL("bundled-zod-size-gate.js", import.meta.url), "utf8")).replaceAll("\r\n", "\n");
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
 const files = JSON.parse(input);
